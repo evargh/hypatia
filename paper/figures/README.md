@@ -6,14 +6,14 @@ Given that you have generated all data in the `ns3_experiments` and `satgenpy_an
 
 1. Execute gnuplot files:
    ```
-   python plot_all.py
+   python3 plot_all.py
    ```
    
 2. All .pdf versions of the figures have now been generated.
 
 3. Convert .pdf to .png because the .pdf can be slow to load because of the amount of points in them:
    ```
-   python generate_pngs.py
+   python3 generate_pngs.py
    ```
 
 ## Mapping paper figure numbers to the pdfs:

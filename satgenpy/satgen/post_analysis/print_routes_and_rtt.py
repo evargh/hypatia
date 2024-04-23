@@ -30,6 +30,8 @@ import tempfile
 
 def print_routes_and_rtt(base_output_dir, satellite_network_dir, dynamic_state_update_interval_ms,
                          simulation_end_time_s, src, dst, satgenpy_dir_with_ending_slash):
+    print('print_routes_and_rtt', src, dst)
+    print()
 
     # Local shell
     local_shell = exputil.LocalShell()
@@ -62,6 +64,7 @@ def print_routes_and_rtt(base_output_dir, satellite_network_dir, dynamic_state_u
     # Write data file
 
     data_path_filename = data_dir + "/networkx_path_" + str(src) + "_to_" + str(dst) + ".txt"
+    print(data_path_filename)
     with open(data_path_filename, "w+") as data_path_file:
 
         # For each time moment

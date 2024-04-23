@@ -80,7 +80,7 @@ def main():
     args = sys.argv[1:]
     if len(args) != 6:
         print("Must supply exactly six arguments")
-        print("Usage: python main_kuiper_630.py [duration (s)] [time step (ms)] "
+        print("Usage: python3 main_kuiper_630.py [duration (s)] [time step (ms)] "
               "[isls_plus_grid / isls_none] "
               "[ground_stations_{top_100, paris_moscow_grid}] "
               "[algorithm_{free_one_only_over_isls, free_one_only_gs_relays, paired_many_only_over_isls}] "

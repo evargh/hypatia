@@ -121,7 +121,7 @@ def main():
     args = sys.argv[1:]
     if len(args) != 4:
         print("Must supply exactly four arguments")
-        print("Usage: python main_25x25.py [duration (s)] [time step (ms)] "
+        print("Usage: python3 main_25x25.py [duration (s)] [time step (ms)] "
               "[algorithm_{free_one_only_over_isls, free_one_only_gs_relays, paired_many_only_over_isls}] "
               "[num threads]")
         exit(1)

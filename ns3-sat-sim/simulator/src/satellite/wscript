@@ -1,4 +1,4 @@
-## -*- Mode: python; py-indent-offset: 2; indent-tabs-mode: nil; coding: utf-8; -*-
+## -*- Mode: python3; py-indent-offset: 2; indent-tabs-mode: nil; coding: utf-8; -*-
 
 import os
 import os.path

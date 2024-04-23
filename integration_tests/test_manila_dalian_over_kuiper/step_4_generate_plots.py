@@ -41,7 +41,7 @@ for run in get_tcp_run_list():
     local_shell.make_full_dir("temp/data/" + run["name"])
     local_shell.perfect_exec(
         "cd ../../ns3-sat-sim/simulator/contrib/basic-sim/tools/plotting/plot_tcp_flow; "
-        "python plot_tcp_flow.py "
+        "python3 plot_tcp_flow.py "
         "../../../../../../../integration_tests/test_manila_dalian_over_kuiper/temp/runs/" + run["name"]
         + "/logs_ns3 "
         "../../../../../../../integration_tests/test_manila_dalian_over_kuiper/temp/data/" + run["name"] + " "

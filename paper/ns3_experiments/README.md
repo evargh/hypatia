@@ -51,9 +51,9 @@ Run and analyze these pairs by executing:
 
 ```
 cd a_b || exit 1
-python step_1_generate_runs.py || exit 1
-python step_2_run.py || exit 1
-python step_3_generate_plots.py || exit 1
+python3 step_1_generate_runs.py || exit 1
+python3 step_2_run.py || exit 1
+python3 step_3_generate_plots.py || exit 1
 ```
 
 ## Traffic matrix
@@ -73,9 +73,9 @@ to decrease the chance that the first or last hop is immediately the bottleneck.
 
 ```
 cd traffic_matrix || exit 1
-python step_1_generate_runs.py || exit 1
-python step_2_run.py || exit 1
-python step_3_generate_plots.py || exit 1
+python3 step_1_generate_runs.py || exit 1
+python3 step_2_run.py || exit 1
+python3 step_3_generate_plots.py || exit 1
 ```
 
 ## Traffic matrix load (scalability)
@@ -94,7 +94,7 @@ link rates and experiment durations.
 
 ```
 cd traffic_matrix_load || exit 1
-python step_1_generate_runs.py || exit 1
-python step_2_run.py || exit 1
-python step_3_generate_plots.py || exit 1
+python3 step_1_generate_runs.py || exit 1
+python3 step_2_run.py || exit 1
+python3 step_3_generate_plots.py || exit 1
 ```

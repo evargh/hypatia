@@ -28,7 +28,7 @@ def main():
     args = sys.argv[1:]
     if len(args) != 6:
         print("Must supply exactly six arguments")
-        print("Usage: python -m satgen.post_analysis.main_print_routes_and_rtt.py [data_dir] [satellite_network_dir] "
+        print("Usage: python3 -m satgen.post_analysis.main_print_routes_and_rtt.py [data_dir] [satellite_network_dir] "
               "[dynamic_state_update_interval_ms] [end_time_s] [src] [dst]")
         exit(1)
     else:

@@ -134,10 +134,10 @@ def plot_pair_path_max_utilization(path_networkx_data, run_name, src_node_id, ds
     # Perform the final plot
     pdf_filename = "pdf/%s/pair_available_bandwidth_%d_to_%d.pdf" % (run_name, src_node_id, dst_node_id)
     local_shell = exputil.LocalShell()
-    if is_static:
-        local_shell.copy_file("plots/plot_pair_path_available_bandwidth_no_red_box.plt", "temp.plt")
-    else:
-        local_shell.copy_file("plots/plot_pair_path_available_bandwidth.plt", "temp.plt")
+    # if is_static:
+    local_shell.copy_file("plots/plot_pair_path_available_bandwidth_no_red_box.plt", "temp.plt")
+    # else:
+    #     local_shell.copy_file("plots/plot_pair_path_available_bandwidth.plt", "temp.plt")
     local_shell.sed_replace_in_file_plain("temp.plt", "[DATA-FILE]", data_filename_at_1s)
     local_shell.sed_replace_in_file_plain("temp.plt", "[OUTPUT-FILE]", pdf_filename)
     local_shell.perfect_exec("gnuplot temp.plt")
@@ -154,8 +154,8 @@ def main():
     local_shell.make_full_dir("pdf")
 
     # Plot all the pair path utilization
-    for traffic_mode in ["specific", "general"]:
-        for movement in ["static", "moving"]:
+    for traffic_mode in ["general"]:
+        for movement in ["moving"]:
 
             # Pair path max utilization
             plot_pair_path_max_utilization(
@@ -163,7 +163,7 @@ def main():
                 "kuiper_630_isls_plus_grid_ground_stations_top_100_algorithm_free_one_only_over_isls/100ms_for_200s"
                 "/manual/data",
                 "run_%s_tm_pairing_kuiper_isls_%s" % (traffic_mode, movement),
-                1174, 1229, movement == "static"
+                1170, 1252, movement == "static"
             )
 
             # Perform simple flow plot for debugging purposes
@@ -172,7 +172,7 @@ def main():
             local_shell.make_full_dir("data/" + run_name)
             local_shell.perfect_exec(
                 "cd ../../../ns3-sat-sim/simulator/contrib/basic-sim/tools/plotting/plot_tcp_flow; "
-                "python plot_tcp_flow.py "
+                "python3 plot_tcp_flow.py "
                 "../../../../../../../paper/ns3_experiments/traffic_matrix/runs/" + run_name + "/logs_ns3 "
                 "../../../../../../../paper/ns3_experiments/traffic_matrix/data/" + run_name + " "
                 "../../../../../../../paper/ns3_experiments/traffic_matrix/pdf/" + run_name + " "
@@ -182,13 +182,43 @@ def main():
 
             local_shell.perfect_exec(
                 "cd ../../../ns3-sat-sim/simulator/contrib/basic-sim/tools/plotting/plot_tcp_flow; "
-                "python plot_tcp_flow.py "
+                "python3 plot_tcp_flow.py "
                 "../../../../../../../paper/ns3_experiments/traffic_matrix/runs/" + run_name + "/logs_ns3 "
                 "../../../../../../../paper/ns3_experiments/traffic_matrix/data/" + run_name + " "
                 "../../../../../../../paper/ns3_experiments/traffic_matrix/pdf/" + run_name + " "
                 + "35 " + str(1 * 1000 * 1000 * 1000),  # Flow id = 35, 1 * 1000 * 1000 * 1000 ns = 1s interval
                 output_redirect=exputil.OutputRedirect.CONSOLE
             )
+
+            # local_shell.perfect_exec(
+            #     "cd ../../../ns3-sat-sim/simulator/contrib/basic-sim/tools/plotting/plot_link_queue; "
+            #     "python3 plot_link_queue.py "
+            #     "../../../../../../../paper/ns3_experiments/traffic_matrix/runs/" + run_name + "/logs_ns3 "
+            #     "../../../../../../../paper/ns3_experiments/traffic_matrix/data/" + run_name + " "
+            #     "../../../../../../../paper/ns3_experiments/traffic_matrix/pdf/" + run_name + " "
+            #     + "0 1",  # Flow id = 35, 1 * 1000 * 1000 * 1000 ns = 1s interval
+            #     output_redirect=exputil.OutputRedirect.CONSOLE
+            # )
+
+            # local_shell.perfect_exec(
+            #     "cd ../../../ns3-sat-sim/simulator/contrib/basic-sim/tools/plotting/plot_tcp_flows_ecdfs; "
+            #     "python3 plot_tcp_flows_ecdfs.py "
+            #     "../../../../../../../paper/ns3_experiments/traffic_matrix/runs/" + run_name + "/logs_ns3 "
+            #     "../../../../../../../paper/ns3_experiments/traffic_matrix/data/" + run_name + " "
+            #     "../../../../../../../paper/ns3_experiments/traffic_matrix/pdf/" + run_name,
+            #     output_redirect=exputil.OutputRedirect.CONSOLE
+            # )
+
+            # local_shell.perfect_exec(
+            #     "cd ../../../ns3-sat-sim/simulator/contrib/basic-sim/tools/plotting/plot_link_utilization; "
+            #     "python3 plot_link_utilization.py "
+            #     "../../../../../../../paper/ns3_experiments/traffic_matrix/runs/" + run_name + "/logs_ns3 "
+            #     "../../../../../../../paper/ns3_experiments/traffic_matrix/data/" + run_name + " "
+            #     "../../../../../../../paper/ns3_experiments/traffic_matrix/pdf/" + run_name + " "
+            #     + "0 1",  # Flow id = 35, 1 * 1000 * 1000 * 1000 ns = 1s interval
+            #     output_redirect=exputil.OutputRedirect.CONSOLE
+            # )
+
 
 
 if __name__ == "__main__":

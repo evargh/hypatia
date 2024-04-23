@@ -34,16 +34,18 @@ if local_shell.count_screens() != 0:
 
 # Generate the commands
 commands_to_run = []
-for traffic_mode in ["specific", "general"]:
-    for movement in ["static", "moving"]:
-        run_name = "run_%s_tm_pairing_kuiper_isls_%s" % (traffic_mode, movement)
-        logs_ns3_dir = "runs/" + run_name + "/logs_ns3"
-        local_shell.remove_force_recursive(logs_ns3_dir)
-        local_shell.make_full_dir(logs_ns3_dir)
-        command = "cd ../../../ns3-sat-sim/simulator; ./waf --run=\"main_satnet " \
-                  "--run_dir='../../paper/ns3_experiments/traffic_matrix/runs/" + run_name + "'\" " \
-                  "2>&1 | tee '../../paper/ns3_experiments/traffic_matrix/" + logs_ns3_dir + "/console.txt'"
-        commands_to_run.append(command)
+for traffic_mode in ["general"]: # "specific"
+    for movement in ["moving"]: # "static", 
+        for constellation in ['kuiper', 'starlink', 'telesat']:
+
+            run_name = "run_%s_tm_pairing_%s_isls_%s" % (traffic_mode, constellation, movement)
+            logs_ns3_dir = "runs/" + run_name + "/logs_ns3"
+            local_shell.remove_force_recursive(logs_ns3_dir)
+            local_shell.make_full_dir(logs_ns3_dir)
+            command = "cd ../../../ns3-sat-sim/simulator; ./waf --run=\"main_satnet " \
+                    "--run_dir='../../paper/ns3_experiments/traffic_matrix/runs/" + run_name + "'\" " \
+                    "2>&1 | tee '../../paper/ns3_experiments/traffic_matrix/" + logs_ns3_dir + "/console.txt'"
+            commands_to_run.append(command)
 
 # Run the commands
 print("Running commands (at most %d in parallel)..." % max_num_processes)

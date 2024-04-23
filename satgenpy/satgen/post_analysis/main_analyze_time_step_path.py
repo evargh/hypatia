@@ -29,7 +29,7 @@ def main():
     args = sys.argv[1:]
     if len(args) != 4:
         print("Must supply exactly four arguments")
-        print("Usage: python  -m satgen.post_analysis.analyze_step_changes.py [output_data_dir] "
+        print("Usage: python3  -m satgen.post_analysis.analyze_step_changes.py [output_data_dir] "
               "[satellite_network_dir] [dynamic_state_update_interval_ms: e.g., 100,1000] [end_time_s]")
         exit(1)
     else:

@@ -11,7 +11,7 @@ few particular pairs.
 
 2. Perform the full analysis (takes some time):
    ```
-   python perform_full_analysis.py
+   python3 perform_full_analysis.py
    ```
 
 3. The analysis for each constellation is now in `data/<satellite network name>`

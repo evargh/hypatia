@@ -155,7 +155,7 @@ def main():
 
     # Rio de Janeiro to St. Petersburg with only ISLs on Kuiper
     local_shell.perfect_exec(
-        "cd ../../../satgenpy; python -m satgen.post_analysis.main_print_routes_and_rtt "
+        "cd ../../../satgenpy; python3 -m satgen.post_analysis.main_print_routes_and_rtt "
         "../paper/ns3_experiments/two_compete/extra_satgenpy_analysis_data ../paper/satellite_networks_state/gen_data/"
         "kuiper_630_isls_plus_grid_ground_stations_top_100_algorithm_free_one_only_over_isls "
         "100 200 1174 1229 "
@@ -164,7 +164,7 @@ def main():
 
     # Fortaleza to Tehran with only ISLs on Kuiper
     local_shell.perfect_exec(
-        "cd ../../../satgenpy; python -m satgen.post_analysis.main_print_routes_and_rtt "
+        "cd ../../../satgenpy; python3 -m satgen.post_analysis.main_print_routes_and_rtt "
         "../paper/ns3_experiments/two_compete/extra_satgenpy_analysis_data ../paper/satellite_networks_state/gen_data/"
         "kuiper_630_isls_plus_grid_ground_stations_top_100_algorithm_free_one_only_over_isls "
         "100 200 1254 1195 "
@@ -196,7 +196,7 @@ def main():
         local_shell.make_full_dir("data/" + run_name)
         local_shell.perfect_exec(
             "cd ../../../ns3-sat-sim/simulator/contrib/basic-sim/tools/plotting/plot_tcp_flow; "
-            "python plot_tcp_flow.py "
+            "python3 plot_tcp_flow.py "
             "../../../../../../../paper/ns3_experiments/two_compete/runs/" + run_name + "/logs_ns3 "
             "../../../../../../../paper/ns3_experiments/two_compete/data/" + run_name + " "
             "../../../../../../../paper/ns3_experiments/two_compete/pdf/" + run_name + " "
@@ -205,7 +205,7 @@ def main():
         )
         local_shell.perfect_exec(
             "cd ../../../ns3-sat-sim/simulator/contrib/basic-sim/tools/plotting/plot_tcp_flow; "
-            "python plot_tcp_flow.py "
+            "python3 plot_tcp_flow.py "
             "../../../../../../../paper/ns3_experiments/two_compete/runs/" + run_name + "/logs_ns3 "
             "../../../../../../../paper/ns3_experiments/two_compete/data/" + run_name + " "
             "../../../../../../../paper/ns3_experiments/two_compete/pdf/" + run_name + " "

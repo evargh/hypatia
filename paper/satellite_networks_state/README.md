@@ -33,7 +33,7 @@ Python path.
    ```
    bash generate_all_local.sh
    # Or if you have remote machines to distribute the workloads:
-   # python generate_all_remote.py
+   # python3 generate_all_remote.py
    ```
    
 3. ... which will generate:

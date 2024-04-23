@@ -30,7 +30,7 @@ cd .. || exit 1
 
 # Satgenpy analysis
 cd satgenpy_analysis || exit 1
-python perform_full_analysis.py || exit 1
+python3 perform_full_analysis.py || exit 1
 cd .. || exit 1
 
 ### NS-3 EXPERIMENTS
@@ -39,23 +39,23 @@ cd ns3_experiments || exit 1
 
 # A to B
 cd a_b || exit 1
-python step_1_generate_runs.py || exit 1
-python step_2_run.py || exit 1
-python step_3_generate_plots.py || exit 1
+python3 step_1_generate_runs.py || exit 1
+python3 step_2_run.py || exit 1
+python3 step_3_generate_plots.py || exit 1
 cd .. || exit 1
 
 # Traffic matrix
 cd traffic_matrix || exit 1
-python step_1_generate_runs.py || exit 1
-python step_2_run.py || exit 1
-python step_3_generate_plots.py || exit 1
+python3 step_1_generate_runs.py || exit 1
+python3 step_2_run.py || exit 1
+python3 step_3_generate_plots.py || exit 1
 cd .. || exit 1
 
 # ns-3: Traffic matrix load
 cd traffic_matrix_load || exit 1
-python step_1_generate_runs.py || exit 1
-python step_2_run.py || exit 1
-python step_3_generate_plots.py || exit 1
+python3 step_1_generate_runs.py || exit 1
+python3 step_2_run.py || exit 1
+python3 step_3_generate_plots.py || exit 1
 cd ..
 
 cd .. || exit 1
@@ -63,6 +63,6 @@ cd .. || exit 1
 ### Figures
 
 cd figures || exit 1
-python plot_all.py || exit 1
-python generate_pngs.py || exit 1
+python3 plot_all.py || exit 1
+python3 generate_pngs.py || exit 1
 cd .. || exit 1

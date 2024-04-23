@@ -38,7 +38,7 @@ you can download and extract all (temporary) data which Hypatia generates for th
 5. Extract the temporary data:
    ```
    cd paper
-   python extract_temp_data.py
+   python3 extract_temp_data.py
    ```
 
 ## Steps to run

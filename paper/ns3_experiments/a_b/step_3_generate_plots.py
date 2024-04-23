@@ -34,11 +34,12 @@ local_shell.make_full_dir("data")
 
 # TCP runs
 for run in get_tcp_run_list():
+    print(run)
     local_shell.make_full_dir("pdf/" + run["name"])
     local_shell.make_full_dir("data/" + run["name"])
     local_shell.perfect_exec(
         "cd ../../../ns3-sat-sim/simulator/contrib/basic-sim/tools/plotting/plot_tcp_flow; "
-        "python plot_tcp_flow.py "
+        "python3 plot_tcp_flow.py "
         "../../../../../../../paper/ns3_experiments/a_b/runs/" + run["name"] + "/logs_ns3 "
         "../../../../../../../paper/ns3_experiments/a_b/data/" + run["name"] + " "
         "../../../../../../../paper/ns3_experiments/a_b/pdf/" + run["name"] + " "
@@ -52,7 +53,7 @@ for run in get_pings_run_list():
     local_shell.make_full_dir("data/" + run["name"])
     local_shell.perfect_exec(
         "cd ../../../ns3-sat-sim/simulator/contrib/basic-sim/tools/plotting/plot_ping; "
-        "python plot_ping.py "
+        "python3 plot_ping.py "
         "../../../../../../../paper/ns3_experiments/a_b/runs/" + run["name"] + "/logs_ns3 "
         "../../../../../../../paper/ns3_experiments/a_b/data/" + run["name"] + " "
         "../../../../../../../paper/ns3_experiments/a_b/pdf/" + run["name"] + " "
