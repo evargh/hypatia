@@ -258,7 +258,7 @@ PointToPointLaserNetDevice::TransmitStart (Ptr<Packet> p)
   Time txTime = m_bps.CalculateBytesTxTime (p->GetSize ());
   Time txCompleteTime = txTime + m_tInterframeGap;
 
-	NS_LOG_DEBUG (m_node→GetId() << “ -- UID is “ << p→GetUid() << “ -- Delay is “ << txCompleteTime.GetSeconds());
+	NS_LOG_DEBUG (m_node->GetId() << " -- UID is " << p->GetUid() << " -- Delay is " << txCompleteTime.GetSeconds());
 
   NS_LOG_LOGIC ("Schedule TransmitCompleteEvent in " << txCompleteTime.GetSeconds () << "sec");
   Simulator::Schedule (txCompleteTime, &PointToPointLaserNetDevice::TransmitComplete, this);
@@ -344,7 +344,7 @@ PointToPointLaserNetDevice::Receive (Ptr<Packet> packet)
   NS_LOG_FUNCTION (this << packet);
   uint16_t protocol = 0;
 
-	NS_LOG_DEBUG(m_node->GetID() << " -- UID is " << packet->GetUid());
+	NS_LOG_DEBUG(m_node->GetId() << " -- UID is " << packet->GetUid());
 
   if (m_receiveErrorModel && m_receiveErrorModel->IsCorrupt (packet) ) 
     {
