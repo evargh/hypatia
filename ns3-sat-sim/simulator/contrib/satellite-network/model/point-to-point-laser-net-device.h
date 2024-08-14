@@ -112,14 +112,16 @@ public:
    *
    * \param queue Ptr to the new queue.
    */
-  void SetQueue (Ptr<Queue<Packet> > queue);
+  void SetTxQueue (Ptr<Queue<Packet> > queue);
+  void SetRxQueue (Ptr<Queue<Packet> > queue);
 
   /**
    * Get a copy of the attached Queue.
    *
    * \returns Ptr to the queue.
    */
-  Ptr<Queue<Packet> > GetQueue (void) const;
+  Ptr<Queue<Packet> > GetTxQueue (void) const;
+  Ptr<Queue<Packet> > GetRxQueue (void) const;
 
   /**
    * Attach a receive ErrorModel to the PointToPointLaserNetDevice.
@@ -142,6 +144,7 @@ public:
    * \param p Ptr to the received packet.
    */
   void Receive (Ptr<Packet> p);
+  void ProcessPacket();
 
   // The remaining methods are documented in ns3::NetDevice*
 
@@ -316,7 +319,8 @@ private:
    * and it has the responsibility for deletion.
    * \see class DropTailQueue
    */
-  Ptr<Queue<Packet> > m_queue;
+  Ptr<Queue<Packet> > m_txQueue;
+  Ptr<Queue<Packet> > m_rxQueue;
 
   /**
    * Error model for receive packet events

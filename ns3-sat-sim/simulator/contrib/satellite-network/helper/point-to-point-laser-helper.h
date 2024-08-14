@@ -44,7 +44,12 @@ public:
   PointToPointLaserHelper ();
 
   // Set point-to-point laser device and channel attributes
-  void SetQueue (std::string type,
+  void SetTxQueue (std::string type,
+                 std::string n1 = "", const AttributeValue &v1 = EmptyAttributeValue (),
+                 std::string n2 = "", const AttributeValue &v2 = EmptyAttributeValue (),
+                 std::string n3 = "", const AttributeValue &v3 = EmptyAttributeValue (),
+                 std::string n4 = "", const AttributeValue &v4 = EmptyAttributeValue ());
+  void SetRxQueue (std::string type,
                  std::string n1 = "", const AttributeValue &v1 = EmptyAttributeValue (),
                  std::string n2 = "", const AttributeValue &v2 = EmptyAttributeValue (),
                  std::string n3 = "", const AttributeValue &v3 = EmptyAttributeValue (),
@@ -57,7 +62,8 @@ public:
   NetDeviceContainer Install (Ptr<Node> a, Ptr<Node> b);
 
 private:
-  ObjectFactory m_queueFactory;         //!< Queue Factory
+  ObjectFactory m_txQueueFactory;         //!< Queue Factory
+  ObjectFactory m_rxQueueFactory;
   ObjectFactory m_channelFactory;       //!< Channel Factory
   ObjectFactory m_remoteChannelFactory; //!< Remote Channel Factory
   ObjectFactory m_deviceFactory;        //!< Device Factory

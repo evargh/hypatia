@@ -81,7 +81,13 @@ PointToPointLaserNetDevice::GetTypeId (void)
     .AddAttribute ("TxQueue", 
                    "A queue to use as the transmit queue in the device.",
                    PointerValue (),
-                   MakePointerAccessor (&PointToPointLaserNetDevice::m_queue),
+                   MakePointerAccessor (&PointToPointLaserNetDevice::m_txQueue),
+                   MakePointerChecker<Queue<Packet> > ())
+
+    .AddAttribute ("RxQueue",
+                   "A queue to use as the receive queue in the device.",
+                   PointerValue (),
+                   MakePointerAccessor (&PointToPointLaserNetDevice::m_rxQueue),
                    MakePointerChecker<Queue<Packet> > ())
 
     //
@@ -220,7 +226,8 @@ PointToPointLaserNetDevice::DoDispose ()
   m_channel = 0;
   m_receiveErrorModel = 0;
   m_currentPkt = 0;
-  m_queue = 0;
+  m_txQueue = 0;
+  m_rxQueue = 0;
   NetDevice::DoDispose ();
 }
 
@@ -258,6 +265,7 @@ PointToPointLaserNetDevice::TransmitStart (Ptr<Packet> p)
   Time txTime = m_bps.CalculateBytesTxTime (p->GetSize ());
   Time txCompleteTime = txTime + m_tInterframeGap;
 
+  NS_LOG_DEBUG (m_node->GetId() << " -- UID is " << p->GetUid () << " -- Delay is " << txCompleteTime.GetSeconds());
   NS_LOG_LOGIC ("Schedule TransmitCompleteEvent in " << txCompleteTime.GetSeconds () << "sec");
   Simulator::Schedule (txCompleteTime, &PointToPointLaserNetDevice::TransmitComplete, this);
 
@@ -289,7 +297,7 @@ PointToPointLaserNetDevice::TransmitComplete (void)
   TrackUtilization(false);
   m_currentPkt = 0;
 
-  Ptr<Packet> p = m_queue->Dequeue ();
+  Ptr<Packet> p = m_txQueue->Dequeue ();
   if (p == 0)
     {
       NS_LOG_LOGIC ("No pending packets in device queue after tx complete");
@@ -323,10 +331,17 @@ PointToPointLaserNetDevice::Attach (Ptr<PointToPointLaserChannel> ch)
 }
 
 void
-PointToPointLaserNetDevice::SetQueue (Ptr<Queue<Packet> > q)
+PointToPointLaserNetDevice::SetTxQueue (Ptr<Queue<Packet> > q)
 {
   NS_LOG_FUNCTION (this << q);
-  m_queue = q;
+  m_txQueue = q;
+}
+
+void
+PointToPointLaserNetDevice::SetRxQueue (Ptr<Queue<Packet> > q)
+{
+  NS_LOG_FUNCTION (this << q);
+  m_rxQueue = q;
 }
 
 void
@@ -336,18 +351,49 @@ PointToPointLaserNetDevice::SetReceiveErrorModel (Ptr<ErrorModel> em)
   m_receiveErrorModel = em;
 }
 
+// Receive and process packet should be decoupled.
+// When a packet is received, it's enqueued if possible. If the queue is populated, schedule a Receive with the receive callback
+// In the Receive function, it keeps scheduling to process the queue until its empty
 void
 PointToPointLaserNetDevice::Receive (Ptr<Packet> packet)
 {
   NS_LOG_FUNCTION (this << packet);
-  uint16_t protocol = 0;
+  NS_LOG_DEBUG (m_node->GetId() << " -- UID is " << packet->GetUid ());
+  
+  if (!m_rxQueue->Enqueue(packet)) 
+    {
+      // if the receiver queue is full, then drop the packet
+      NS_LOG_DEBUG (m_node->GetId() << " -- UID is " << packet->GetUid () << " -- Dropped: Full Queue");
+      m_phyRxDropTrace (packet);
+    }
+  // instead of polling for queue messages, the queue is initially checked on every receive callback
+  if (!m_rxQueue->IsEmpty()) 
+    {
+      Simulator::Schedule (Simulator::Now(), &PointToPointLaserNetDevice::ProcessPacket, this);
+    }
+}
 
+void
+PointToPointLaserNetDevice::ProcessPacket() {
+  uint16_t protocol = 0;
+  Ptr<Packet> packet;
+  if (!m_rxQueue->IsEmpty()) 
+    {
+      packet = m_rxQueue->Dequeue ();
+    }
+  else
+    {
+      // this can happen if the queue isn't empty when this function is scheduled, but it is empty when the function is run
+      // since this system is single publisher single subscriber per node, I don't believe a Mutex is necessary
+      return;
+    }
   if (m_receiveErrorModel && m_receiveErrorModel->IsCorrupt (packet) ) 
     {
       // 
       // If we have an error model and it indicates that it is time to lose a
       // corrupted packet, don't forward this packet up, let it go.
       //
+  	  NS_LOG_DEBUG (m_node->GetId() << " -- UID is " << packet->GetUid () << " -- Dropped: Corrupt Packet");
       m_phyRxDropTrace (packet);
     }
   else 
@@ -384,13 +430,24 @@ PointToPointLaserNetDevice::Receive (Ptr<Packet> packet)
       m_macRxTrace (originalPacket);
       m_rxCallback (this, packet, protocol, GetRemote ());
     }
+  if (!m_rxQueue->IsEmpty()) 
+    {
+      Simulator::Schedule (Simulator::Now(), &PointToPointLaserNetDevice::ProcessPacket, this);
+    }
 }
 
 Ptr<Queue<Packet> >
-PointToPointLaserNetDevice::GetQueue (void) const
+PointToPointLaserNetDevice::GetTxQueue (void) const
 { 
   NS_LOG_FUNCTION (this);
-  return m_queue;
+  return m_txQueue;
+}
+
+Ptr<Queue<Packet> >
+PointToPointLaserNetDevice::GetRxQueue (void) const
+{ 
+  NS_LOG_FUNCTION (this);
+  return m_rxQueue;
 }
 
 void
@@ -555,14 +612,14 @@ PointToPointLaserNetDevice::Send (
   //
   // We should enqueue and dequeue the packet to hit the tracing hooks.
   //
-  if (m_queue->Enqueue (packet))
+  if (m_txQueue->Enqueue (packet))
     {
       //
       // If the channel is ready for transition we send the packet right now
       // 
       if (m_txMachineState == READY)
         {
-          packet = m_queue->Dequeue ();
+          packet = m_txQueue->Dequeue ();
           m_snifferTrace (packet);
           m_promiscSnifferTrace (packet);
           bool ret = TransmitStart (packet);

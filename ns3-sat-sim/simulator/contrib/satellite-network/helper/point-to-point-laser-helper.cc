@@ -46,14 +46,15 @@ NS_LOG_COMPONENT_DEFINE ("PointToPointLaserHelper");
 
 PointToPointLaserHelper::PointToPointLaserHelper ()
 {
-  m_queueFactory.SetTypeId ("ns3::DropTailQueue<Packet>");
+  m_txQueueFactory.SetTypeId ("ns3::DropTailQueue<Packet>");
+  m_rxQueueFactory.SetTypeId ("ns3::DropTailQueue<Packet>");
   m_deviceFactory.SetTypeId ("ns3::PointToPointLaserNetDevice");
   m_channelFactory.SetTypeId ("ns3::PointToPointLaserChannel");
   m_remoteChannelFactory.SetTypeId ("ns3::PointToPointLaserRemoteChannel");
 }
 
 void 
-PointToPointLaserHelper::SetQueue (std::string type,
+PointToPointLaserHelper::SetTxQueue (std::string type,
                                    std::string n1, const AttributeValue &v1,
                                    std::string n2, const AttributeValue &v2,
                                    std::string n3, const AttributeValue &v3,
@@ -61,11 +62,27 @@ PointToPointLaserHelper::SetQueue (std::string type,
 {
   QueueBase::AppendItemTypeIfNotPresent (type, "Packet");
 
-  m_queueFactory.SetTypeId (type);
-  m_queueFactory.Set (n1, v1);
-  m_queueFactory.Set (n2, v2);
-  m_queueFactory.Set (n3, v3);
-  m_queueFactory.Set (n4, v4);
+  m_txQueueFactory.SetTypeId (type);
+  m_txQueueFactory.Set (n1, v1);
+  m_txQueueFactory.Set (n2, v2);
+  m_txQueueFactory.Set (n3, v3);
+  m_txQueueFactory.Set (n4, v4);
+}
+
+void 
+PointToPointLaserHelper::SetRxQueue (std::string type,
+                                   std::string n1, const AttributeValue &v1,
+                                   std::string n2, const AttributeValue &v2,
+                                   std::string n3, const AttributeValue &v3,
+                                   std::string n4, const AttributeValue &v4)
+{
+  QueueBase::AppendItemTypeIfNotPresent (type, "Packet");
+
+  m_rxQueueFactory.SetTypeId (type);
+  m_rxQueueFactory.Set (n1, v1);
+  m_rxQueueFactory.Set (n2, v2);
+  m_rxQueueFactory.Set (n3, v3);
+  m_rxQueueFactory.Set (n4, v4);
 }
 
 void 
@@ -106,21 +123,26 @@ PointToPointLaserHelper::Install (Ptr<Node> a, Ptr<Node> b)
   devA->SetAddress (Mac48Address::Allocate ());
   devA->SetDestinationNode(b);
   a->AddDevice (devA);
-  Ptr<Queue<Packet> > queueA = m_queueFactory.Create<Queue<Packet> > ();
-  devA->SetQueue (queueA);
+  Ptr<Queue<Packet> > txQueueA = m_txQueueFactory.Create<Queue<Packet> > ();
+  devA->SetTxQueue (txQueueA); 
+  Ptr<Queue<Packet> > rxQueueA = m_rxQueueFactory.Create<Queue<Packet> > ();
+  devA->SetRxQueue (rxQueueA);
+  
   Ptr<PointToPointLaserNetDevice> devB = m_deviceFactory.Create<PointToPointLaserNetDevice> ();
   devB->SetAddress (Mac48Address::Allocate ());
   devB->SetDestinationNode(a);
   b->AddDevice (devB);
-  Ptr<Queue<Packet> > queueB = m_queueFactory.Create<Queue<Packet> > ();
-  devB->SetQueue (queueB);
+  Ptr<Queue<Packet> > txQueueB = m_txQueueFactory.Create<Queue<Packet> > ();
+  devB->SetTxQueue (txQueueB);
+  Ptr<Queue<Packet> > rxQueueB = m_rxQueueFactory.Create<Queue<Packet> > ();
+  devB->SetRxQueue (rxQueueB);
 
   // Aggregate NetDeviceQueueInterface objects
   Ptr<NetDeviceQueueInterface> ndqiA = CreateObject<NetDeviceQueueInterface> ();
-  ndqiA->GetTxQueue (0)->ConnectQueueTraces (queueA);
+  ndqiA->GetTxQueue (0)->ConnectQueueTraces (txQueueA);
   devA->AggregateObject (ndqiA);
   Ptr<NetDeviceQueueInterface> ndqiB = CreateObject<NetDeviceQueueInterface> ();
-  ndqiB->GetTxQueue (0)->ConnectQueueTraces (queueB);
+  ndqiB->GetTxQueue (0)->ConnectQueueTraces (txQueueB);
   devB->AggregateObject (ndqiB);
 
   // Distributed mode
