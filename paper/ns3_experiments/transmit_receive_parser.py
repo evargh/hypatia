@@ -1,46 +1,54 @@
 # since each packet is unique, first group all lines based on the unique packet they reference
 # if a line does not reference a UID, throw it out
 # then, with these vectors of lines, throw out the first transmitstart. then split by space and compute the time difference for each parsed time in milliseconds
+# if theres a dropped packet in the middle of the network, then identify the previous transmit and add in an RTT-sized delay. maybe 5 seconds?
+# if a packet cycles endlessly through different nodes, throw it out as a dropped packet
+
 from collections import Counter
-import sys
 import json
 
 packetdicts = {}
 
-with open(sys.argv[1], 'r') as file:
+linecount = 0
+
+with open('console.txt', 'r') as file:
+    # the file is small enough that we can put it in memory as a queue
     for line in file:
-        splitline = line.split(" ")
-        if len(splitline) > 4:
-            if splitline[-3] == "UID":
-                UID = splitline[-1][:-2]
-                if UID in packetdicts:
-                    packetdicts[UID].append(line)
-                else:
-                    # ignore the first transmitstart
+        linecount += 1
+        splitline = line.split(" -- ")
+        if len(splitline) > 1:
+            uidphrase = splitline[2].split(" ")
+            if uidphrase[0] == "UID":
+                UID = int(uidphrase[-1].strip())
+                if UID not in packetdicts:
                     packetdicts[UID] = []
+                result = line.split(":")[1].strip()
+                info = line.split(":")[2].split(" -- ");
+                receive_tuple = 0;
+                fromspot = int(info[0].split(" ")[-1].strip())
+                tospot = int(info[1].split(" ")[-1].strip())
+                timestamp = float(line.split(" ")[0][1:-1])
+
+                if result == "Receive()":
+                    receive_tuple = ("Receive", fromspot, tospot, timestamp)
+                if result == "TransmitStart()":
+                    receive_tuple = ("Transmit", fromspot, tospot, timestamp + float(info[-1].split(" ")[-1]))
+                packetdicts[UID].append(receive_tuple)
 
 timediffs = []
 
 for key, values in packetdicts.items():
-#values = packetdicts["568498"]
-    tlines = {}
-    for item in values:
-        result = item.split(":")[1]
-        if(result == "Receive()"):
-            nums = item.split(" ")
-            tlines[nums[-5]] = float(nums[0][:-2])
-        else:
-            nums = item.split(" ")
-            if nums[-5] in tlines:
-                timediffs.append(float(nums[0][:-2]) - tlines[nums[-5]])
-                del tlines[nums[-5]]
-
+    tuple_collection = []
+    transmits = [item for item in values if item[0] == "Transmit"]
+    receives = [item for item in values if item[0] == "Receive"]
+    for t in transmits:
+        if (t[0] == "Transmit"):
+            # assume causality for now--a first transmit between a pair of nodes will always be matched with the first receive
+            match = [item for item in receives if (item[1] == t[1] and item[2] == t[2])]
+            if len(match) >= 1:
+                timediffs.append(match[0][3] - t[3])
+            if len(match) == 0:
+                # many of these drops come at the end, and do not involve any repeated transmissions.--it's not unreasonable to assume that they would have been transmitted had the simulation extended for a bit longer. additionally, if a packet is dropped, it will not be resent with the same UID.
+                #print(f'drop?: {key}')
+                pass
 print(json.dumps(Counter(timediffs)))
-# HashMap hs = new HashMap<int, vec<line>>
-# for each line:
-#   first see if "uid is" is in the line
-#   identify last word, trim off parenthesis, see if last word is in the hash map
-#   if not, make a new entry and add this line to be the first. if the entry is already there, append this line to the vector of lines
-
-# when complete, go through each entry, iterate over the lines, and for each receive/transmit pair, identify the time difference, and put that into a list
-# then histogram all of those time differences

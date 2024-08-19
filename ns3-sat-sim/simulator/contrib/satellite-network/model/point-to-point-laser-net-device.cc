@@ -258,7 +258,6 @@ PointToPointLaserNetDevice::TransmitStart (Ptr<Packet> p)
   Time txTime = m_bps.CalculateBytesTxTime (p->GetSize ());
   Time txCompleteTime = txTime + m_tInterframeGap;
 
-	NS_LOG_DEBUG (m_node->GetId() << " -- UID is " << p->GetUid() << " -- Delay is " << txCompleteTime.GetSeconds());
 
   NS_LOG_LOGIC ("Schedule TransmitCompleteEvent in " << txCompleteTime.GetSeconds () << "sec");
   Simulator::Schedule (txCompleteTime, &PointToPointLaserNetDevice::TransmitComplete, this);
@@ -266,7 +265,12 @@ PointToPointLaserNetDevice::TransmitStart (Ptr<Packet> p)
   bool result = m_channel->TransmitStart (p, this, m_destination_node, txTime);
   if (result == false)
     {
+      // result is always true anyway, so there should be no drop
       m_phyTxDropTrace (p);
+    }
+  else 
+    {
+      NS_LOG_DEBUG ("From " << m_node->GetId() << " -- To " << m_destination_node->GetId() << " -- UID is " << p->GetUid() << " -- Delay is " << txCompleteTime.GetSeconds());
     }
   return result;
 }
@@ -297,7 +301,11 @@ PointToPointLaserNetDevice::TransmitComplete (void)
       NS_LOG_LOGIC ("No pending packets in device queue after tx complete");
       return;
     }
-
+  Ptr<const Packet> np = m_queue->Peek();
+  //if (np != 0)
+  //  {
+  //    NS_LOG_DEBUG ("From " << m_destination_node->GetId() << " -- Going to send  " << p->GetUid() << " then " << np->GetUid() );
+  //  }
   //
   // Got another packet off of the queue, so start the transmit process again.
   //
@@ -344,7 +352,7 @@ PointToPointLaserNetDevice::Receive (Ptr<Packet> packet)
   NS_LOG_FUNCTION (this << packet);
   uint16_t protocol = 0;
 
-	NS_LOG_DEBUG(m_node->GetId() << " -- UID is " << packet->GetUid());
+	NS_LOG_DEBUG ("From " << m_destination_node->GetId() << " -- To " << m_node->GetId() << " -- UID is " << packet->GetUid());
 
   if (m_receiveErrorModel && m_receiveErrorModel->IsCorrupt (packet) ) 
     {
@@ -576,7 +584,7 @@ PointToPointLaserNetDevice::Send (
     }
 
   // Enqueue may fail (overflow)
-
+	//NS_LOG_DEBUG("From " << m_node->GetId() << " -- To " << m_destination_node->GetId() << " -- Packet Dropped from TX Queue");
   m_macTxDropTrace (packet);
   return false;
 }
