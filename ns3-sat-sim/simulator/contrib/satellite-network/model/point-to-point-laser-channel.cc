@@ -101,6 +101,7 @@ PointToPointLaserChannel::TransmitStart (
   Ptr<MobilityModel> receiverMobility = node_other_end->GetObject<MobilityModel>();
   Time delay = this->GetDelay(senderMobility, receiverMobility); 
 
+  NS_LOG_DEBUG (delay.GetNanoSeconds());
   uint32_t wire = src == m_link[0].m_src ? 0 : 1;
 
   Simulator::ScheduleWithContext (m_link[wire].m_dst->GetNode()->GetId (),
