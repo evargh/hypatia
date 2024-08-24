@@ -1,22 +1,18 @@
-# since each packet is unique, first group all lines based on the unique packet they reference
-# if a line does not reference a UID, throw it out
-# then, with these vectors of lines, throw out the first transmitstart. then split by space and compute the time difference for each parsed time in milliseconds
-# if theres a dropped packet in the middle of the network, then identify the previous transmit and add in an RTT-sized delay. maybe 5 seconds?
-# if a packet cycles endlessly through different nodes, throw it out as a dropped packet
-
 from collections import Counter
 import json
+import argparse
 
 packetdicts = {}
 
 linecount = 0
 
-with open('console.txt', 'r') as file:
-    # the file is small enough that we can put it in memory as a queue
+parser = argparse.ArgumentParser()
+parser.add_argument('filename')
+args = parser.parse_args()
+
+with open(args.filename, 'r') as file:
     for line in file:
         linecount += 1
-        if linecount == 30000:
-            break
         splitline = line.split(" -- ")
         if len(splitline) > 1:
             uidphrase = splitline[2].split(" ")
