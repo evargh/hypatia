@@ -94,8 +94,9 @@ GSLChannel::TransmitTo(Ptr<const Packet> p, Ptr<GSLNetDevice> srcNetDevice, Ptr<
   // Calculate delay
   Time delay = this->GetDelay(senderMobility, receiverMobility);
   NS_LOG_DEBUG(
-          "Sending packet " << p << " from node " << srcNetDevice->GetNode()->GetId()
-          << " to " << destNetDevice->GetNode()->GetId() << " with delay " << delay
+          "From " << srcNetDevice->GetNode()->GetId()
+          << " -- To " << destNetDevice->GetNode()->GetId() << " -- UID is  " << p->GetUid()
+	  << " -- Delay is " << delay.GetSeconds()
   );
 
   // Distributed mode is not enabled
