@@ -17,6 +17,7 @@ def sort_by_time(item):
 
 parser = argparse.ArgumentParser()
 parser.add_argument('filename')
+parser.add_argument('satellites')
 args = parser.parse_args()
 
 with open(args.filename, 'r') as file:
@@ -63,7 +64,7 @@ for key, values in packetdicts.items():
         to_id = item[2]
         timestamp = item[3]
         if label == "TransmitGSL":
-            if(from_id >= 1584):
+            if(from_id >= int(args.satellites)):
                 # a transmitGSL is preceded by either nothing or a receive
                 # if the first index is greater than 1584, a ground station is transmitting to a satellite
                 # it is preceded by nothing
