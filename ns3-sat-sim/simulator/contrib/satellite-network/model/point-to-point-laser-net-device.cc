@@ -301,7 +301,7 @@ PointToPointLaserNetDevice::TransmitComplete (void)
       NS_LOG_LOGIC ("No pending packets in device queue after tx complete");
       return;
     }
-  Ptr<const Packet> np = m_queue->Peek();
+  //Ptr<const Packet> np = m_queue->Peek();
   //if (np != 0)
   //  {
   //    NS_LOG_DEBUG ("From " << m_destination_node->GetId() << " -- Going to send  " << p->GetUid() << " then " << np->GetUid() );
@@ -569,6 +569,7 @@ PointToPointLaserNetDevice::Send (
   //
   if (m_queue->Enqueue (packet))
     {
+    NS_LOG_DEBUG("From " << m_node->GetId() << " -- Packet Sees " << (m_queue->GetNPackets() - 1));
       //
       // If the channel is ready for transition we send the packet right now
       // 
@@ -584,7 +585,7 @@ PointToPointLaserNetDevice::Send (
     }
 
   // Enqueue may fail (overflow)
-	//NS_LOG_DEBUG("From " << m_node->GetId() << " -- To " << m_destination_node->GetId() << " -- Packet Dropped from TX Queue");
+  NS_LOG_DEBUG("From " << m_node->GetId() << " -- To " << m_destination_node->GetId() << " -- Packet Dropped from TX Queue");
   m_macTxDropTrace (packet);
   return false;
 }
