@@ -35,6 +35,7 @@
 #include "ns3/data-rate.h"
 #include "ns3/ptr.h"
 #include "ns3/mac48-address.h"
+#include "ns3/abort.h"
 
 namespace ns3 {
 
@@ -222,6 +223,7 @@ private:
   virtual void DoDispose (void);
 
 private:
+  void EnqueueL2Frame ();
 
   /**
    * \returns the address of the remote device connected to this device

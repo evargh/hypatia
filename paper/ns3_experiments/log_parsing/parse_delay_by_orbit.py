@@ -1,4 +1,4 @@
-#since each packet is unique, first group all lines based on the unique packet they reference
+# since each packet is unique, first group all lines based on the unique packet they reference
 # if a line does not reference a UID, throw it out
 # then, with these vectors of lines, throw out the first transmitstart. then split by space and compute the time difference for each parsed time in milliseconds
 # if theres a dropped packet in the middle of the network, then identify the previous transmit and add in an RTT-sized delay. maybe 5 seconds?
@@ -67,7 +67,7 @@ for key, values in packetdicts.items():
         from_id = item[1]
         to_id = item[2]
         timestamp = item[3]
-        this_satellite = from_id
+        this_orbit = int(from_id/args.satellites_per_orbit)
         if label == "TransmitGSL":
             if(from_id >= int(args.orbits * args.satellites_per_orbit)):
                 # a transmitGSL is preceded by either nothing or a receive
@@ -112,9 +112,9 @@ for key, values in packetdicts.items():
             if check_blank_deque(start_gsl_queues, from_id):
                 # if the item is in the queue of received packets, then add the time to the list of times
                 minval = receive_queues[from_id].popleft()
-                if this_satellite not in timediffs:
-                    timediffs[this_satellite] = []
-                timediffs[this_satellite].append(timestamp - minval)
+                if this_orbit not in timediffs:
+                    timediffs[this_orbit] = []
+                timediffs[this_orbit].append(timestamp - minval)
 
             elif check_blank_deque(receive_queues, from_id):
                 # otherwise, just confirm that the spot was used
@@ -124,9 +124,9 @@ for key, values in packetdicts.items():
                 if receive_queues[from_id][0] < start_gsl_queues[from_id][0]:
                     # if the receive is older, do the same thing
                     minval = receive_queues[from_id].popleft()
-                    if this_satellite not in timediffs:
-                        timediffs[this_satellite] = []
-                    timediffs[this_satellite].append(timestamp - minval)
+                    if this_orbit not in timediffs:
+                        timediffs[this_orbit] = []
+                    timediffs[this_orbit].append(timestamp - minval)
                 else:
                     # ditto
                     start_gsl_queues[from_id].popleft()

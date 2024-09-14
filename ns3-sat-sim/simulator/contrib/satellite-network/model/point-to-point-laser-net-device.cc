@@ -34,6 +34,9 @@
 #include "ns3/ppp-header.h"
 #include "point-to-point-laser-net-device.h"
 #include "point-to-point-laser-channel.h"
+#include "p2p-laser-net-device-header.h"
+#include "ns3/ipv4-arbiter-routing.h"
+#include "ns3/arbiter-single-forward.h"
 
 namespace ns3 {
 
@@ -186,6 +189,7 @@ PointToPointLaserNetDevice::PointToPointLaserNetDevice ()
     m_currentPkt (0)
 {
   NS_LOG_FUNCTION (this);
+  Simulator::Schedule(Seconds(1), &PointToPointLaserNetDevice::EnqueueL2Frame, this); 
 }
 
 PointToPointLaserNetDevice::~PointToPointLaserNetDevice ()
@@ -198,6 +202,7 @@ PointToPointLaserNetDevice::AddHeader (Ptr<Packet> p, uint16_t protocolNumber)
 {
   NS_LOG_FUNCTION (this << p << protocolNumber);
   PppHeader ppp;
+  // based on the implementation, PppHeader will assert failure only if you try to print the header and the protocol is neither IPv4 or IPv6
   ppp.SetProtocol (EtherToPpp (protocolNumber));
   p->AddHeader (ppp);
 }
@@ -301,14 +306,7 @@ PointToPointLaserNetDevice::TransmitComplete (void)
       NS_LOG_LOGIC ("No pending packets in device queue after tx complete");
       return;
     }
-  //Ptr<const Packet> np = m_queue->Peek();
-  //if (np != 0)
-  //  {
-  //    NS_LOG_DEBUG ("From " << m_destination_node->GetId() << " -- Going to send  " << p->GetUid() << " then " << np->GetUid() );
-  //  }
-  //
-  // Got another packet off of the queue, so start the transmit process again.
-  //
+  
   m_snifferTrace (p);
   m_promiscSnifferTrace (p);
   TransmitStart (p);
@@ -386,15 +384,30 @@ PointToPointLaserNetDevice::Receive (Ptr<Packet> packet)
       // normal receive callback sees.
       //
       ProcessHeader (packet, protocol);
+     
+ 
+      if (protocol == 0x0001) {
+        P2PLaserNetDeviceHeader p2ph;
+        packet->RemoveHeader(p2ph);
+        NS_LOG_DEBUG ("received L2 frame");
+      	//NS_LOG_DEBUG(m_node->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4ArbiterRouting>()->GetArbiter()->...;
+	// ugly, but connects us directly to the routing protocol--as long as we call one of the parent virtual functions (i.e SetSingleForwardState)
+	// we can also make our own arbiter that implements those functions in a different way
+	// need to verify that race conditions do not affect us here
+	// this is our custom packet
+      }
+      else
+      {
+        if (!m_promiscCallback.IsNull ())
+	{
+	  m_macPromiscRxTrace (originalPacket);
+	  m_promiscCallback (this, packet, protocol, GetRemote (), GetAddress (), NetDevice::PACKET_HOST);
+	}
 
-      if (!m_promiscCallback.IsNull ())
-        {
-          m_macPromiscRxTrace (originalPacket);
-          m_promiscCallback (this, packet, protocol, GetRemote (), GetAddress (), NetDevice::PACKET_HOST);
-        }
+	m_macRxTrace (originalPacket);
+        m_rxCallback (this, packet, protocol, GetRemote ());
+      }
 
-      m_macRxTrace (originalPacket);
-      m_rxCallback (this, packet, protocol, GetRemote ());
     }
 }
 
@@ -534,6 +547,30 @@ PointToPointLaserNetDevice::IsBridge (void) const
 {
   NS_LOG_FUNCTION (this);
   return false;
+}
+
+// one issue with this model is that, when packets are heavily queued, this information is not real time
+// however this is just a test demo for now
+void
+PointToPointLaserNetDevice::EnqueueL2Frame ()
+{
+  NS_LOG_FUNCTION (this);
+  
+  // if the channel isnt ready, or the queue does not exist
+  if (IsLinkUp () == false || m_queue == 0)
+    {
+      Simulator::Schedule(Seconds(1), &PointToPointLaserNetDevice::EnqueueL2Frame, this); 
+      return;
+    }
+
+  Ptr<Packet> p = Create<Packet>();
+  NS_LOG_DEBUG("queueing L2 frame");
+  P2PLaserNetDeviceHeader p2ph;
+  p->AddHeader(p2ph);
+  AddHeader(p, 0x0001);
+  m_queue->Enqueue(p);
+
+  Simulator::Schedule(Seconds(1), &PointToPointLaserNetDevice::EnqueueL2Frame, this); 
 }
 
 bool
@@ -687,6 +724,7 @@ PointToPointLaserNetDevice::PppToEther (uint16_t proto)
     {
     case 0x0021: return 0x0800;   //IPv4
     case 0x0057: return 0x86DD;   //IPv6
+    case 0x8037: return 0x0001;   //our custom packet 
     default: NS_ASSERT_MSG (false, "PPP Protocol number not defined!");
     }
   return 0;
@@ -700,6 +738,7 @@ PointToPointLaserNetDevice::EtherToPpp (uint16_t proto)
     {
     case 0x0800: return 0x0021;   //IPv4
     case 0x86DD: return 0x0057;   //IPv6
+    case 0x0001: return 0x8037;   //our custom packet
     default: NS_ASSERT_MSG (false, "PPP Protocol number not defined!");
     }
   return 0;
