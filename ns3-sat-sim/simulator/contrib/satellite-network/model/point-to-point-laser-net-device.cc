@@ -35,7 +35,7 @@
 #include "point-to-point-laser-net-device.h"
 #include "point-to-point-laser-channel.h"
 #include "p2p-laser-net-device-header.h"
-#include "ns3/ipv4-arbiter-routing.h"
+#include "ns3/ipv4-satellite-arbiter-routing.h"
 #include "ns3/arbiter-single-forward.h"
 
 namespace ns3 {
@@ -390,7 +390,7 @@ PointToPointLaserNetDevice::Receive (Ptr<Packet> packet)
         P2PLaserNetDeviceHeader p2ph;
         packet->RemoveHeader(p2ph);
         NS_LOG_DEBUG ("received L2 frame");
-      	//NS_LOG_DEBUG(m_node->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4ArbiterRouting>()->GetArbiter()->...;
+      	m_node->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4SatelliteArbiterRouting>()->GetArbiter()->MutateForwardingState();
 	// ugly, but connects us directly to the routing protocol--as long as we call one of the parent virtual functions (i.e SetSingleForwardState)
 	// we can also make our own arbiter that implements those functions in a different way
 	// need to verify that race conditions do not affect us here

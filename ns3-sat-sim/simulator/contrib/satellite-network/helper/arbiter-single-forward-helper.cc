@@ -36,7 +36,8 @@ ArbiterSingleForwardHelper::ArbiterSingleForwardHelper (Ptr<BasicSimulation> bas
     for (size_t i = 0; i < m_nodes.GetN(); i++) {
         Ptr<ArbiterSingleForward> arbiter = CreateObject<ArbiterSingleForward>(m_nodes.Get(i), m_nodes, initial_forwarding_state[i]);
         m_arbiters.push_back(arbiter);
-        m_nodes.Get(i)->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4ArbiterRouting>()->SetArbiter(arbiter);
+        Ptr<Ipv4RoutingProtocol> gunk = m_nodes.Get(i)->GetObject<Ipv4>()->GetRoutingProtocol();
+	gunk->GetObject<Ipv4SatelliteArbiterRouting>()->SetArbiter(arbiter);
     }
     basicSimulation->RegisterTimestamp("Setup routing arbiter on each node");
 

@@ -23,7 +23,7 @@
 #include "ns3/ipv4-routing-helper.h"
 #include "ns3/basic-simulation.h"
 #include "ns3/topology-satellite-network.h"
-#include "ns3/ipv4-arbiter-routing.h"
+#include "ns3/ipv4-satellite-arbiter-routing.h"
 #include "ns3/arbiter-single-forward.h"
 #include "ns3/abort.h"
 

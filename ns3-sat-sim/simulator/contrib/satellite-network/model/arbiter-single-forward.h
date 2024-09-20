@@ -52,6 +52,8 @@ public:
             bool is_socket_request_for_source_ip
     );
 
+    void MutateForwardingState();
+
     // Updating of forward state
     void SetSingleForwardState(int32_t target_node_id, int32_t next_node_id, int32_t own_if_id, int32_t next_if_id);
 

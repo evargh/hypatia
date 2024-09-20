@@ -15,7 +15,9 @@ def build(bld):
         'model/topology-satellite-network.cc',
         'model/arbiter-satnet.cc',
         'model/arbiter-single-forward.cc',
+	'model/ipv4-satellite-arbiter-routing.cc',
         'helper/arbiter-single-forward-helper.cc',
+	'helper/ipv4-satellite-arbiter-routing-helper.cc',
         'helper/gsl-if-bandwidth-helper.cc',
         ]
 
