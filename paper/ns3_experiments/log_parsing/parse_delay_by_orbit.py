@@ -99,10 +99,16 @@ for key, values in packetdicts.items():
                 else:
                     if receive_queues[from_id][0] < start_gsl_queues[from_id][0]:
                         # if the receive is older, do the same thing
-                        receive_queues[from_id].popleft()
+                        try:
+                            minval = receive_queues[from_id].popleft()
+                        except KeyError:
+                            print(f"investigate {from_id} for UID {key}")
                     else:
                         # ditto
-                        start_gsl_queues[from_id].popleft()
+                        try:
+                            start_gsl_queues[from_id].popleft()
+                        except KeyError:
+                            print(f"investigate {from_id} for UID {key}")
         
         elif label == "TransmitISL":
             # a transmit is either preceded by a transmitgsl or a receive
@@ -111,7 +117,11 @@ for key, values in packetdicts.items():
             minval = 0
             if check_blank_deque(start_gsl_queues, from_id):
                 # if the item is in the queue of received packets, then add the time to the list of times
-                minval = receive_queues[from_id].popleft()
+                try:
+                    minval = receive_queues[from_id].popleft()
+                except KeyError:
+                    print(f"investigate {from_id} for UID {key}")
+                    
                 if this_orbit not in timediffs:
                     timediffs[this_orbit] = []
                 timediffs[this_orbit].append(timestamp - minval)
@@ -123,7 +133,11 @@ for key, values in packetdicts.items():
             else:
                 if receive_queues[from_id][0] < start_gsl_queues[from_id][0]:
                     # if the receive is older, do the same thing
-                    minval = receive_queues[from_id].popleft()
+                    try:
+                        minval = receive_queues[from_id].popleft()
+                    except KeyError:
+                        print(f"investigate {from_id} for UID {key}")
+
                     if this_orbit not in timediffs:
                         timediffs[this_orbit] = []
                     timediffs[this_orbit].append(timestamp - minval)

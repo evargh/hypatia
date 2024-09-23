@@ -263,7 +263,6 @@ PointToPointLaserNetDevice::TransmitStart (Ptr<Packet> p)
   Time txTime = m_bps.CalculateBytesTxTime (p->GetSize ());
   Time txCompleteTime = txTime + m_tInterframeGap;
 
-
   NS_LOG_LOGIC ("Schedule TransmitCompleteEvent in " << txCompleteTime.GetSeconds () << "sec");
   Simulator::Schedule (txCompleteTime, &PointToPointLaserNetDevice::TransmitComplete, this);
 
@@ -275,7 +274,13 @@ PointToPointLaserNetDevice::TransmitStart (Ptr<Packet> p)
     }
   else 
     {
-      NS_LOG_DEBUG ("From " << m_node->GetId() << " -- To " << m_destination_node->GetId() << " -- UID is " << p->GetUid() << " -- Delay is " << txCompleteTime.GetSeconds());
+      //make a copy of the packet, check packet protocol, only log the UID if the protocol is not ours
+      uint16_t protocol = 0;
+      uint32_t puid = p->GetUid();    
+      ProcessHeader(p, protocol);
+      if (protocol != 0x0001) {
+	      NS_LOG_DEBUG ("From " << m_node->GetId() << " -- To " << m_destination_node->GetId() << " -- UID is " << puid << " -- Delay is " << txCompleteTime.GetSeconds());
+      }
     }
   return result;
 }
@@ -350,8 +355,6 @@ PointToPointLaserNetDevice::Receive (Ptr<Packet> packet)
   NS_LOG_FUNCTION (this << packet);
   uint16_t protocol = 0;
 
-	NS_LOG_DEBUG ("From " << m_destination_node->GetId() << " -- To " << m_node->GetId() << " -- UID is " << packet->GetUid());
-
   if (m_receiveErrorModel && m_receiveErrorModel->IsCorrupt (packet) ) 
     {
       // 
@@ -398,6 +401,7 @@ PointToPointLaserNetDevice::Receive (Ptr<Packet> packet)
       }
       else
       {
+        NS_LOG_DEBUG ("From " << m_destination_node->GetId() << " -- To " << m_node->GetId() << " -- UID is " << packet->GetUid());
         if (!m_promiscCallback.IsNull ())
 	{
 	  m_macPromiscRxTrace (originalPacket);
@@ -606,7 +610,9 @@ PointToPointLaserNetDevice::Send (
   //
   if (m_queue->Enqueue (packet))
     {
-    NS_LOG_DEBUG("From " << m_node->GetId() << " -- Packet Sees " << (m_queue->GetNPackets() - 1));
+      if (protocolNumber != 0x0001) {
+          NS_LOG_DEBUG("From " << m_node->GetId() << " -- Packet Sees " << (m_queue->GetNPackets() - 1));
+      }
       //
       // If the channel is ready for transition we send the packet right now
       // 
