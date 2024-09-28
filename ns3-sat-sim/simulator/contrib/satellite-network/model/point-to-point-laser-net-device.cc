@@ -189,7 +189,8 @@ PointToPointLaserNetDevice::PointToPointLaserNetDevice ()
     m_currentPkt (0)
 {
   NS_LOG_FUNCTION (this);
-  Simulator::Schedule(Seconds(1), &PointToPointLaserNetDevice::EnqueueL2Frame, this); 
+  m_queueOccupancy = 0;
+  m_L2SendInterval = Simulator::Now();
 }
 
 PointToPointLaserNetDevice::~PointToPointLaserNetDevice ()
@@ -279,7 +280,9 @@ PointToPointLaserNetDevice::TransmitStart (Ptr<Packet> p)
       uint32_t puid = p->GetUid();    
       ProcessHeader(p, protocol);
       if (protocol != 0x0001) {
-	      NS_LOG_DEBUG ("From " << m_node->GetId() << " -- To " << m_destination_node->GetId() << " -- UID is " << puid << " -- Delay is " << txCompleteTime.GetSeconds());
+        NS_LOG_DEBUG (
+            "From " << m_node->GetId() << " -- To " << m_destination_node->GetId() << 
+            " -- UID is " << puid << " -- Delay is " << txCompleteTime.GetSeconds());
       }
     }
   return result;
@@ -388,19 +391,17 @@ PointToPointLaserNetDevice::Receive (Ptr<Packet> packet)
       //
       ProcessHeader (packet, protocol);
      
- 
+      // Check if this is our custom packet 
       if (protocol == 0x0001) {
         P2PLaserNetDeviceHeader p2ph;
         packet->RemoveHeader(p2ph);
         NS_LOG_DEBUG ("received L2 frame");
       	m_node->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4SatelliteArbiterRouting>()->GetArbiter()->MutateForwardingState();
-	// ugly, but connects us directly to the routing protocol--as long as we call one of the parent virtual functions (i.e SetSingleForwardState)
-	// we can also make our own arbiter that implements those functions in a different way
-	// need to verify that race conditions do not affect us here
-	// this is our custom packet
+	// TODO: When mutation is actually implemented, we need to verify that race conditions do not affect us here
       }
       else
       {
+        // If it's a packet with higher-layer data, log it
         NS_LOG_DEBUG ("From " << m_destination_node->GetId() << " -- To " << m_node->GetId() << " -- UID is " << packet->GetUid());
         if (!m_promiscCallback.IsNull ())
 	{
@@ -553,28 +554,66 @@ PointToPointLaserNetDevice::IsBridge (void) const
   return false;
 }
 
+// TODO: make a helper function that slims EnqueueL2Frame and removes some global parameters like m_beta
+
 // one issue with this model is that, when packets are heavily queued, this information is not real time
 // however this is just a test demo for now
+void
+PointToPointLaserNetDevice::DetermineParameters () { 
+  // Q_l
+  StringValue queueInfo;
+  m_queue->GetAttribute("MaxSize", queueInfo);
+  uint32_t totalQueueLength = QueueSize(queueInfo.Get()).GetValue();
+
+  // q(t)
+  uint32_t currentQueueOccupancy = m_queue->GetNPackets();
+  double averagePacketSize = 0;
+  if (m_queue->GetNBytes() != 0) {
+    averagePacketSize = double(m_queue->GetNBytes())/currentQueueOccupancy;
+  } 
+
+  Time elapsedTime = Simulator::Now() - m_L2SendInterval;
+  m_L2SendInterval = Simulator::Now();
+ 
+  // I-O is m_queue.GetNPackets - m_queueOccupancy, as both express the packet difference across the time interval
+  double I_O = (double(currentQueueOccupancy) - double(m_queueOccupancy))/m_L2SendInterval.GetSeconds();
+  
+  double delta_d = std::numeric_limits<double>::infinity();
+  if (I_O != 0) {
+    delta_d = averagePacketSize*(totalQueueLength - currentQueueOccupancy)/I_O;
+  }
+
+  m_queueOccupancy = currentQueueOccupancy;
+
+  // we can upper bound this transmission by MTU 
+  m_beta = std::max(double(0), 1 - (m_L2SendInterval + m_bps.CalculateBytesTxTime(1500)).GetSeconds()/delta_d);
+
+  NS_LOG_DEBUG("Avg Packet Size: " << averagePacketSize);
+  NS_LOG_DEBUG("totalQueueLength: " << totalQueueLength);
+  NS_LOG_DEBUG("currentQueueOccupancy: " << currentQueueOccupancy);
+  NS_LOG_DEBUG("I-O: " << I_O);
+  NS_LOG_DEBUG("Beta: " << m_beta);
+}
+
 void
 PointToPointLaserNetDevice::EnqueueL2Frame ()
 {
   NS_LOG_FUNCTION (this);
   
-  // if the channel isnt ready, or the queue does not exist
-  if (IsLinkUp () == false || m_queue == 0)
-    {
-      Simulator::Schedule(Seconds(1), &PointToPointLaserNetDevice::EnqueueL2Frame, this); 
-      return;
-    }
-
+  // right now, this function computes things in terms of packets, since the queues are configured based on packets
+  // this may be a mistake, however
   Ptr<Packet> p = Create<Packet>();
   NS_LOG_DEBUG("queueing L2 frame");
+   
+  // queueing the packet (instead of immediately sending it over the channel)
+  // prevents this device from polling the channel to see if the link is up or not, but
+  // it is slow. Making this immediately send packets could be implemented by changing
+  // m_queue into a double-ended queue
+
   P2PLaserNetDeviceHeader p2ph;
   p->AddHeader(p2ph);
   AddHeader(p, 0x0001);
   m_queue->Enqueue(p);
-
-  Simulator::Schedule(Seconds(1), &PointToPointLaserNetDevice::EnqueueL2Frame, this); 
 }
 
 bool
@@ -609,10 +648,26 @@ PointToPointLaserNetDevice::Send (
   // We should enqueue and dequeue the packet to hit the tracing hooks.
   //
   if (m_queue->Enqueue (packet))
-    {
-      if (protocolNumber != 0x0001) {
+    { 
+      // Currently unused, will implement once other algorithm details are settled
+      // (e.g. loop managing and alternative path determination)
+      // DetermineParameters(); 
+
+      uint32_t currentQueueOccupancy = m_queue->GetNPackets();
+      // TODO: when the algorithm is implemented, fix this nonsense condition
+      // This is only here to test functionality without flooding the network
+      
+      if (currentQueueOccupancy % 7 == 0)
+        {
+          EnqueueL2Frame();
+        }      
+      
+      // Don't log our own protocol
+      if (protocolNumber != 0x0001)
+        {
           NS_LOG_DEBUG("From " << m_node->GetId() << " -- Packet Sees " << (m_queue->GetNPackets() - 1));
-      }
+        }
+
       //
       // If the channel is ready for transition we send the packet right now
       // 
@@ -628,7 +683,8 @@ PointToPointLaserNetDevice::Send (
     }
 
   // Enqueue may fail (overflow)
-  NS_LOG_DEBUG("From " << m_node->GetId() << " -- To " << m_destination_node->GetId() << " -- Packet Dropped from TX Queue");
+  // EVAN: this doesn't happen due to an implementation oversight with stock NS3 code
+  // packets ARE dropped, but this code does not detect that
   m_macTxDropTrace (packet);
   return false;
 }

@@ -101,6 +101,7 @@ PointToPointLaserChannel::TransmitStart (
   Ptr<MobilityModel> receiverMobility = node_other_end->GetObject<MobilityModel>();
   Time delay = this->GetDelay(senderMobility, receiverMobility); 
 
+  // log propagation delay as estimated by this device
   NS_LOG_DEBUG (delay.GetNanoSeconds());
   uint32_t wire = src == m_link[0].m_src ? 0 : 1;
 

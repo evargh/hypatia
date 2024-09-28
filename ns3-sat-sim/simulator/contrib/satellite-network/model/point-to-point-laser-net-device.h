@@ -223,7 +223,17 @@ private:
   virtual void DoDispose (void);
 
 private:
+  /**
+   * This function is called to add the frame relevant for L2 communication
+   * into the queue
+   */ 
   void EnqueueL2Frame ();
+
+  /**
+   *  TODO: This function will be implemented to handle parameter determination for our
+   *  dynamic routing component
+   */
+  void DetermineParameters ();
 
   /**
    * \returns the address of the remote device connected to this device
@@ -319,6 +329,23 @@ private:
    * \see class DropTailQueue
    */
   Ptr<Queue<Packet> > m_queue;
+
+  /**
+   * Length of the aforementioned queue
+   */
+  uint32_t m_queueOccupancy;
+
+ /**
+  * Beta and Chi are parameters for explicit load balancing
+  */
+  double m_beta;
+
+  double m_chi;
+
+ /**
+  * Determines how often an L2 Frame should be sent, in seconds.
+  */
+  Time m_L2SendInterval;
 
   /**
    * Error model for receive packet events

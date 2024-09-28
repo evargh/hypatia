@@ -23,6 +23,7 @@
 from satgen.distance_tools import *
 from astropy import units as u
 import math
+import json
 import networkx as nx
 import numpy as np
 from .algorithm_free_one_only_gs_relays import algorithm_free_one_only_gs_relays
@@ -158,6 +159,17 @@ def generate_dynamic_state_at(
         num_isls_per_sat[b] += 1
         total_num_isls += 1
 
+    
+    filename = f"{output_dynamic_state_dir}/sat_neighbors_at_{time_since_epoch_ns}.json"
+    sat_neighbors = dict()
+    for key in sat_neighbor_to_if.keys():
+        if key[0] not in sat_neighbors:
+            sat_neighbors[key[0]] = []
+        sat_neighbors[key[0]].append(key[1])
+    
+    with open(filename, "a") as f:
+        json.dump(sat_neighbors, f) 
+
     if enable_verbose_logs:
         print("  > Total ISLs............. " + str(len(list_isls)))
         print("  > Min. ISLs/satellite.... " + str(np.min(num_isls_per_sat)))
@@ -206,6 +218,10 @@ def generate_dynamic_state_at(
                 )
 
         ground_station_satellites_in_range.append(satellites_in_range)
+
+    filename = f"{output_dynamic_state_dir}/gs_neighbors_at_{time_since_epoch_ns}.json"
+    with open(filename, "a") as f:
+        json.dump(dict(enumerate(ground_station_satellites_in_range)), f) 
 
     # Print how many are in range
     ground_station_num_in_range = list(map(lambda x: len(x), ground_station_satellites_in_range))
