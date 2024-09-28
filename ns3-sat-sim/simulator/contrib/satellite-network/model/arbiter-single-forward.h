@@ -52,6 +52,10 @@ public:
             bool is_socket_request_for_source_ip
     );
 
+    // Previously, ArbiterSingleForward had no publically-callable function that could
+    // dynamically change how it forwards packets. This function is intended to permit that
+    // In refactored code, there could be an "ArbiterDynamic" class with a virtual function definition
+    // that requires inheritors to define how forwarding state should be mutated.
     void MutateForwardingState();
 
     // Updating of forward state

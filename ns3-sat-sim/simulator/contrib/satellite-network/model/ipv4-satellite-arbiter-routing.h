@@ -44,6 +44,12 @@ class Ipv4Address;
 class Ipv4Header;
 class Node;
 
+/*  
+ *  This class is the same as Ipv4ArbiterRouting, except it requires that its routing
+ *  arbiter is of type ArbiterSingleForward. The Arbiter parent class has no requirement
+ *  for being able to support dynamic modifications to forwarding policy, but ArbiterSingleForward
+ *  can.
+ */
 class Ipv4SatelliteArbiterRouting : public Ipv4RoutingProtocol
 {
 public:

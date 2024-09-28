@@ -1,4 +1,4 @@
-#since each packet is unique, first group all lines based on the unique packet they reference
+# since each packet is unique, first group all lines based on the unique packet they reference
 # if a line does not reference a UID, throw it out
 # then, with these vectors of lines, throw out the first transmitstart. then split by space and compute the time difference for each parsed time in milliseconds
 # if theres a dropped packet in the middle of the network, then identify the previous transmit and add in an RTT-sized delay. maybe 5 seconds?
@@ -58,6 +58,12 @@ def check_blank_deque(deq, fid):
         return True
     return False
 
+def pop_appropriate_deque(deq, fid, key):
+    try:
+        return deq[fid].popleft()
+    except KeyError:
+        print(f"Investigate {fid} for {key}", file=sys.stderr)
+
 for key, values in packetdicts.items():
     values.sort(key=lambda item: item[3])
     start_gsl_queues = {}
@@ -72,64 +78,56 @@ for key, values in packetdicts.items():
             if(from_id >= int(args.orbits * args.satellites_per_orbit)):
                 # a transmitGSL is preceded by either nothing or a receive
                 # if the first index is greater than 1584, a ground station is transmitting to a satellite
-                # it is preceded by nothing
                 if to_id not in start_gsl_queues:
                     start_gsl_queues[to_id] = deque()
                 start_gsl_queues[to_id].append(timestamp)
 
             else:
                 # if the second index is greater than 1584, a satellite is transmitting to a ground station
-                # in that case, it should be preceded by a "receive" or a start_gsl
-
-                minval = 0
                 if check_blank_deque(start_gsl_queues, from_id):
-                    # if the item is in the queue of received packets, then add the time to the list of times
-                    try: 
-                        receive_queues[from_id].popleft() 
-                    except KeyError:
-                        print(f"investigate {key}")
+                    pop_appropriate_deque(receive_queues, from_id, key)
 
                 elif check_blank_deque(receive_queues, from_id):
-                    # otherwise, just confirm that the spot was used
-                    try: 
-                        start_gsl_queues[from_id].popleft() 
-                    except KeyError:
-                        print(f"investigate {key}")
+                    pop_appropriate_deque(start_gsl_queues, from_id, key)
 
                 else:
                     if receive_queues[from_id][0] < start_gsl_queues[from_id][0]:
-                        # if the receive is older, do the same thing
-                        receive_queues[from_id].popleft()
+                        pop_appropriate_deque(receive_queues, from_id, key)
                     else:
-                        # ditto
-                        start_gsl_queues[from_id].popleft()
+                        pop_appropriate_deque(start_gsl_queues, from_id, key)
         
         elif label == "TransmitISL":
             # a transmit is either preceded by a transmitgsl or a receive
             # receives match with transmitisl and transmitgsl--if the "to" in the receive message matches the "from" in the transmit, then its a match
             # alternatively, if the "to" in the receive matches the "from" in the transmitgsl, then it's a match
-            minval = 0
+            minval = None
             if check_blank_deque(start_gsl_queues, from_id):
                 # if the item is in the queue of received packets, then add the time to the list of times
-                minval = receive_queues[from_id].popleft()
-                if this_satellite not in timediffs:
-                    timediffs[this_satellite] = []
-                timediffs[this_satellite].append(timestamp - minval)
+                minval = pop_appropriate_deque(receive_queues, from_id, key)
+                if minval is None:
+                    sys.exit("Check stderr")
+                else:    
+                    if this_satellite not in timediffs:
+                        timediffs[this_satellite] = []
+                    timediffs[this_satellite].append(timestamp - minval)
 
             elif check_blank_deque(receive_queues, from_id):
                 # otherwise, just confirm that the spot was used
-                start_gsl_queues[from_id].popleft()
+                pop_appropriate_deque(start_gsl_queues, from_id, key)
 
             else:
                 if receive_queues[from_id][0] < start_gsl_queues[from_id][0]:
                     # if the receive is older, do the same thing
-                    minval = receive_queues[from_id].popleft()
-                    if this_satellite not in timediffs:
-                        timediffs[this_satellite] = []
-                    timediffs[this_satellite].append(timestamp - minval)
+                    minval = pop_appropriate_deque(receive_queues, from_id, key)
+                    if minval is None:
+                        sys.exit("Check stderr")
+                    else:    
+                        if this_satellite not in timediffs:
+                            timediffs[this_satellite] = []
+                        timediffs[this_satellite].append(timestamp - minval)
                 else:
                     # ditto
-                    start_gsl_queues[from_id].popleft()
+                    pop_appropriate_deque(start_gsl_queues, from_id, key)
         else:
             # a receive is always preceded by a transmitisl
             if to_id not in receive_queues:

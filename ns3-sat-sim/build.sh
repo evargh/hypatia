@@ -17,6 +17,7 @@ cd simulator || exit 1
 echo "Updating git submodules"
 git submodule update || exit 1
 
+# EVAN: The default build now uses --disable-werror, since the C++ standard used in the Docker image is ahead of the version originally used to build Hypatia's copy of NS3
 # Configure the build
 if [ "$1" == "--debug_all" ]; then
   ./waf configure --build-profile=debug --enable-mpi --enable-examples --enable-tests --enable-gcov --out=build/debug_all --disable-werror || exit 1
