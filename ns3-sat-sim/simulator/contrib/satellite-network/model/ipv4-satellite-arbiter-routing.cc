@@ -296,4 +296,12 @@ namespace ns3 {
         return m_arbiter;
     }
 
+    void
+    Ipv4SatelliteArbiterRouting::ReduceArbiterDistance(Ptr<Packet> p) { 
+        Ipv4Header ipHeader;
+        p->RemoveHeader(ipHeader);
+        // adjust by number of nodes in the network, as determined by the arbiter
+        m_arbiter->ReduceQueueDistance(m_arbiter->ResolveNodeIdFromIp(ipHeader.GetDestination().Get()) - m_arbiter->GetNumNodes() + 100);
+        NS_LOG_DEBUG("removed distance from arbiter array");
+    }
 } // namespace ns3

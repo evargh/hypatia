@@ -30,7 +30,6 @@
 #include "ns3/node.h"
 #include "ns3/point-to-point-laser-net-device.h"
 
-
 namespace ns3 {
 
 class PointToPointLaserNetDevice;

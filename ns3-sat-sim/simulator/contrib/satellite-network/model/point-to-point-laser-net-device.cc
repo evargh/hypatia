@@ -34,9 +34,7 @@
 #include "ns3/ppp-header.h"
 #include "point-to-point-laser-net-device.h"
 #include "point-to-point-laser-channel.h"
-#include "p2p-laser-net-device-header.h"
 #include "ns3/ipv4-satellite-arbiter-routing.h"
-#include "ns3/arbiter-single-forward.h"
 
 namespace ns3 {
 
@@ -268,14 +266,24 @@ PointToPointLaserNetDevice::TransmitStart (Ptr<Packet> p)
   Simulator::Schedule (txCompleteTime, &PointToPointLaserNetDevice::TransmitComplete, this);
 
   bool result = m_channel->TransmitStart (p, this, m_destination_node, txTime);
+  // TODO: make it so that only changed flows are transmitted.
+  // In this case, the paper does not mention the fact that more queues can change due to the packet leaving a node
+  // we will have to come up with a solution
+  bool result_p2p = m_channel->TransmitStart (CreateL2Frame(), this, m_destination_node, txTime);
   if (result == false)
     {
       // result is always true anyway, so there should be no drop
       m_phyTxDropTrace (p);
     }
+  else if (result_p2p == false) 
+    {
+      // if the packet was sent, but not the control information
+      NS_LOG_DEBUG("L2 Frame Dropped from" << m_node->GetId());
+    }
   else 
     {
-      //make a copy of the packet, check packet protocol, only log the UID if the protocol is not ours
+      
+      // make a copy of the packet, check packet protocol, only log the UID if the protocol is not ours
       uint16_t protocol = 0;
       uint32_t puid = p->GetUid();    
       ProcessHeader(p, protocol);
@@ -283,7 +291,11 @@ PointToPointLaserNetDevice::TransmitStart (Ptr<Packet> p)
         NS_LOG_DEBUG (
             "From " << m_node->GetId() << " -- To " << m_destination_node->GetId() << 
             " -- UID is " << puid << " -- Delay is " << txCompleteTime.GetSeconds());
+        if (protocol == 0x0800) { 
+	    m_node->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4SatelliteArbiterRouting>()->ReduceArbiterDistance(p);
+        }
       }
+      // then pass the copy of that packet to the arbiter, which can determine its destination by reading its ipv4 header
     }
   return result;
 }
@@ -396,7 +408,7 @@ PointToPointLaserNetDevice::Receive (Ptr<Packet> packet)
         P2PLaserNetDeviceHeader p2ph;
         packet->RemoveHeader(p2ph);
         NS_LOG_DEBUG ("received L2 frame");
-      	m_node->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4SatelliteArbiterRouting>()->GetArbiter()->MutateForwardingState();
+        ProcessL2Frame(&p2ph);
 	// TODO: When mutation is actually implemented, we need to verify that race conditions do not affect us here
       }
       else
@@ -554,56 +566,25 @@ PointToPointLaserNetDevice::IsBridge (void) const
   return false;
 }
 
-// TODO: make a helper function that slims EnqueueL2Frame and removes some global parameters like m_beta
-
-// one issue with this model is that, when packets are heavily queued, this information is not real time
-// however this is just a test demo for now
 void
-PointToPointLaserNetDevice::DetermineParameters () { 
-  // Q_l
-  StringValue queueInfo;
-  m_queue->GetAttribute("MaxSize", queueInfo);
-  uint32_t totalQueueLength = QueueSize(queueInfo.Get()).GetValue();
-
-  // q(t)
-  uint32_t currentQueueOccupancy = m_queue->GetNPackets();
-  double averagePacketSize = 0;
-  if (m_queue->GetNBytes() != 0) {
-    averagePacketSize = double(m_queue->GetNBytes())/currentQueueOccupancy;
-  } 
-
-  Time elapsedTime = Simulator::Now() - m_L2SendInterval;
-  m_L2SendInterval = Simulator::Now();
- 
-  // I-O is m_queue.GetNPackets - m_queueOccupancy, as both express the packet difference across the time interval
-  double I_O = (double(currentQueueOccupancy) - double(m_queueOccupancy))/m_L2SendInterval.GetSeconds();
-  
-  double delta_d = std::numeric_limits<double>::infinity();
-  if (I_O != 0) {
-    delta_d = averagePacketSize*(totalQueueLength - currentQueueOccupancy)/I_O;
-  }
-
-  m_queueOccupancy = currentQueueOccupancy;
-
-  // we can upper bound this transmission by MTU 
-  m_beta = std::max(double(0), 1 - (m_L2SendInterval + m_bps.CalculateBytesTxTime(1500)).GetSeconds()/delta_d);
-
-  NS_LOG_DEBUG("Avg Packet Size: " << averagePacketSize);
-  NS_LOG_DEBUG("totalQueueLength: " << totalQueueLength);
-  NS_LOG_DEBUG("currentQueueOccupancy: " << currentQueueOccupancy);
-  NS_LOG_DEBUG("I-O: " << I_O);
-  NS_LOG_DEBUG("Beta: " << m_beta);
+PointToPointLaserNetDevice::ProcessL2Frame (P2PLaserNetDeviceHeader* p) {
+    NS_LOG_DEBUG(m_node->GetId() << " Processing L2 Frame: " << p->GetQueueDistances()->at(0));
+    m_node->
+      GetObject<Ipv4>()->
+      GetRoutingProtocol()->
+      GetObject<Ipv4SatelliteArbiterRouting>()->
+      GetArbiter()->SetNeighborQueueDistance(GetIfIndex()-1, p->GetQueueDistances());
 }
 
-void
-PointToPointLaserNetDevice::EnqueueL2Frame ()
+Ptr<Packet>
+PointToPointLaserNetDevice::CreateL2Frame ()
 {
   NS_LOG_FUNCTION (this);
   
   // right now, this function computes things in terms of packets, since the queues are configured based on packets
-  // this may be a mistake, however
+  // this may be a mistake, however, since it misrepresents how full the queue actually is (e.g. ACKs may be queued, which barely take up space)
   Ptr<Packet> p = Create<Packet>();
-  NS_LOG_DEBUG("queueing L2 frame");
+  NS_LOG_DEBUG("creating L2 frame");
    
   // queueing the packet (instead of immediately sending it over the channel)
   // prevents this device from polling the channel to see if the link is up or not, but
@@ -611,9 +592,16 @@ PointToPointLaserNetDevice::EnqueueL2Frame ()
   // m_queue into a double-ended queue
 
   P2PLaserNetDeviceHeader p2ph;
+  std::array<uint64_t, 100>* arbiter_distances = m_node->
+                                                GetObject<Ipv4>()->
+                                                GetRoutingProtocol()->
+                                                GetObject<Ipv4SatelliteArbiterRouting>()->
+                                                GetArbiter()->GetQueueDistances();
+  p2ph.SetQueueDistances(arbiter_distances);
   p->AddHeader(p2ph);
   AddHeader(p, 0x0001);
-  m_queue->Enqueue(p);
+
+  return p;
 }
 
 bool
@@ -649,30 +637,12 @@ PointToPointLaserNetDevice::Send (
   //
   if (m_queue->Enqueue (packet))
     { 
-      // Currently unused, will implement once other algorithm details are settled
-      // (e.g. loop managing and alternative path determination)
-      // DetermineParameters(); 
-
-      uint32_t currentQueueOccupancy = m_queue->GetNPackets();
-      // TODO: when the algorithm is implemented, fix this nonsense condition
-      // This is only here to test functionality without flooding the network
-      
-      if (currentQueueOccupancy % 7 == 0)
-        {
-          EnqueueL2Frame();
-        }      
-      
-      // Don't log our own protocol
-      if (protocolNumber != 0x0001)
-        {
-          NS_LOG_DEBUG("From " << m_node->GetId() << " -- Packet Sees " << (m_queue->GetNPackets() - 1));
-        }
-
       //
       // If the channel is ready for transition we send the packet right now
       // 
       if (m_txMachineState == READY)
         {
+          // get this packet's final destination, and remove that distance from the list
           packet = m_queue->Dequeue ();
           m_snifferTrace (packet);
           m_promiscSnifferTrace (packet);

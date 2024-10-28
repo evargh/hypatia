@@ -105,7 +105,9 @@ public:
   virtual void PrintRoutingTable (Ptr<OutputStreamWrapper> stream, Time::Unit unit = Time::S) const;
   virtual void SetIpv4 (Ptr<Ipv4> ipv4);
   void SetArbiter (Ptr<ArbiterSingleForward> arbiter);
+  void ReduceArbiterDistance (Ptr<Packet> p);
   Ptr<ArbiterSingleForward> GetArbiter ();
+  
 
 private:
     Ptr<Ipv4> m_ipv4;

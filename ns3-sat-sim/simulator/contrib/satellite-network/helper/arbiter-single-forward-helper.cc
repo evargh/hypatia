@@ -36,8 +36,8 @@ ArbiterSingleForwardHelper::ArbiterSingleForwardHelper (Ptr<BasicSimulation> bas
     for (size_t i = 0; i < m_nodes.GetN(); i++) {
         Ptr<ArbiterSingleForward> arbiter = CreateObject<ArbiterSingleForward>(m_nodes.Get(i), m_nodes, initial_forwarding_state[i]);
         m_arbiters.push_back(arbiter);
-        Ptr<Ipv4RoutingProtocol> gunk = m_nodes.Get(i)->GetObject<Ipv4>()->GetRoutingProtocol();
-	gunk->GetObject<Ipv4SatelliteArbiterRouting>()->SetArbiter(arbiter);
+        Ptr<Ipv4RoutingProtocol> ipv4route = m_nodes.Get(i)->GetObject<Ipv4>()->GetRoutingProtocol();
+	ipv4route->GetObject<Ipv4SatelliteArbiterRouting>()->SetArbiter(arbiter);
     }
     basicSimulation->RegisterTimestamp("Setup routing arbiter on each node");
 
@@ -87,7 +87,9 @@ void ArbiterSingleForwardHelper::UpdateForwardingState(int64_t t) {
         while (getline(fstate_file, line)) {
 
             // Split on ,
-            std::vector<std::string> comma_split = split_string(line, ",", 5);
+            // not mentioned, but this is from exputil
+            // TODO: make this expect a split of 6 after the satellite network state is regenerated
+            std::vector<std::string> comma_split = split_string(line, ",", 6);
 
             // Retrieve identifiers
             int64_t current_node_id = parse_positive_int64(comma_split[0]);
@@ -95,6 +97,7 @@ void ArbiterSingleForwardHelper::UpdateForwardingState(int64_t t) {
             int64_t next_hop_node_id = parse_int64(comma_split[2]);
             int64_t my_if_id = parse_int64(comma_split[3]);
             int64_t next_if_id = parse_int64(comma_split[4]);
+            int64_t distance = parse_int64(comma_split[5]);
 
             // Check the node identifiers
             NS_ABORT_MSG_IF(current_node_id < 0 || current_node_id >= m_nodes.GetN(), "Invalid current node id.");
@@ -150,6 +153,11 @@ void ArbiterSingleForwardHelper::UpdateForwardingState(int64_t t) {
                     next_hop_node_id,
                     1 + my_if_id,   // Skip the loop-back interface
                     1 + next_if_id  // Skip the loop-back interface
+            );
+
+            m_arbiters.at(current_node_id)->ModifyDistanceLookup(
+                    target_node_id - m_nodes.GetN() + 100,
+                    static_cast<uint32_t>(distance)
             );
 
             // Next line

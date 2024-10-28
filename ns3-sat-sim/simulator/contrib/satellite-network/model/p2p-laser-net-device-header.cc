@@ -5,26 +5,23 @@ namespace ns3 {
 NS_OBJECT_ENSURE_REGISTERED(P2PLaserNetDeviceHeader);
 
 P2PLaserNetDeviceHeader::P2PLaserNetDeviceHeader ()
-    : m_queueSize (0)
 {
 }
 
 P2PLaserNetDeviceHeader::~P2PLaserNetDeviceHeader ()
 {
-    // I like how the UDP header uses magic values, but I have not settled on a way to make that integrate well with user-defined queue sizes
-    m_queueSize = 0;
 }
 
 void 
-P2PLaserNetDeviceHeader::SetQueueSize (uint32_t qs)
+P2PLaserNetDeviceHeader::SetQueueDistances (std::array<uint64_t, 100>* qd)
 {
-    m_queueSize = qs;
+    m_queue_distances = *qd;
 }
 
-uint32_t
-P2PLaserNetDeviceHeader::GetQueueSize ()
+std::array<uint64_t, 100>* 
+P2PLaserNetDeviceHeader::GetQueueDistances ()
 {
-    return m_queueSize;
+    return &m_queue_distances;
 }
 
 TypeId
@@ -47,30 +44,34 @@ P2PLaserNetDeviceHeader::GetInstanceTypeId () const
 void
 P2PLaserNetDeviceHeader::Print (std::ostream &os) const
 {
-    os << "queue size: " << m_queueSize;
+    os << "my packet";
 }
 
 uint32_t
 P2PLaserNetDeviceHeader::GetSerializedSize (void) const
 {
-    // right now, it's just a u32
-    return 4;
+    // 100 u64s
+    return 100*8;
 }
 
 void
 P2PLaserNetDeviceHeader::Serialize (Buffer::Iterator start) const
 {
     Buffer::Iterator i = start;
-
-    i.WriteHtonU32 (m_queueSize);
+    for(auto item : m_queue_distances) {
+        i.WriteHtonU64(item);
+    }
 }
     
 uint32_t
 P2PLaserNetDeviceHeader::Deserialize (Buffer::Iterator start)
 {
     Buffer::Iterator i = start;
-
-    m_queueSize = i.ReadNtohU32 ();
+    // fixed size transmission, so we don't need to send any preparatory information
+    
+    for(size_t j = 0; j < 100; j++) {
+        m_queue_distances.at(j) = i.ReadNtohU64();
+    }
 
     return GetSerializedSize();
 }

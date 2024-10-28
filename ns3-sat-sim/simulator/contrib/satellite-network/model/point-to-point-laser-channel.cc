@@ -99,6 +99,7 @@ PointToPointLaserChannel::TransmitStart (
 
   Ptr<MobilityModel> senderMobility = src->GetNode()->GetObject<MobilityModel>();
   Ptr<MobilityModel> receiverMobility = node_other_end->GetObject<MobilityModel>();
+
   Time delay = this->GetDelay(senderMobility, receiverMobility); 
 
   // log propagation delay as estimated by this device

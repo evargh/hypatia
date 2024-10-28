@@ -36,6 +36,7 @@
 #include "ns3/ptr.h"
 #include "ns3/mac48-address.h"
 #include "ns3/abort.h"
+#include "p2p-laser-net-device-header.h"
 
 namespace ns3 {
 
@@ -227,13 +228,9 @@ private:
    * This function is called to add the frame relevant for L2 communication
    * into the queue
    */ 
-  void EnqueueL2Frame ();
+  Ptr<Packet> CreateL2Frame (void);
 
-  /**
-   *  TODO: This function will be implemented to handle parameter determination for our
-   *  dynamic routing component
-   */
-  void DetermineParameters ();
+  void ProcessL2Frame (P2PLaserNetDeviceHeader* p);
 
   /**
    * \returns the address of the remote device connected to this device
@@ -334,13 +331,6 @@ private:
    * Length of the aforementioned queue
    */
   uint32_t m_queueOccupancy;
-
- /**
-  * Beta and Chi are parameters for explicit load balancing
-  */
-  double m_beta;
-
-  double m_chi;
 
  /**
   * Determines how often an L2 Frame should be sent, in seconds.

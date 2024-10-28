@@ -131,6 +131,7 @@ Satellite::GetVelocity (const JulianDate &t) const
   );
 }
 
+// EVAN: Updated to use WGS72, to be consistent with satgenpy which uses WGS72
 /*
  * This function uses the WGS84 constants as defined by the National
  * Geospatial-Intelligence Agency (NGA) on the report published on 2014-07-08
@@ -148,10 +149,10 @@ Satellite::GetVelocity (const JulianDate &t) const
 Vector3D
 Satellite::GetGeographicPosition (const JulianDate &t) const
 {
-  const double a = 6378137.0;                   // equatorial radius (m)
-  const double b = 6356752.31424518;            // polar radius (m)
-  const double fes = 6.694379990141e-03;        // first eccentricity squared
-  const double ses = 6.739496742276e-03;        // second eccentricity squared
+  const double a = 6378135.0;                   // equatorial radius (m)
+  const double b = 6356750.52;            // polar radius (m)
+  const double fes = 6.694317783296e-03;        // first eccentricity squared
+  const double ses = 6.739433694124e-03;        // second eccentricity squared
   Vector3D r = GetPosition (t);
   const double p = sqrt (r.x*r.x + r.y*r.y);
   const double th = atan2 (a*r.z, b*p);

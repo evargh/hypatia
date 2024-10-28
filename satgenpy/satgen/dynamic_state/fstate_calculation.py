@@ -55,7 +55,7 @@ def calculate_fstate_shortest_path_without_gs_relaying(
 
                 # By default, if there is no satellite in range for the
                 # destination ground station, it will be dropped (indicated by -1)
-                next_hop_decision = (-1, -1, -1)
+                next_hop_decision = (-1, -1, -1, -1)
                 distance_to_ground_station_m = float("inf")
                 if len(possibilities) > 0:
                     dst_sat = possibilities[0][1]
@@ -74,18 +74,20 @@ def calculate_fstate_shortest_path_without_gs_relaying(
                                     dist_sat_net_without_gs[(neighbor_id, dst_sat)]
                             )
                             if distance_m < best_distance_m:
+                                best_distance_m = distance_m
                                 next_hop_decision = (
                                     neighbor_id,
                                     sat_neighbor_to_if[(curr, neighbor_id)],
-                                    sat_neighbor_to_if[(neighbor_id, curr)]
+                                    sat_neighbor_to_if[(neighbor_id, curr)],
+                                    best_distance_m
                                 )
-                                best_distance_m = distance_m
 
                     else:
                         # This is the destination satellite, as such the next hop is the ground station itself
                         next_hop_decision = (
                             dst_gs_node_id,
                             num_isls_per_sat[dst_sat] + gid_to_sat_gsl_if_idx[dst_gid],
+                            0,
                             0
                         )
 
@@ -95,12 +97,13 @@ def calculate_fstate_shortest_path_without_gs_relaying(
 
                 # Write to forwarding state
                 if not prev_fstate or prev_fstate[(curr, dst_gs_node_id)] != next_hop_decision:
-                    f_out.write("%d,%d,%d,%d,%d\n" % (
+                    f_out.write("%d,%d,%d,%d,%d,%d\n" % (
                         curr,
                         dst_gs_node_id,
                         next_hop_decision[0],
                         next_hop_decision[1],
-                        next_hop_decision[2]
+                        next_hop_decision[2],
+                        next_hop_decision[3]
                     ))
                 fstate[(curr, dst_gs_node_id)] = next_hop_decision
 
@@ -135,17 +138,19 @@ def calculate_fstate_shortest_path_without_gs_relaying(
                         next_hop_decision = (
                             src_sat_id,
                             0,
-                            num_isls_per_sat[src_sat_id] + gid_to_sat_gsl_if_idx[src_gid]
+                            num_isls_per_sat[src_sat_id] + gid_to_sat_gsl_if_idx[src_gid],
+                            possibilities[0][0]
                         )
 
                     # Update forwarding state
                     if not prev_fstate or prev_fstate[(src_gs_node_id, dst_gs_node_id)] != next_hop_decision:
-                        f_out.write("%d,%d,%d,%d,%d\n" % (
+                        f_out.write("%d,%d,%d,%d,%d,%d\n" % (
                             src_gs_node_id,
                             dst_gs_node_id,
                             next_hop_decision[0],
                             next_hop_decision[1],
-                            next_hop_decision[2]
+                            next_hop_decision[2],
+                            next_hop_decision[3]
                         ))
                     fstate[(src_gs_node_id, dst_gs_node_id)] = next_hop_decision
 
