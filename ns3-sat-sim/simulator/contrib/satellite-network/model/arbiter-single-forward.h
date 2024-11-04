@@ -34,15 +34,18 @@ namespace ns3 {
 class ArbiterSingleForward : public ArbiterSatnet
 {
 public:
-    const static size_t NUM_GROUND_STATIONS = 100;
-    const static size_t APPROXIMATE_EARTH_RADIUS_M = 6371000;   
+    const static int32_t NUM_GROUND_STATIONS = 100;
+    const static int32_t APPROXIMATE_EARTH_RADIUS_M = 6371000;
+    const static int32_t APPROXIMATE_EARTH_EQUATORIAL_CIRCUMFERENCE = 2*pi*APPROXIMATE_EARTH_RADIUS_M; 
     static TypeId GetTypeId (void);
 
     // Constructor for single forward next-hop forwarding state
     ArbiterSingleForward(
             Ptr<Node> this_node,
             NodeContainer nodes,
-            std::vector<std::tuple<int32_t, int32_t, int32_t>> next_hop_list
+            std::vector<std::tuple<int32_t, int32_t, int32_t>> next_hop_list,
+            double inclination_angle,
+            int32_t num_orbits
     );
 
     // Single forward next-hop implementation
@@ -71,22 +74,40 @@ public:
     void ReduceQueueDistance(size_t gs);
     void ModifyDistanceLookup(int32_t target_node_id, uint32_t distance);
     
-    std::array<uint64_t, NUM_GROUND_STATIONS>* GetQueueDistances();
+    std::pair<std::array<uint64_t, NUM_GROUND_STATIONS>*, std::array<uint32_t, NUM_GROUND_STATIONS>*> GetQueueDistances();
     
-    void SetNeighborQueueDistance(size_t neighbor_id, std::array<uint64_t, NUM_GROUND_STATIONS> *neighbor_queueing_distance);
+    void SetNeighborQueueDistance(
+        int32_t neighbor_node_id,
+        uint32_t my_interface_id,
+        uint32_t remote_node_id,
+        std::array<uint64_t, NUM_GROUND_STATIONS> *neighbor_queueing_distance
+    );
 
 private:
     // this function inverts the cartesian MobilityModule coordinates to generate latitude and longitude
     // so that satellites and ground stations can have comparable coordinates
     // thisisn't a precise inverse of the WGS72 standard, since it approximates the earth as a sphere
-    // and not a flattened ellipsoid. I performed a few checks and the error is on a smaller order than
-    // the distance between satellites
+    // and not a flattened ellipsoid
     Vector3D CartesianToGeodetic(Vector3D cartesian);
+    bool CheckIfInRectangle(Vector3D forwardpos, Vector3D srcpos, Vector3D destpos);
+    void GetNeighborInfo();    
+
+    bool ValidateForwardInRectangle(
+        int32_t source_node_id,
+        int32_t target_node_id,
+        int32_t forward_node_id
+    );
+
+    double m_inclination_angle; 
+    int32_t m_num_orbits;
+    int32_t m_satellites_per_orbit;
 
     std::vector<std::tuple<int32_t, int32_t, int32_t>> m_next_hop_list;
 
     std::array<uint64_t, NUM_GROUND_STATIONS> m_queueing_distances;
     std::array<std::array<uint64_t, NUM_GROUND_STATIONS>, 4> m_neighbor_queueing_distances;
+    std::array<int32_t, 4> m_neighbor_ids;
+    std::array<uint32_t, 4> m_neighbor_interfaces;
     std::array<uint32_t, NUM_GROUND_STATIONS> m_distance_lookup_array;
 
     Ptr<Satellite> ExtractSatellite(int32_t node_id);

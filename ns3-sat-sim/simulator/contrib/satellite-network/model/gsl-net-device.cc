@@ -34,6 +34,7 @@
 #include "ns3/node-container.h"
 #include "gsl-net-device.h"
 #include "gsl-channel.h"
+#include "ns3/ipv4-satellite-arbiter-routing.h"
 
 namespace ns3 {
 
@@ -186,6 +187,7 @@ GSLNetDevice::GSLNetDevice ()
     m_currentPkt (0)
 {
   NS_LOG_FUNCTION (this);
+  m_L2SendInterval = Simulator::Now();
 }
 
 GSLNetDevice::~GSLNetDevice ()
@@ -262,12 +264,30 @@ GSLNetDevice::TransmitStart (Ptr<Packet> p, const Address dest)
 
   NS_LOG_LOGIC ("Schedule TransmitCompleteEvent in " << txCompleteTime.GetSeconds () << "sec");
   Simulator::Schedule (txCompleteTime, &GSLNetDevice::TransmitComplete, this, dest);
-
+  
+  // copied code from point to point net device. need to make a parent class that these can inherit from
   bool result = m_channel->TransmitStart (p, this, dest, txTime);
   if (result == false)
     {
       m_phyTxDropTrace (p);
     }
+  else 
+    {
+      uint16_t protocol = 0;
+      uint32_t puid = p->GetUid();
+      ProcessHeader(p, protocol);
+      if (protocol != 0x0001) {
+        NS_LOG_DEBUG(
+          "From " << m_node->GetId() << 
+          " -- UID is " << puid << " -- Delay is " << txCompleteTime.GetSeconds());
+        // if the transmitting node is a satellite, and the ipv4 protocol is used, reduce the arbiter distance
+        if (protocol == 0x0800 && m_node->GetId() < m_node->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4SatelliteArbiterRouting>()->GetArbiter()->GetNumNodes() - 100) {
+          m_node->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4SatelliteArbiterRouting>()->ReduceArbiterDistance(p);
+        }
+      }
+
+    }
+  
 
   NS_LOG_FUNCTION (this << " done");
   return result;
@@ -328,7 +348,7 @@ GSLNetDevice::Attach (Ptr<GSLChannel> ch)
 }
 
 void
-GSLNetDevice::SetQueue (Ptr<Queue<Packet> > q)
+GSLNetDevice::SetQueue (Ptr<Queue<Packet>> q)
 {
   NS_LOG_FUNCTION (this << q);
   m_queue = q;
@@ -344,7 +364,7 @@ GSLNetDevice::SetReceiveErrorModel (Ptr<ErrorModel> em)
 void
 GSLNetDevice::Receive (Ptr<Packet> packet)
 {
-  NS_LOG_FUNCTION (this << packet << this->GetNode()->GetId());
+  NS_LOG_FUNCTION (this << packet);
   uint16_t protocol = 0;
 
   if (m_receiveErrorModel && m_receiveErrorModel->IsCorrupt (packet) ) 
@@ -371,6 +391,9 @@ GSLNetDevice::Receive (Ptr<Packet> packet)
       // headers.
       //
       Ptr<Packet> originalPacket = packet->Copy ();
+      // EVAN: I'm not sure why I need to make another copy here, but when using the packet directly
+      // I run into the issue of reading the point to point header instead of the ipv4 header
+      Ptr<Packet> ipv4Packet = packet->Copy ();      
 
       //
       // Strip off the point-to-point protocol header and forward this packet
@@ -379,17 +402,23 @@ GSLNetDevice::Receive (Ptr<Packet> packet)
       // normal receive callback sees.
       //
       ProcessHeader (packet, protocol);
+      ProcessHeader (ipv4Packet, protocol);
 
+      NS_LOG_DEBUG (
+        "To " << m_node->GetId() << " -- UID is " << packet->GetUid());
+      // if the receiving node is a satellite, and the ipv4 protocol is used, increase the arbiter distance
+      if (protocol == 0x0800 && m_node->GetId() < m_node->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4SatelliteArbiterRouting>()->GetArbiter()->GetNumNodes() - 100) {
+        m_node->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4SatelliteArbiterRouting>()->IncreaseArbiterDistance(ipv4Packet);
+      }
       if (!m_promiscCallback.IsNull ())
-        {
-          m_macPromiscRxTrace (originalPacket);
-          //   the from address is incorrect (because it is unknown), but no effect is noticed on 
-          // traffic reception
-          //   a solution would require changes to NS3 core to support send and receive that receive a
-          // 'from' argument for distributed simulator
-          m_promiscCallback (this, packet, protocol, GetAddress(), GetAddress (), NetDevice::PACKET_HOST);
-        }
-
+      {
+        m_macPromiscRxTrace (originalPacket);
+        //   the from address is incorrect (because it is unknown), but no effect is noticed on 
+        // traffic reception
+        //   a solution would require changes to NS3 core to support send and receive that receive a
+        // 'from' argument for distributed simulator
+        m_promiscCallback (this, packet, protocol, GetAddress(), GetAddress (), NetDevice::PACKET_HOST);
+      }
       m_macRxTrace (originalPacket);
       m_rxCallback (this, packet, protocol, GetAddress());
     }
@@ -539,7 +568,7 @@ GSLNetDevice::Send (
   //
   if (m_queue->Enqueue (packet))
     {
-        m_queueDests.push (dest);
+      m_queueDests.push (dest);
       //
       // If the channel is ready for transition we send the packet right now
       // 
@@ -641,6 +670,7 @@ GSLNetDevice::PppToEther (uint16_t proto)
     {
     case 0x0021: return 0x0800;   //IPv4
     case 0x0057: return 0x86DD;   //IPv6
+    case 0x8037: return 0x0001;
     default: NS_ASSERT_MSG (false, "PPP Protocol number not defined!");
     }
   return 0;
@@ -654,6 +684,7 @@ GSLNetDevice::EtherToPpp (uint16_t proto)
     {
     case 0x0800: return 0x0021;   //IPv4
     case 0x86DD: return 0x0057;   //IPv6
+    case 0x0001: return 0x8037;
     default: NS_ASSERT_MSG (false, "PPP Protocol number not defined!");
     }
   return 0;

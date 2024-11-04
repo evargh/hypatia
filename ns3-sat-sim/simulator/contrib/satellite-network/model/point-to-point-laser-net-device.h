@@ -189,6 +189,13 @@ public:
   virtual void SetPromiscReceiveCallback (PromiscReceiveCallback cb);
   virtual bool SupportsSendFrom (void) const;
 
+  /**
+   * \returns the address of the remote device connected to this device
+   * through the point to point channel.
+   */
+  Address GetRemote (void) const;
+  uint32_t GetRemoteIf (void) const;
+
 protected:
   /**
    * \brief Handler for MPI receive event
@@ -232,11 +239,6 @@ private:
 
   void ProcessL2Frame (P2PLaserNetDeviceHeader* p);
 
-  /**
-   * \returns the address of the remote device connected to this device
-   * through the point to point channel.
-   */
-  Address GetRemote (void) const;
 
   /**
    * Adds the necessary headers and trailers to a packet of data in order to
@@ -326,11 +328,6 @@ private:
    * \see class DropTailQueue
    */
   Ptr<Queue<Packet> > m_queue;
-
-  /**
-   * Length of the aforementioned queue
-   */
-  uint32_t m_queueOccupancy;
 
  /**
   * Determines how often an L2 Frame should be sent, in seconds.

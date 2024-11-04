@@ -187,7 +187,6 @@ PointToPointLaserNetDevice::PointToPointLaserNetDevice ()
     m_currentPkt (0)
 {
   NS_LOG_FUNCTION (this);
-  m_queueOccupancy = 0;
   m_L2SendInterval = Simulator::Now();
 }
 
@@ -278,11 +277,10 @@ PointToPointLaserNetDevice::TransmitStart (Ptr<Packet> p)
   else if (result_p2p == false) 
     {
       // if the packet was sent, but not the control information
-      NS_LOG_DEBUG("L2 Frame Dropped from" << m_node->GetId());
+      NS_LOG_DEBUG("L2 Frame Dropped from " << m_node->GetId());
     }
   else 
-    {
-      
+    { 
       // make a copy of the packet, check packet protocol, only log the UID if the protocol is not ours
       uint16_t protocol = 0;
       uint32_t puid = p->GetUid();    
@@ -394,7 +392,7 @@ PointToPointLaserNetDevice::Receive (Ptr<Packet> packet)
       // headers.
       //
       Ptr<Packet> originalPacket = packet->Copy ();
-
+      Ptr<Packet> ipv4Packet = packet->Copy ();
       //
       // Strip off the point-to-point protocol header and forward this packet
       // up the protocol stack.  Since this is a simple point-to-point link,
@@ -402,6 +400,7 @@ PointToPointLaserNetDevice::Receive (Ptr<Packet> packet)
       // normal receive callback sees.
       //
       ProcessHeader (packet, protocol);
+      ProcessHeader (ipv4Packet, protocol);
      
       // Check if this is our custom packet 
       if (protocol == 0x0001) {
@@ -415,6 +414,9 @@ PointToPointLaserNetDevice::Receive (Ptr<Packet> packet)
       {
         // If it's a packet with higher-layer data, log it
         NS_LOG_DEBUG ("From " << m_destination_node->GetId() << " -- To " << m_node->GetId() << " -- UID is " << packet->GetUid());
+	if (protocol == 0x0800) { 
+	  m_node->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4SatelliteArbiterRouting>()->IncreaseArbiterDistance(ipv4Packet);
+	}
         if (!m_promiscCallback.IsNull ())
 	{
 	  m_macPromiscRxTrace (originalPacket);
@@ -567,13 +569,15 @@ PointToPointLaserNetDevice::IsBridge (void) const
 }
 
 void
-PointToPointLaserNetDevice::ProcessL2Frame (P2PLaserNetDeviceHeader* p) {
-    NS_LOG_DEBUG(m_node->GetId() << " Processing L2 Frame: " << p->GetQueueDistances()->at(0));
-    m_node->
-      GetObject<Ipv4>()->
-      GetRoutingProtocol()->
-      GetObject<Ipv4SatelliteArbiterRouting>()->
-      GetArbiter()->SetNeighborQueueDistance(GetIfIndex()-1, p->GetQueueDistances());
+PointToPointLaserNetDevice::ProcessL2Frame (P2PLaserNetDeviceHeader* p)
+{
+  NS_LOG_FUNCTION (this);
+  NS_LOG_DEBUG(m_node->GetId() << " Processing L2 Frame: " << p->GetQueueDistances()->at(0));
+  m_node->
+    GetObject<Ipv4>()->
+    GetRoutingProtocol()->
+    GetObject<Ipv4SatelliteArbiterRouting>()->
+    GetArbiter()->SetNeighborQueueDistance(m_destination_node->GetId(), GetIfIndex()-1, GetRemoteIf()-1, p->GetQueueDistances());
 }
 
 Ptr<Packet>
@@ -592,12 +596,12 @@ PointToPointLaserNetDevice::CreateL2Frame ()
   // m_queue into a double-ended queue
 
   P2PLaserNetDeviceHeader p2ph;
-  std::array<uint64_t, 100>* arbiter_distances = m_node->
+  std::pair<std::array<uint64_t, 100>*, std::array<uint32_t, 100>*> arbiter_distances = m_node->
                                                 GetObject<Ipv4>()->
                                                 GetRoutingProtocol()->
                                                 GetObject<Ipv4SatelliteArbiterRouting>()->
                                                 GetArbiter()->GetQueueDistances();
-  p2ph.SetQueueDistances(arbiter_distances);
+  p2ph.SetQueueDistances(std::get<0>(arbiter_distances), std::get<1>(arbiter_distances));
   p->AddHeader(p2ph);
   AddHeader(p, 0x0001);
 
@@ -636,8 +640,7 @@ PointToPointLaserNetDevice::Send (
   // We should enqueue and dequeue the packet to hit the tracing hooks.
   //
   if (m_queue->Enqueue (packet))
-    { 
-      //
+    {  
       // If the channel is ready for transition we send the packet right now
       // 
       if (m_txMachineState == READY)
@@ -731,6 +734,24 @@ PointToPointLaserNetDevice::GetRemote (void) const
   NS_ASSERT (false);
   // quiet compiler.
   return Address ();
+}
+
+uint32_t 
+PointToPointLaserNetDevice::GetRemoteIf (void) const
+{
+  NS_LOG_FUNCTION (this);
+  NS_ASSERT (m_channel->GetNDevices () == 2);
+  for (std::size_t i = 0; i < m_channel->GetNDevices (); ++i)
+    {
+      Ptr<NetDevice> tmp = m_channel->GetDevice (i);
+      if (tmp != this)
+        {
+          return tmp->GetIfIndex ();
+        }
+    }
+  NS_ASSERT (false);
+  // quiet compiler.
+  return 15;
 }
 
 bool

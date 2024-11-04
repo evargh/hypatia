@@ -32,7 +32,7 @@ public:
     P2PLaserNetDeviceHeader ();
     ~P2PLaserNetDeviceHeader ();
 
-    void SetQueueDistances (std::array<uint64_t, 100>* qd);
+    void SetQueueDistances (std::array<uint64_t, 100>* qlens, std::array<uint32_t, 100>* distances);
     std::array<uint64_t, 100>* GetQueueDistances ();
     static TypeId GetTypeId ();
 

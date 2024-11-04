@@ -91,7 +91,6 @@ namespace ns3 {
 
         } else { // If not loop-back, it goes to the arbiter
                  // Local delivery has already been handled if it was input
-
             ArbiterResult result = m_arbiter->BaseDecide(p, header);
             if (result.Failed()) {
                 return 0;
@@ -297,11 +296,22 @@ namespace ns3 {
     }
 
     void
+    Ipv4SatelliteArbiterRouting::IncreaseArbiterDistance(Ptr<Packet> p) { 
+        Ipv4Header ipHeader;
+        p->RemoveHeader(ipHeader);
+        // adjust by number of nodes in the network, as determined by the arbiter
+        NS_ASSERT(ipHeader.GetDestination().Get() != 1717986918);
+        m_arbiter->AddQueueDistance(m_arbiter->ResolveNodeIdFromIp(ipHeader.GetDestination().Get()) - m_arbiter->GetNumNodes() + 100);
+        NS_LOG_DEBUG("added packet to arbiter array");
+    }
+
+    void
     Ipv4SatelliteArbiterRouting::ReduceArbiterDistance(Ptr<Packet> p) { 
         Ipv4Header ipHeader;
         p->RemoveHeader(ipHeader);
         // adjust by number of nodes in the network, as determined by the arbiter
+        NS_ASSERT(ipHeader.GetDestination().Get() != 1717986918);
         m_arbiter->ReduceQueueDistance(m_arbiter->ResolveNodeIdFromIp(ipHeader.GetDestination().Get()) - m_arbiter->GetNumNodes() + 100);
-        NS_LOG_DEBUG("removed distance from arbiter array");
+        NS_LOG_DEBUG("removed packet from arbiter array");
     }
 } // namespace ns3

@@ -32,9 +32,12 @@ ArbiterSingleForwardHelper::ArbiterSingleForwardHelper (Ptr<BasicSimulation> bas
     basicSimulation->RegisterTimestamp("Create initial single forwarding state");
 
     // Set the routing arbiters
+    double inclination_angle = parse_positive_double(m_basicSimulation->GetConfigParamOrFail("orbit_inclination"));
+    int32_t num_orbits = static_cast<int32_t>(parse_positive_int64(m_basicSimulation->GetConfigParamOrFail("num_orbits")));
+    // the distance between satellites
     std::cout << "  > Setting the routing arbiter on each node" << std::endl;
     for (size_t i = 0; i < m_nodes.GetN(); i++) {
-        Ptr<ArbiterSingleForward> arbiter = CreateObject<ArbiterSingleForward>(m_nodes.Get(i), m_nodes, initial_forwarding_state[i]);
+        Ptr<ArbiterSingleForward> arbiter = CreateObject<ArbiterSingleForward>(m_nodes.Get(i), m_nodes, initial_forwarding_state[i], inclination_angle, num_orbits);
         m_arbiters.push_back(arbiter);
         Ptr<Ipv4RoutingProtocol> ipv4route = m_nodes.Get(i)->GetObject<Ipv4>()->GetRoutingProtocol();
 	ipv4route->GetObject<Ipv4SatelliteArbiterRouting>()->SetArbiter(arbiter);

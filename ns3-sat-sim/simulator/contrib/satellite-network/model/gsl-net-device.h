@@ -36,6 +36,7 @@
 #include "ns3/ptr.h"
 #include "ns3/mac48-address.h"
 #include "ns3/node-container.h"
+#include "p2p-laser-net-device-header.h"
 
 namespace ns3 {
 
@@ -219,7 +220,6 @@ private:
   virtual void DoDispose (void);
 
 private:
-
   /**
    * Adds the necessary headers and trailers to a packet of data in order to
    * respect the protocol implemented by the agent.
@@ -314,6 +314,8 @@ private:
      * The FIFO queue for the destination MAC addresses
      */
   std::queue<Address> m_queueDests;
+
+  Time m_L2SendInterval;
 
   /**
    * Error model for receive packet events

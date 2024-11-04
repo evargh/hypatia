@@ -13,9 +13,11 @@ P2PLaserNetDeviceHeader::~P2PLaserNetDeviceHeader ()
 }
 
 void 
-P2PLaserNetDeviceHeader::SetQueueDistances (std::array<uint64_t, 100>* qd)
+P2PLaserNetDeviceHeader::SetQueueDistances (std::array<uint64_t, 100>* qlens, std::array<uint32_t, 100>* distances)
 {
-    m_queue_distances = *qd;
+    for(size_t i = 0; i < 100; i++) {
+        m_queue_distances.at(i) = qlens->at(i) * uint64_t(distances->at(i));
+    }
 }
 
 std::array<uint64_t, 100>* 
