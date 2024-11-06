@@ -42,6 +42,7 @@ namespace ns3 {
         NodeContainer m_nodes;
         int64_t m_dynamicStateUpdateIntervalNs;
         std::vector<Ptr<ArbiterSingleForward>> m_arbiters;
+        std::array<std::set<int32_t>, ArbiterSingleForward::NUM_GROUND_STATIONS> m_destination_satellite_list;
 
     };
 

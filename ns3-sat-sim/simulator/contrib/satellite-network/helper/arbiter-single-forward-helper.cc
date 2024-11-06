@@ -84,7 +84,6 @@ void ArbiterSingleForwardHelper::UpdateForwardingState(int64_t t) {
     std::string line;
     std::ifstream fstate_file(filename);
     if (fstate_file) {
-
         // Go over each line
         size_t line_counter = 0;
         while (getline(fstate_file, line)) {
@@ -159,9 +158,26 @@ void ArbiterSingleForwardHelper::UpdateForwardingState(int64_t t) {
             );
 
             m_arbiters.at(current_node_id)->ModifyDistanceLookup(
-                    target_node_id - m_nodes.GetN() + 100,
+                    target_node_id,
                     static_cast<uint32_t>(distance)
             );
+
+            // if the target node and the next hop node are the same, this is a "destination satellite"
+            // this should be communicate to all arbiters in order to construct a permitted region
+            // Hypatia also doesn't print redundant lines. Therefore whenever a destination satellite becomes invalid,
+            // it needs to be removed from all arbiter lists
+            //
+            // each time step, the helper needs to keep track of which nodes are considered destinations to which ground stations
+            // if it encounters a line where that node is no longer a destination satellite to a certain ground station, it needs to 
+            // be removed from all lists
+            int32_t gsl_id = target_node_id - m_nodes.GetN() + ArbiterSingleForward::NUM_GROUND_STATIONS;
+            if(target_node_id == next_hop_node_id) {
+                m_destination_satellite_list.at(gsl_id).insert(current_node_id);
+            }
+            else if(m_destination_satellite_list.at(gsl_id).count(current_node_id) > 0) {
+                m_destination_satellite_list.at(gsl_id).erase(current_node_id);
+            }
+           
 
             // Next line
             line_counter++;
@@ -174,7 +190,9 @@ void ArbiterSingleForwardHelper::UpdateForwardingState(int64_t t) {
     } else {
         throw std::runtime_error(format_string("File %s could not be read.", filename.c_str()));
     }
-
+    for (auto &elem : m_arbiters) {
+        elem->SetDestinationSatelliteList(&m_destination_satellite_list);
+    }
     // Given that this code will only be used with satellite networks, this is okay-ish,
     // but it does create a very tight coupling between the two -- technically this class
     // can be used for other purposes as well

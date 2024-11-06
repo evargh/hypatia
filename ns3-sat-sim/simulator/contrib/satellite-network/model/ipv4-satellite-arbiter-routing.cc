@@ -301,7 +301,7 @@ namespace ns3 {
         p->RemoveHeader(ipHeader);
         // adjust by number of nodes in the network, as determined by the arbiter
         NS_ASSERT(ipHeader.GetDestination().Get() != 1717986918);
-        m_arbiter->AddQueueDistance(m_arbiter->ResolveNodeIdFromIp(ipHeader.GetDestination().Get()) - m_arbiter->GetNumNodes() + 100);
+        m_arbiter->AddQueueDistance(m_arbiter->ResolveNodeIdFromIp(ipHeader.GetDestination().Get()));
         NS_LOG_DEBUG("added packet to arbiter array");
     }
 
@@ -311,7 +311,7 @@ namespace ns3 {
         p->RemoveHeader(ipHeader);
         // adjust by number of nodes in the network, as determined by the arbiter
         NS_ASSERT(ipHeader.GetDestination().Get() != 1717986918);
-        m_arbiter->ReduceQueueDistance(m_arbiter->ResolveNodeIdFromIp(ipHeader.GetDestination().Get()) - m_arbiter->GetNumNodes() + 100);
+        m_arbiter->ReduceQueueDistance(m_arbiter->ResolveNodeIdFromIp(ipHeader.GetDestination().Get()));
         NS_LOG_DEBUG("removed packet from arbiter array");
     }
 } // namespace ns3

@@ -103,6 +103,56 @@ bool ArbiterSingleForward::CheckIfInRectangle(
     }
     return false;
 }
+// TODO: can make this into a function on iterators
+Ptr<Satellite> ArbiterSingleForward::GetClosestSatellite(std::set<int32_t> *node_id_set) {
+    double min_distance = 100000000000;
+    int32_t min_node = -1;
+    Ptr<MobilityModel> my_satellite_mobility_model = m_nodes.Get(m_node_id)->GetObject<MobilityModel>();
+    if (node_id_set->empty()) {
+        return nullptr;
+    }
+
+    for(auto it = node_id_set->begin(); it != node_id_set->end(); it++) {
+       Ptr<MobilityModel> n = m_nodes.Get(*it)->GetObject<MobilityModel>();
+       double dist = my_satellite_mobility_model->GetDistanceFrom(n);
+       if (dist <= min_distance) {
+           min_distance = dist;
+           min_node = *it;
+       }
+    }
+    // previous code should verify that there are destination satellites
+    NS_ASSERT(min_node != -1);
+    return ExtractSatellite(min_node);
+}
+
+Ptr<Satellite> ArbiterSingleForward::GetFarthestSatellite(std::set<int32_t> *node_id_set) {
+    double max_distance = 0;
+    int32_t max_node = -1;
+    Ptr<MobilityModel> my_satellite_mobility_model = m_nodes.Get(m_node_id)->GetObject<MobilityModel>();
+    if (node_id_set->empty()) {
+        return nullptr;
+    }
+
+    for(auto it = node_id_set->begin(); it != node_id_set->end(); it++) {
+       Ptr<MobilityModel> n = m_nodes.Get(*it)->GetObject<MobilityModel>();
+       double dist = my_satellite_mobility_model->GetDistanceFrom(n);
+       if (dist >= max_distance) {
+           max_distance = dist;
+           max_node = *it;
+       }
+    }
+    // previous code should verify that there are destination satellites
+    NS_ASSERT(max_node != -1);
+    return ExtractSatellite(max_node);
+}
+
+int32_t ArbiterSingleForward::GSLNodeIdToGSLIndex(int32_t id) {
+    return id - m_nodes.GetN() + NUM_GROUND_STATIONS;
+}
+
+int32_t ArbiterSingleForward::GSLIndexToGSLNodeId(int32_t id) {
+    return m_nodes.GetN() - NUM_GROUND_STATIONS + id;
+}
 
 bool ArbiterSingleForward::ValidateForwardInRectangle(
         int32_t source_node_id,
@@ -110,7 +160,7 @@ bool ArbiterSingleForward::ValidateForwardInRectangle(
         int32_t forward_node_id
 ) {
     // if the destination node is unreachable, don't bother with this
-    if (forward_node_id == -2) {
+    if (forward_node_id == -2 || forward_node_id == -1) {
       return false;
     }
     // create a rectangle using the source node's mobility information and the target node's mobility information
@@ -120,6 +170,12 @@ bool ArbiterSingleForward::ValidateForwardInRectangle(
    
     // gets WGS84 coordinates of satellite
     Vector3D forwardpos = forward_satellite->GetGeographicPosition(current_time);
+
+    // gets furthest destination satellite and closest source satellite to this position
+    // TODO: this is just a heuristic for now and needs closer examination
+    Ptr<Satellite> source_satellite = GetClosestSatellite(&m_destination_satellite_list.at(GSLNodeIdToGSLIndex(source_node_id)));
+    Ptr<Satellite> destination_satellite = GetFarthestSatellite(&m_destination_satellite_list.at(GSLNodeIdToGSLIndex(target_node_id)));
+
     // gets WGS72 coordinates of ground stations, which need to be converted to WGS84
     // the underlying ground stations is not accessible from the node--it's only used by the topology
     // as a result, the only publically accessible data is the cartesian coordinate, which needs to be converted
@@ -153,7 +209,9 @@ std::tuple<int32_t, int32_t, int32_t> ArbiterSingleForward::TopologySatelliteNet
     // each time this is run, get all net devices and determine nodes and interfaces. set the member arrays appropriately
     NS_ASSERT(m_nodes.GetN() > ArbiterSingleForward::NUM_GROUND_STATIONS);
     NS_LOG_DEBUG("destination: " << target_node_id << " source: " << source_node_id << " me: " << m_node_id);
-    if (m_node_id < static_cast<int32_t>(m_nodes.GetN() - ArbiterSingleForward::NUM_GROUND_STATIONS)) {  
+    // if this arbiter is runing on a ground station, we use snapshot routing
+    // the source can occasionally be a satellite in case of ICMP messages. if that's the case, use snapshot routing
+    if (m_node_id < static_cast<int32_t>(m_nodes.GetN() - NUM_GROUND_STATIONS) && source_node_id >= static_cast<int32_t>(m_nodes.GetN() - NUM_GROUND_STATIONS)) {  
       GetNeighborInfo();
       int32_t forward_node_id = std::get<0>(m_next_hop_list[target_node_id]); 
        
@@ -161,17 +219,17 @@ std::tuple<int32_t, int32_t, int32_t> ArbiterSingleForward::TopologySatelliteNet
       if(forward_node_id != target_node_id) {
         // TODO: better logging
         // at the moment, this routing algorithm doesn't seem to scale well. the meandering initial packets result in TTL expiration messages coming from ICMP. those TTL messages are marked with the source of a satellite and the destination of the initial ground station, which is fine: until this ICMP message itself gets dropped. then the source and destination are both satellites, and this algorithm doesn't know how to route between satellites, leading to errors
-        // presumably, this is also an issue for base Hypatia, but never came up
+        // presumably this is also an issue for base Hypatia, but never came up
         // as a result, if the destination is a satellite, return a failed address
         if(target_node_id <= 1583) {
           return std::make_tuple(-1, 0, 0);
         }
-        
+         
         std::array<std::tuple<uint64_t, int8_t, bool>, 4> distance_my_interface_region;
         for(int8_t i = 0; i < 4; i++) {
             bool in_region = ValidateForwardInRectangle(source_node_id, target_node_id, m_neighbor_ids.at(i));
             distance_my_interface_region.at(i) = std::make_tuple(
-                                             m_neighbor_queueing_distances.at(i).at(target_node_id - int32_t(m_nodes.GetN()) + ArbiterSingleForward::NUM_GROUND_STATIONS),
+                                             m_neighbor_queueing_distances.at(i).at(GSLNodeIdToGSLIndex(target_node_id)),
                                              i,
                                              in_region
             );
@@ -210,25 +268,25 @@ std::tuple<int32_t, int32_t, int32_t> ArbiterSingleForward::TopologySatelliteNet
     return m_next_hop_list[target_node_id];
 }
 
-void ArbiterSingleForward::AddQueueDistance(size_t gs) {
-    NS_ASSERT(gs < m_queueing_distances.size());
-    m_queueing_distances.at(gs) += 1;
+void ArbiterSingleForward::AddQueueDistance(int32_t target_node_id) {
+    NS_ASSERT(GSLNodeIdToGSLIndex(target_node_id) < (int32_t)m_queueing_distances.size()); 
+    m_queueing_distances.at(GSLNodeIdToGSLIndex(target_node_id)) += 1;
 }
 
-uint64_t ArbiterSingleForward::GetQueueDistance(size_t gs) {
-    NS_ASSERT(gs < m_queueing_distances.size());
-    return m_queueing_distances.at(gs) * m_distance_lookup_array.at(gs);
+uint64_t ArbiterSingleForward::GetQueueDistance(int32_t target_node_id) {
+    NS_ASSERT(GSLNodeIdToGSLIndex(target_node_id) < (int32_t)m_queueing_distances.size());
+    return m_queueing_distances.at(GSLNodeIdToGSLIndex(target_node_id)) * m_distance_lookup_array.at(GSLNodeIdToGSLIndex(target_node_id));
 }
 
-void ArbiterSingleForward::ReduceQueueDistance(size_t gs) {
-    NS_ASSERT(gs < m_queueing_distances.size());
+void ArbiterSingleForward::ReduceQueueDistance(int32_t target_node_id) {
+    NS_ASSERT(GSLNodeIdToGSLIndex(target_node_id) < (int32_t)m_queueing_distances.size());
     // TODO: reintroduce this assertion
     // very infrequently, this assertion is violated. some nodes do not have "addqueuedistance" called before this is called, even
     // though they are receiving traffic just like every other node. namely traffic directed towards ground station 20 passing through node 2
     // I think this is due to how satellites generate ICMP messages
-    //NS_ASSERT(m_queueing_distances.at(gs) > 0);
-    if (m_queueing_distances.at(gs) > 0) {
-      m_queueing_distances.at(gs) -= 1;
+    //NS_ASSERT(m_queueing_distances.at(GSLNodeIdToGSLIndex(target_node_id)) > 0);
+    if (m_queueing_distances.at(GSLNodeIdToGSLIndex(target_node_id)) > 0) {
+      m_queueing_distances.at(GSLNodeIdToGSLIndex(target_node_id)) -= 1;
     } 
     else {
       NS_LOG_DEBUG("attempted to reduce 0-length distance queue");
@@ -257,11 +315,13 @@ void ArbiterSingleForward::SetSingleForwardState(int32_t target_node_id, int32_t
 }
 
 void ArbiterSingleForward::ModifyDistanceLookup(int32_t target_node_id, uint32_t distance) {
-    // judging by previous code, target_node_id cannot be negative
-    if(target_node_id >= 0) {
-      NS_ASSERT((uint32_t)target_node_id < m_queueing_distances.size());
-      m_distance_lookup_array.at(target_node_id) = distance;
-    }
+    NS_ASSERT(target_node_id >= 0);
+    NS_ASSERT(GSLNodeIdToGSLIndex(target_node_id) < (int32_t)m_queueing_distances.size());
+    m_distance_lookup_array.at(GSLNodeIdToGSLIndex(target_node_id)) = distance;
+}
+
+void ArbiterSingleForward::SetDestinationSatelliteList(std::array<std::set<int32_t>, ArbiterSingleForward::NUM_GROUND_STATIONS> *dsl) {
+    m_destination_satellite_list = *dsl;
 }
 
 std::string ArbiterSingleForward::StringReprOfForwardingState() {

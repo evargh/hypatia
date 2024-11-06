@@ -69,9 +69,11 @@ public:
     // that requires inheritors to define how forwarding state should be mutated.
     
     // For handling DBPR things
-    void AddQueueDistance(size_t gs);
-    uint64_t GetQueueDistance(size_t gs);
-    void ReduceQueueDistance(size_t gs);
+    void SetDestinationSatelliteList(std::array<std::set<int32_t>, NUM_GROUND_STATIONS> *dsl);
+
+    void AddQueueDistance(int32_t target_node_id);
+    uint64_t GetQueueDistance(int32_t target_node_id);
+    void ReduceQueueDistance(int32_t target_node_id);
     void ModifyDistanceLookup(int32_t target_node_id, uint32_t distance);
     
     std::pair<std::array<uint64_t, NUM_GROUND_STATIONS>*, std::array<uint32_t, NUM_GROUND_STATIONS>*> GetQueueDistances();
@@ -98,6 +100,13 @@ private:
         int32_t forward_node_id
     );
 
+    Ptr<Satellite> GetClosestSatellite(std::set<int32_t> *node_id_set);
+    Ptr<Satellite> GetFarthestSatellite(std::set<int32_t> *node_id_set);
+
+
+    int32_t GSLNodeIdToGSLIndex(int32_t id);
+    int32_t GSLIndexToGSLNodeId(int32_t id);
+
     double m_inclination_angle; 
     int32_t m_num_orbits;
     int32_t m_satellites_per_orbit;
@@ -109,6 +118,7 @@ private:
     std::array<int32_t, 4> m_neighbor_ids;
     std::array<uint32_t, 4> m_neighbor_interfaces;
     std::array<uint32_t, NUM_GROUND_STATIONS> m_distance_lookup_array;
+    std::array<std::set<int32_t>, NUM_GROUND_STATIONS> m_destination_satellite_list;
 
     Ptr<Satellite> ExtractSatellite(int32_t node_id);
 };
