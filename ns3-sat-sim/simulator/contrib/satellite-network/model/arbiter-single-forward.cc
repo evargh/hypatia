@@ -154,7 +154,7 @@ int32_t ArbiterSingleForward::GSLIndexToGSLNodeId(int32_t id) {
     return m_nodes.GetN() - NUM_GROUND_STATIONS + id;
 }
 
-bool ArbiterSingleForward::ValidateForwardInRectangle(
+bool ArbiterSingleForward::ValidateForwardHeuristic(
         int32_t source_node_id,
         int32_t target_node_id,
         int32_t forward_node_id
@@ -173,14 +173,20 @@ bool ArbiterSingleForward::ValidateForwardInRectangle(
 
     // gets furthest destination satellite and closest source satellite to this position
     // TODO: this is just a heuristic for now and needs closer examination
-    Ptr<Satellite> source_satellite = GetClosestSatellite(&m_destination_satellite_list.at(GSLNodeIdToGSLIndex(source_node_id)));
+    Ptr<Satellite> source_satellite;
+    if(source_node_id < static_cast<int32_t>(m_nodes.GetN() - NUM_GROUND_STATIONS)) {
+	source_satellite = ExtractSatellite(source_node_id);
+    }
+    else {
+    	source_satellite = GetClosestSatellite(&m_destination_satellite_list.at(GSLNodeIdToGSLIndex(source_node_id)));
+    }
     Ptr<Satellite> destination_satellite = GetFarthestSatellite(&m_destination_satellite_list.at(GSLNodeIdToGSLIndex(target_node_id)));
 
     // gets WGS72 coordinates of ground stations, which need to be converted to WGS84
     // the underlying ground stations is not accessible from the node--it's only used by the topology
     // as a result, the only publically accessible data is the cartesian coordinate, which needs to be converted
-    Vector3D srcpos = CartesianToGeodetic(m_nodes.Get(source_node_id)->GetObject<MobilityModel>()->GetPosition());
-    Vector3D destpos = CartesianToGeodetic(m_nodes.Get(target_node_id)->GetObject<MobilityModel>()->GetPosition());
+    Vector3D srcpos = source_satellite->GetGeographicPosition(current_time);
+    Vector3D destpos = destination_satellite->GetGeographicPosition(current_time);
      
     return CheckIfInRectangle(forwardpos, srcpos, destpos);
 }    
@@ -199,6 +205,52 @@ void ArbiterSingleForward::GetNeighborInfo() {
     // iterate through interfaces (0 is loopback)
 }
 
+std::tuple<int32_t, int32_t, int32_t> ArbiterSingleForward::GetForward(
+        int32_t source_node_id,
+        int32_t target_node_id,
+        int32_t snapshot_forward_node_id
+) {
+    // each tuple stores distance, interface number, and whether or not the node is in the permitted region
+    std::array<std::tuple<uint64_t, int8_t, bool>, 4> satellite_forwarding_information;
+    for(int8_t i=0; i < 4; i++) {
+        bool in_region = ValidateForwardHeuristic(source_node_id, target_node_id, m_neighbor_ids.at(i));
+        satellite_forwarding_information.at(i) = std::make_tuple(
+				m_neighbor_queueing_distances.at(i).at(GSLNodeIdToGSLIndex(target_node_id)),
+				i,
+				in_region);
+    }
+    std::sort(satellite_forwarding_information.begin(), satellite_forwarding_information.end(), 
+                  [](std::tuple<uint64_t, int8_t, bool> a,
+                  std::tuple<uint64_t, int8_t, bool> b)
+                  {
+                      return std::get<0>(a) < std::get<0>(b);
+                  }
+    );
+    // find the best interface within the permitted region, which is sorted by queue distance
+    for(auto elem : satellite_forwarding_information) {
+        if(std::get<2>(elem)) {
+            int32_t optimal_outbound_interface = std::get<1>(elem);
+    	    if(m_neighbor_ids.at(optimal_outbound_interface) != snapshot_forward_node_id) {
+    	        NS_LOG_DEBUG("forwarding mismatch");
+    	    }
+    	    else {
+    	        NS_LOG_DEBUG("forwarding match");
+    	    }
+            return std::make_tuple(m_neighbor_ids.at(optimal_outbound_interface), optimal_outbound_interface+1, m_neighbor_interfaces.at(optimal_outbound_interface));
+        }
+    }
+    // if no interface is within the permitted region, just send to the best interface according to the DHPB metric
+    NS_LOG_DEBUG("no interface found within permitted region");
+    int32_t optimal_outbound_interface = std::get<1>(satellite_forwarding_information.at(0));
+    if(m_neighbor_ids.at(optimal_outbound_interface) != snapshot_forward_node_id) {
+        NS_LOG_DEBUG("forwarding mismatch");
+    }
+    else {
+        NS_LOG_DEBUG("forwarding match");
+    }
+    return std::make_tuple(m_neighbor_ids.at(optimal_outbound_interface), optimal_outbound_interface+1, m_neighbor_interfaces.at(optimal_outbound_interface)); 
+}
+
 std::tuple<int32_t, int32_t, int32_t> ArbiterSingleForward::TopologySatelliteNetworkDecide(
         int32_t source_node_id,
         int32_t target_node_id,
@@ -211,59 +263,17 @@ std::tuple<int32_t, int32_t, int32_t> ArbiterSingleForward::TopologySatelliteNet
     NS_LOG_DEBUG("destination: " << target_node_id << " source: " << source_node_id << " me: " << m_node_id);
     // if this arbiter is runing on a ground station, we use snapshot routing
     // the source can occasionally be a satellite in case of ICMP messages. if that's the case, use snapshot routing
-    if (m_node_id < static_cast<int32_t>(m_nodes.GetN() - NUM_GROUND_STATIONS) && source_node_id >= static_cast<int32_t>(m_nodes.GetN() - NUM_GROUND_STATIONS)) {  
+    if (m_node_id < static_cast<int32_t>(m_nodes.GetN() - NUM_GROUND_STATIONS)) {  
       GetNeighborInfo();
-      int32_t forward_node_id = std::get<0>(m_next_hop_list[target_node_id]); 
-       
+      int32_t snapshot_forward_node_id = std::get<0>(m_next_hop_list[target_node_id]);  
       // if the forward node is the target node, then this is irrelevant
-      if(forward_node_id != target_node_id) {
-        // TODO: better logging
-        // at the moment, this routing algorithm doesn't seem to scale well. the meandering initial packets result in TTL expiration messages coming from ICMP. those TTL messages are marked with the source of a satellite and the destination of the initial ground station, which is fine: until this ICMP message itself gets dropped. then the source and destination are both satellites, and this algorithm doesn't know how to route between satellites, leading to errors
-        // presumably this is also an issue for base Hypatia, but never came up
-        // as a result, if the destination is a satellite, return a failed address
-        if(target_node_id <= 1583) {
+      if(snapshot_forward_node_id != target_node_id) {
+	// throw out packets that are destined for satellites, which can happen due to ICMP
+        if(target_node_id < static_cast<int32_t>(m_nodes.GetN() - NUM_GROUND_STATIONS)) {
           return std::make_tuple(-1, 0, 0);
         }
-         
-        std::array<std::tuple<uint64_t, int8_t, bool>, 4> distance_my_interface_region;
-        for(int8_t i = 0; i < 4; i++) {
-            bool in_region = ValidateForwardInRectangle(source_node_id, target_node_id, m_neighbor_ids.at(i));
-            distance_my_interface_region.at(i) = std::make_tuple(
-                                             m_neighbor_queueing_distances.at(i).at(GSLNodeIdToGSLIndex(target_node_id)),
-                                             i,
-                                             in_region
-            );
-        }
-        std::sort(distance_my_interface_region.begin(), distance_my_interface_region.end(), 
-                  [](std::tuple<uint64_t, int8_t, bool> a,
-                  std::tuple<uint64_t, int8_t, bool> b)
-                  {
-                      return std::get<0>(a) < std::get<0>(b);
-                  });
-        // find the best interface within the permitted region
-        for(auto elem : distance_my_interface_region) {
-            if(std::get<2>(elem)) {
-                int32_t optimal_outbound_interface = std::get<1>(elem);
-		if(m_neighbor_ids.at(optimal_outbound_interface) != forward_node_id) {
-		  NS_LOG_DEBUG("forwarding mismatch");
-		}
-		else {
-		  NS_LOG_DEBUG("forwarding match");
-		}
-                return std::make_tuple(m_neighbor_ids.at(optimal_outbound_interface), optimal_outbound_interface+1, m_neighbor_interfaces.at(optimal_outbound_interface));
-            }
-        }
-        // if no interface is within the permitted region, just send to the best interface
-        NS_LOG_DEBUG("no interface found within permitted region");
-        int32_t optimal_outbound_interface = std::get<1>(distance_my_interface_region.at(0));
-	if(m_neighbor_ids.at(optimal_outbound_interface) != forward_node_id) {
-            NS_LOG_DEBUG("forwarding mismatch");
-	}
-        else {
-	    NS_LOG_DEBUG("forwarding match");
-	}
-        return std::make_tuple(m_neighbor_ids.at(optimal_outbound_interface), optimal_outbound_interface+1, m_neighbor_interfaces.at(optimal_outbound_interface)); 
-      } 
+        return GetForward(source_node_id, target_node_id, snapshot_forward_node_id);
+      }
     }
     return m_next_hop_list[target_node_id];
 }

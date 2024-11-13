@@ -94,7 +94,7 @@ private:
     bool CheckIfInRectangle(Vector3D forwardpos, Vector3D srcpos, Vector3D destpos);
     void GetNeighborInfo();    
 
-    bool ValidateForwardInRectangle(
+    bool ValidateForwardHeuristic(
         int32_t source_node_id,
         int32_t target_node_id,
         int32_t forward_node_id
@@ -103,9 +103,14 @@ private:
     Ptr<Satellite> GetClosestSatellite(std::set<int32_t> *node_id_set);
     Ptr<Satellite> GetFarthestSatellite(std::set<int32_t> *node_id_set);
 
-
     int32_t GSLNodeIdToGSLIndex(int32_t id);
     int32_t GSLIndexToGSLNodeId(int32_t id);
+
+    std::tuple<int32_t, int32_t, int32_t> GetForward(
+        int32_t source_node_id,
+        int32_t target_node_id,
+        int32_t snapshot_forward_node_id
+    );
 
     double m_inclination_angle; 
     int32_t m_num_orbits;
