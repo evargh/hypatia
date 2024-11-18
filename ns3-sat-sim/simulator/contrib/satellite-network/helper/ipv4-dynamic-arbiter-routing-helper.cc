@@ -16,26 +16,26 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "ipv4-satellite-arbiter-routing-helper.h"
+#include "ipv4-dynamic-arbiter-routing-helper.h"
 
 namespace ns3 {
 
-NS_LOG_COMPONENT_DEFINE ("Ipv4SatelliteArbiterRoutingHelper");
+NS_LOG_COMPONENT_DEFINE ("Ipv4DynamicArbiterRoutingHelper");
 
-Ipv4SatelliteArbiterRoutingHelper::Ipv4SatelliteArbiterRoutingHelper() {
+Ipv4DynamicArbiterRoutingHelper::Ipv4DynamicArbiterRoutingHelper() {
     // Left empty intentionally
 }
 
-Ipv4SatelliteArbiterRoutingHelper::Ipv4SatelliteArbiterRoutingHelper (const Ipv4SatelliteArbiterRoutingHelper &o) {
+Ipv4DynamicArbiterRoutingHelper::Ipv4DynamicArbiterRoutingHelper (const Ipv4DynamicArbiterRoutingHelper &o) {
     // Left empty intentionally
 }
 
-Ipv4SatelliteArbiterRoutingHelper* Ipv4SatelliteArbiterRoutingHelper::Copy (void) const {
-  return new Ipv4SatelliteArbiterRoutingHelper (*this);
+Ipv4DynamicArbiterRoutingHelper* Ipv4DynamicArbiterRoutingHelper::Copy (void) const {
+  return new Ipv4DynamicArbiterRoutingHelper (*this);
 }
 
-Ptr<Ipv4RoutingProtocol> Ipv4SatelliteArbiterRoutingHelper::Create (Ptr<Node> node) const {
-  return CreateObject<Ipv4SatelliteArbiterRouting> ();
+Ptr<Ipv4RoutingProtocol> Ipv4DynamicArbiterRoutingHelper::Create (Ptr<Node> node) const {
+  return CreateObject<Ipv4DynamicArbiterRouting> ();
 }
 
 } // namespace ns3

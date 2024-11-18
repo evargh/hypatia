@@ -17,11 +17,11 @@
  * Author: Simon               2020
  */
 
-#include "arbiter-single-forward-helper.h"
+#include "arbiter-dynamic-helper.h"
 
 namespace ns3 {
 
-ArbiterSingleForwardHelper::ArbiterSingleForwardHelper (Ptr<BasicSimulation> basicSimulation, NodeContainer nodes) {
+ArbiterDynamicHelper::ArbiterDynamicHelper (Ptr<BasicSimulation> basicSimulation, NodeContainer nodes) {
     std::cout << "SETUP SINGLE FORWARDING ROUTING" << std::endl;
     m_basicSimulation = basicSimulation;
     m_nodes = nodes;
@@ -32,11 +32,15 @@ ArbiterSingleForwardHelper::ArbiterSingleForwardHelper (Ptr<BasicSimulation> bas
     basicSimulation->RegisterTimestamp("Create initial single forwarding state");
 
     // Set the routing arbiters
+    double inclination_angle = parse_positive_double(m_basicSimulation->GetConfigParamOrFail("orbit_inclination"));
+    int32_t num_orbits = static_cast<int32_t>(parse_positive_int64(m_basicSimulation->GetConfigParamOrFail("num_orbits")));
+    // the distance between satellites
     std::cout << "  > Setting the routing arbiter on each node" << std::endl;
     for (size_t i = 0; i < m_nodes.GetN(); i++) {
-        Ptr<ArbiterSingleForward> arbiter = CreateObject<ArbiterSingleForward>(m_nodes.Get(i), m_nodes, initial_forwarding_state[i]);
+        Ptr<ArbiterDynamic> arbiter = CreateObject<ArbiterDynamic>(m_nodes.Get(i), m_nodes, initial_forwarding_state[i], inclination_angle, num_orbits);
         m_arbiters.push_back(arbiter);
-        m_nodes.Get(i)->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4ArbiterRouting>()->SetArbiter(arbiter);
+        Ptr<Ipv4RoutingProtocol> ipv4route = m_nodes.Get(i)->GetObject<Ipv4>()->GetRoutingProtocol();
+	ipv4route->GetObject<Ipv4DynamicArbiterRouting>()->SetArbiter(arbiter);
     }
     basicSimulation->RegisterTimestamp("Setup routing arbiter on each node");
 
@@ -51,7 +55,7 @@ ArbiterSingleForwardHelper::ArbiterSingleForwardHelper (Ptr<BasicSimulation> bas
 }
 
 std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>>
-ArbiterSingleForwardHelper::InitialEmptyForwardingState() {
+ArbiterDynamicHelper::InitialEmptyForwardingState() {
     std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>> initial_forwarding_state;
     for (size_t i = 0; i < m_nodes.GetN(); i++) {
         std::vector <std::tuple<int32_t, int32_t, int32_t>> next_hop_list;
@@ -63,7 +67,7 @@ ArbiterSingleForwardHelper::InitialEmptyForwardingState() {
     return initial_forwarding_state;
 }
 
-void ArbiterSingleForwardHelper::UpdateForwardingState(int64_t t) {
+void ArbiterDynamicHelper::UpdateForwardingState(int64_t t) {
 
     // Filename
     std::ostringstream res;
@@ -80,13 +84,14 @@ void ArbiterSingleForwardHelper::UpdateForwardingState(int64_t t) {
     std::string line;
     std::ifstream fstate_file(filename);
     if (fstate_file) {
-
         // Go over each line
         size_t line_counter = 0;
         while (getline(fstate_file, line)) {
 
             // Split on ,
-            std::vector<std::string> comma_split = split_string(line, ",", 5);
+            // not mentioned, but this is from exputil
+            // TODO: make this expect a split of 6 after the satellite network state is regenerated
+            std::vector<std::string> comma_split = split_string(line, ",", 6);
 
             // Retrieve identifiers
             int64_t current_node_id = parse_positive_int64(comma_split[0]);
@@ -94,6 +99,7 @@ void ArbiterSingleForwardHelper::UpdateForwardingState(int64_t t) {
             int64_t next_hop_node_id = parse_int64(comma_split[2]);
             int64_t my_if_id = parse_int64(comma_split[3]);
             int64_t next_if_id = parse_int64(comma_split[4]);
+            int64_t distance = parse_int64(comma_split[5]);
 
             // Check the node identifiers
             NS_ABORT_MSG_IF(current_node_id < 0 || current_node_id >= m_nodes.GetN(), "Invalid current node id.");
@@ -151,6 +157,28 @@ void ArbiterSingleForwardHelper::UpdateForwardingState(int64_t t) {
                     1 + next_if_id  // Skip the loop-back interface
             );
 
+            m_arbiters.at(current_node_id)->ModifyDistanceLookup(
+                    target_node_id,
+                    static_cast<uint32_t>(distance)
+            );
+
+            // if the target node and the next hop node are the same, this is a "destination satellite"
+            // this should be communicate to all arbiters in order to construct a permitted region
+            // Hypatia also doesn't print redundant lines. Therefore whenever a destination satellite becomes invalid,
+            // it needs to be removed from all arbiter lists
+            //
+            // each time step, the helper needs to keep track of which nodes are considered destinations to which ground stations
+            // if it encounters a line where that node is no longer a destination satellite to a certain ground station, it needs to 
+            // be removed from all lists
+            int32_t gsl_id = target_node_id - m_nodes.GetN() + ArbiterDynamic::NUM_GROUND_STATIONS;
+            if(target_node_id == next_hop_node_id) {
+                m_destination_satellite_list.at(gsl_id).insert(current_node_id);
+            }
+            else if(m_destination_satellite_list.at(gsl_id).count(current_node_id) > 0) {
+                m_destination_satellite_list.at(gsl_id).erase(current_node_id);
+            }
+           
+
             // Next line
             line_counter++;
 
@@ -162,7 +190,9 @@ void ArbiterSingleForwardHelper::UpdateForwardingState(int64_t t) {
     } else {
         throw std::runtime_error(format_string("File %s could not be read.", filename.c_str()));
     }
-
+    for (auto &elem : m_arbiters) {
+        elem->SetDestinationSatelliteList(&m_destination_satellite_list);
+    }
     // Given that this code will only be used with satellite networks, this is okay-ish,
     // but it does create a very tight coupling between the two -- technically this class
     // can be used for other purposes as well
@@ -171,7 +201,7 @@ void ArbiterSingleForwardHelper::UpdateForwardingState(int64_t t) {
         // Plan the next update
         int64_t next_update_ns = t + m_dynamicStateUpdateIntervalNs;
         if (next_update_ns < m_basicSimulation->GetSimulationEndTimeNs()) {
-            Simulator::Schedule(NanoSeconds(m_dynamicStateUpdateIntervalNs), &ArbiterSingleForwardHelper::UpdateForwardingState, this, next_update_ns);
+            Simulator::Schedule(NanoSeconds(m_dynamicStateUpdateIntervalNs), &ArbiterDynamicHelper::UpdateForwardingState, this, next_update_ns);
         }
 
     }

@@ -18,8 +18,8 @@
  * Author: Simon <isniska@gmail.com>
  */
 
-#ifndef IPV4_SATELLITE_ARBITER_ROUTING_H
-#define IPV4_SATELLITE_ARBITER_ROUTING_H
+#ifndef IPV4_DYNAMIC_ARBITER_ROUTING_H
+#define IPV4_DYNAMIC_ARBITER_ROUTING_H
 
 #include <list>
 #include <utility>
@@ -30,7 +30,7 @@
 #include "ns3/ptr.h"
 #include "ns3/ipv4.h"
 #include "ns3/ipv4-routing-protocol.h"
-#include "ns3/arbiter-single-forward.h"
+#include "ns3/arbiter-dynamic.h"
 #include "ns3/ipv4-arbiter-routing.h"
 #include "ns3/point-to-point-net-device.h"
 #include "ns3/point-to-point-channel.h"
@@ -50,13 +50,13 @@ class Node;
  *  for being able to support dynamic modifications to forwarding policy, but ArbiterSingleForward
  *  can.
  */
-class Ipv4SatelliteArbiterRouting : public Ipv4RoutingProtocol
+class Ipv4DynamicArbiterRouting : public Ipv4RoutingProtocol
 {
 public:
   static TypeId GetTypeId (void);
 
-  Ipv4SatelliteArbiterRouting ();
-  virtual ~Ipv4SatelliteArbiterRouting ();
+  Ipv4DynamicArbiterRouting ();
+  virtual ~Ipv4DynamicArbiterRouting ();
 
   /**
    * Used by the transport-layer to output.
@@ -104,16 +104,16 @@ public:
   virtual void NotifyRemoveAddress (uint32_t interface, Ipv4InterfaceAddress address);
   virtual void PrintRoutingTable (Ptr<OutputStreamWrapper> stream, Time::Unit unit = Time::S) const;
   virtual void SetIpv4 (Ptr<Ipv4> ipv4);
-  void SetArbiter (Ptr<ArbiterSingleForward> arbiter);
+  void SetArbiter (Ptr<ArbiterDynamic> arbiter);
   void IncreaseArbiterDistance (Ptr<Packet> p);
   void ReduceArbiterDistance (Ptr<Packet> p);
-  Ptr<ArbiterSingleForward> GetArbiter ();
+  Ptr<ArbiterDynamic> GetArbiter ();
   
 
 private:
     Ptr<Ipv4> m_ipv4;
     Ptr<Ipv4Route> LookupArbiter (const Ipv4Address& dest, const Ipv4Header &header, Ptr<const Packet> p, Ptr<NetDevice> oif = 0);
-    Ptr<ArbiterSingleForward> m_arbiter = 0;
+    Ptr<ArbiterDynamic> m_arbiter = 0;
     Ipv4Address m_nodeSingleIpAddress;
     Ipv4Mask loopbackMask = Ipv4Mask("255.0.0.0");
     Ipv4Address loopbackIp = Ipv4Address("127.0.0.1");
@@ -123,4 +123,4 @@ private:
 
 } // Namespace ns3
 
-#endif /* IPV4_SATELLITE_ARBITER_ROUTING_H */
+#endif /* IPV4_DYNAMIC_ARBITER_ROUTING_H */

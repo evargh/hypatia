@@ -20,6 +20,7 @@
 #ifndef ARBITER_SINGLE_FORWARD_H
 #define ARBITER_SINGLE_FORWARD_H
 
+#include <tuple>
 #include "ns3/arbiter-satnet.h"
 #include "ns3/topology-satellite-network.h"
 #include "ns3/hash.h"
@@ -28,24 +29,18 @@
 #include "ns3/udp-header.h"
 #include "ns3/tcp-header.h"
 
-
 namespace ns3 {
 
 class ArbiterSingleForward : public ArbiterSatnet
 {
 public:
-    const static int32_t NUM_GROUND_STATIONS = 100;
-    const static int32_t APPROXIMATE_EARTH_RADIUS_M = 6371000;
-    const static int32_t APPROXIMATE_EARTH_EQUATORIAL_CIRCUMFERENCE = 2*pi*APPROXIMATE_EARTH_RADIUS_M; 
     static TypeId GetTypeId (void);
 
     // Constructor for single forward next-hop forwarding state
     ArbiterSingleForward(
             Ptr<Node> this_node,
             NodeContainer nodes,
-            std::vector<std::tuple<int32_t, int32_t, int32_t>> next_hop_list,
-            double inclination_angle,
-            int32_t num_orbits
+            std::vector<std::tuple<int32_t, int32_t, int32_t>> next_hop_list
     );
 
     // Single forward next-hop implementation
@@ -63,69 +58,9 @@ public:
     // Static routing table
     std::string StringReprOfForwardingState();
 
-    // Previously, ArbiterSingleForward had no publically-callable function that could
-    // dynamically change how it forwards packets. This function is intended to permit that
-    // In refactored code, there could be an "ArbiterDynamic" class with a virtual function definition
-    // that requires inheritors to define how forwarding state should be mutated.
-    
-    // For handling DBPR things
-    void SetDestinationSatelliteList(std::array<std::set<int32_t>, NUM_GROUND_STATIONS> *dsl);
-
-    void AddQueueDistance(int32_t target_node_id);
-    uint64_t GetQueueDistance(int32_t target_node_id);
-    void ReduceQueueDistance(int32_t target_node_id);
-    void ModifyDistanceLookup(int32_t target_node_id, uint32_t distance);
-    
-    std::pair<std::array<uint64_t, NUM_GROUND_STATIONS>*, std::array<uint32_t, NUM_GROUND_STATIONS>*> GetQueueDistances();
-    
-    void SetNeighborQueueDistance(
-        int32_t neighbor_node_id,
-        uint32_t my_interface_id,
-        uint32_t remote_node_id,
-        std::array<uint64_t, NUM_GROUND_STATIONS> *neighbor_queueing_distance
-    );
-
 private:
-    // this function inverts the cartesian MobilityModule coordinates to generate latitude and longitude
-    // so that satellites and ground stations can have comparable coordinates
-    // thisisn't a precise inverse of the WGS72 standard, since it approximates the earth as a sphere
-    // and not a flattened ellipsoid
-    Vector3D CartesianToGeodetic(Vector3D cartesian);
-    bool CheckIfInRectangle(Vector3D forwardpos, Vector3D srcpos, Vector3D destpos);
-    void GetNeighborInfo();    
-
-    bool ValidateForwardHeuristic(
-        int32_t source_node_id,
-        int32_t target_node_id,
-        int32_t forward_node_id
-    );
-
-    Ptr<Satellite> GetClosestSatellite(std::set<int32_t> *node_id_set);
-    Ptr<Satellite> GetFarthestSatellite(std::set<int32_t> *node_id_set);
-
-    int32_t GSLNodeIdToGSLIndex(int32_t id);
-    int32_t GSLIndexToGSLNodeId(int32_t id);
-
-    std::tuple<int32_t, int32_t, int32_t> GetForward(
-        int32_t source_node_id,
-        int32_t target_node_id,
-        int32_t snapshot_forward_node_id
-    );
-
-    double m_inclination_angle; 
-    int32_t m_num_orbits;
-    int32_t m_satellites_per_orbit;
-
     std::vector<std::tuple<int32_t, int32_t, int32_t>> m_next_hop_list;
 
-    std::array<uint64_t, NUM_GROUND_STATIONS> m_queueing_distances;
-    std::array<std::array<uint64_t, NUM_GROUND_STATIONS>, 4> m_neighbor_queueing_distances;
-    std::array<int32_t, 4> m_neighbor_ids;
-    std::array<uint32_t, 4> m_neighbor_interfaces;
-    std::array<uint32_t, NUM_GROUND_STATIONS> m_distance_lookup_array;
-    std::array<std::set<int32_t>, NUM_GROUND_STATIONS> m_destination_satellite_list;
-
-    Ptr<Satellite> ExtractSatellite(int32_t node_id);
 };
 
 }

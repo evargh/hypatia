@@ -34,7 +34,7 @@
 #include "ns3/node-container.h"
 #include "gsl-net-device.h"
 #include "gsl-channel.h"
-#include "ns3/ipv4-satellite-arbiter-routing.h"
+#include "ns3/ipv4-dynamic-arbiter-routing.h"
 
 namespace ns3 {
 
@@ -281,8 +281,8 @@ GSLNetDevice::TransmitStart (Ptr<Packet> p, const Address dest)
           "From " << m_node->GetId() << 
           " -- UID is " << puid << " -- Delay is " << txCompleteTime.GetSeconds());
         // if the transmitting node is a satellite, and the ipv4 protocol is used, reduce the arbiter distance
-        if (protocol == 0x0800 && m_node->GetId() < m_node->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4SatelliteArbiterRouting>()->GetArbiter()->GetNumNodes() - 100) {
-          m_node->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4SatelliteArbiterRouting>()->ReduceArbiterDistance(p);
+        if (protocol == 0x0800 && m_node->GetId() < m_node->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4DynamicArbiterRouting>()->GetArbiter()->GetNumNodes() - 100) {
+          m_node->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4DynamicArbiterRouting>()->ReduceArbiterDistance(p);
         }
       }
 
@@ -407,8 +407,8 @@ GSLNetDevice::Receive (Ptr<Packet> packet)
       NS_LOG_DEBUG (
         "To " << m_node->GetId() << " -- UID is " << packet->GetUid());
       // if the receiving node is a satellite, and the ipv4 protocol is used, increase the arbiter distance
-      if (protocol == 0x0800 && m_node->GetId() < m_node->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4SatelliteArbiterRouting>()->GetArbiter()->GetNumNodes() - 100) {
-        m_node->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4SatelliteArbiterRouting>()->IncreaseArbiterDistance(ipv4Packet);
+      if (protocol == 0x0800 && m_node->GetId() < m_node->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4DynamicArbiterRouting>()->GetArbiter()->GetNumNodes() - 100) {
+        m_node->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4DynamicArbiterRouting>()->IncreaseArbiterDistance(ipv4Packet);
       }
       if (!m_promiscCallback.IsNull ())
       {

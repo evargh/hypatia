@@ -34,7 +34,7 @@
 #include "ns3/ppp-header.h"
 #include "point-to-point-laser-net-device.h"
 #include "point-to-point-laser-channel.h"
-#include "ns3/ipv4-satellite-arbiter-routing.h"
+#include "ns3/ipv4-dynamic-arbiter-routing.h"
 
 namespace ns3 {
 
@@ -290,7 +290,7 @@ PointToPointLaserNetDevice::TransmitStart (Ptr<Packet> p)
             "From " << m_node->GetId() << " -- To " << m_destination_node->GetId() << 
             " -- UID is " << puid << " -- Delay is " << txCompleteTime.GetSeconds());
         if (protocol == 0x0800) { 
-	    m_node->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4SatelliteArbiterRouting>()->ReduceArbiterDistance(p);
+	    m_node->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4DynamicArbiterRouting>()->ReduceArbiterDistance(p);
         }
       }
       // then pass the copy of that packet to the arbiter, which can determine its destination by reading its ipv4 header
@@ -415,7 +415,7 @@ PointToPointLaserNetDevice::Receive (Ptr<Packet> packet)
         // If it's a packet with higher-layer data, log it
         NS_LOG_DEBUG ("From " << m_destination_node->GetId() << " -- To " << m_node->GetId() << " -- UID is " << packet->GetUid());
 	if (protocol == 0x0800) { 
-	  m_node->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4SatelliteArbiterRouting>()->IncreaseArbiterDistance(ipv4Packet);
+	  m_node->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4DynamicArbiterRouting>()->IncreaseArbiterDistance(ipv4Packet);
 	}
         if (!m_promiscCallback.IsNull ())
 	{
@@ -576,7 +576,7 @@ PointToPointLaserNetDevice::ProcessL2Frame (P2PLaserNetDeviceHeader* p)
   m_node->
     GetObject<Ipv4>()->
     GetRoutingProtocol()->
-    GetObject<Ipv4SatelliteArbiterRouting>()->
+    GetObject<Ipv4DynamicArbiterRouting>()->
     GetArbiter()->SetNeighborQueueDistance(m_destination_node->GetId(), GetIfIndex()-1, GetRemoteIf()-1, p->GetQueueDistances());
 }
 
@@ -599,7 +599,7 @@ PointToPointLaserNetDevice::CreateL2Frame ()
   std::pair<std::array<uint64_t, 100>*, std::array<uint32_t, 100>*> arbiter_distances = m_node->
                                                 GetObject<Ipv4>()->
                                                 GetRoutingProtocol()->
-                                                GetObject<Ipv4SatelliteArbiterRouting>()->
+                                                GetObject<Ipv4DynamicArbiterRouting>()->
                                                 GetArbiter()->GetQueueDistances();
   p2ph.SetQueueDistances(std::get<0>(arbiter_distances), std::get<1>(arbiter_distances));
   p->AddHeader(p2ph);

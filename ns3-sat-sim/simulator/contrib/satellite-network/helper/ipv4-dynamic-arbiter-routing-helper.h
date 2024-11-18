@@ -16,27 +16,27 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef IPV4_SATELLITE_ARBITER_ROUTING_HELPER_H
-#define IPV4_SATELLITE_ARBITER_ROUTING_HELPER_H
+#ifndef IPV4_DYNAMIC_ARBITER_ROUTING_HELPER_H
+#define IPV4_DYNAMIC_ARBITER_ROUTING_HELPER_H
 
 #include "ns3/log.h"
 #include "ns3/ipv4-routing-helper.h"
-#include "ns3/ipv4-satellite-arbiter-routing.h"
+#include "ns3/ipv4-dynamic-arbiter-routing.h"
 
 namespace ns3 {
 
-class Ipv4SatelliteArbiterRoutingHelper : public Ipv4RoutingHelper
+class Ipv4DynamicArbiterRoutingHelper : public Ipv4RoutingHelper
 {
 public:
-  Ipv4SatelliteArbiterRoutingHelper ();
-  Ipv4SatelliteArbiterRoutingHelper (const Ipv4SatelliteArbiterRoutingHelper &);
-  Ipv4SatelliteArbiterRoutingHelper* Copy (void) const;
+  Ipv4DynamicArbiterRoutingHelper ();
+  Ipv4DynamicArbiterRoutingHelper (const Ipv4DynamicArbiterRoutingHelper &);
+  Ipv4DynamicArbiterRoutingHelper* Copy (void) const;
   virtual Ptr<Ipv4RoutingProtocol> Create (Ptr<Node> node) const;
 
 private:
-  Ipv4SatelliteArbiterRoutingHelper &operator = (const Ipv4SatelliteArbiterRoutingHelper &);
+  Ipv4DynamicArbiterRoutingHelper &operator = (const Ipv4DynamicArbiterRoutingHelper &);
 };
 
 } // namespace ns3
 
-#endif /* IPV4_SATELLITE_ARBITER_ROUTING_HELPER_H */
+#endif /* IPV4_DYNAMIC_ARBITER_ROUTING_HELPER_H */

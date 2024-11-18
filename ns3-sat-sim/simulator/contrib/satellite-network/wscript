@@ -15,9 +15,11 @@ def build(bld):
         'model/topology-satellite-network.cc',
         'model/arbiter-satnet.cc',
         'model/arbiter-single-forward.cc',
-	'model/ipv4-satellite-arbiter-routing.cc',
+	'model/arbiter-dynamic.cc',
+	'model/ipv4-dynamic-arbiter-routing.cc',
         'helper/arbiter-single-forward-helper.cc',
-	'helper/ipv4-satellite-arbiter-routing-helper.cc',
+	'helper/arbiter-dynamic-helper.cc',
+	'helper/ipv4-dynamic-arbiter-routing-helper.cc',
         'helper/gsl-if-bandwidth-helper.cc',
         ]
 
@@ -41,7 +43,11 @@ def build(bld):
         'model/topology-satellite-network.h',
         'model/arbiter-satnet.h',
         'model/arbiter-single-forward.h',
+	'model/arbiter-dynamic.h',
+	'model/ipv4-dynamic-arbiter-routing.h',
         'helper/arbiter-single-forward-helper.h',
+	'helper/arbiter-dynamic-helper.h',
+	'helper/ipv4-dynamic-arbiter-routing-helper.h',
         'helper/gsl-if-bandwidth-helper.h',
         ]
 

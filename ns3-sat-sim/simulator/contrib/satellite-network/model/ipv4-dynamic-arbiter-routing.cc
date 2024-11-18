@@ -32,24 +32,24 @@
 #include "ns3/simulator.h"
 #include "ns3/ipv4-route.h"
 #include "ns3/output-stream-wrapper.h"
-#include "ipv4-satellite-arbiter-routing.h"
+#include "ipv4-dynamic-arbiter-routing.h"
 
 namespace ns3 {
 
-    NS_LOG_COMPONENT_DEFINE ("Ipv4SatelliteArbiterRouting");
+    NS_LOG_COMPONENT_DEFINE ("Ipv4DynamicArbiterRouting");
 
-    NS_OBJECT_ENSURE_REGISTERED (Ipv4SatelliteArbiterRouting);
+    NS_OBJECT_ENSURE_REGISTERED (Ipv4DynamicArbiterRouting);
 
     TypeId
-    Ipv4SatelliteArbiterRouting::GetTypeId(void) {
-        static TypeId tid = TypeId("ns3::Ipv4SatelliteArbiterRouting")
+    Ipv4DynamicArbiterRouting::GetTypeId(void) {
+        static TypeId tid = TypeId("ns3::Ipv4DynamicArbiterRouting")
                 .SetParent<Ipv4RoutingProtocol>()
                 .SetGroupName("Internet")
-                .AddConstructor<Ipv4SatelliteArbiterRouting>();
+                .AddConstructor<Ipv4DynamicArbiterRouting>();
         return tid;
     }
 
-    Ipv4SatelliteArbiterRouting::Ipv4SatelliteArbiterRouting() : m_ipv4(0) {
+    Ipv4DynamicArbiterRouting::Ipv4DynamicArbiterRouting() : m_ipv4(0) {
         NS_LOG_FUNCTION(this);
     }
 
@@ -65,7 +65,7 @@ namespace ns3 {
      * @return Valid Ipv4 route
      */
     Ptr<Ipv4Route>
-    Ipv4SatelliteArbiterRouting::LookupArbiter (const Ipv4Address& dest, const Ipv4Header &header, Ptr<const Packet> p, Ptr<NetDevice> oif) {
+    Ipv4DynamicArbiterRouting::LookupArbiter (const Ipv4Address& dest, const Ipv4Header &header, Ptr<const Packet> p, Ptr<NetDevice> oif) {
 
         // Arbiter must be set
         if (m_arbiter == 0) {
@@ -137,7 +137,7 @@ namespace ns3 {
      * @return IPv4 route
      */
     Ptr <Ipv4Route>
-    Ipv4SatelliteArbiterRouting::RouteOutput(Ptr <Packet> p, const Ipv4Header &header, Ptr <NetDevice> oif, Socket::SocketErrno &sockerr) {
+    Ipv4DynamicArbiterRouting::RouteOutput(Ptr <Packet> p, const Ipv4Header &header, Ptr <NetDevice> oif, Socket::SocketErrno &sockerr) {
         NS_LOG_FUNCTION(this << p << header << oif << sockerr);
         Ipv4Address destination = header.GetDestination();
 
@@ -161,7 +161,7 @@ namespace ns3 {
     }
 
     bool
-    Ipv4SatelliteArbiterRouting::RouteInput(Ptr<const Packet> p, const Ipv4Header &ipHeader, Ptr<const NetDevice> idev,
+    Ipv4DynamicArbiterRouting::RouteInput(Ptr<const Packet> p, const Ipv4Header &ipHeader, Ptr<const NetDevice> idev,
                                           UnicastForwardCallback ucb, MulticastForwardCallback mcb,
                                           LocalDeliverCallback lcb, ErrorCallback ecb) {
         NS_ASSERT(m_ipv4 != 0);
@@ -212,12 +212,12 @@ namespace ns3 {
 
     }
 
-    Ipv4SatelliteArbiterRouting::~Ipv4SatelliteArbiterRouting() {
+    Ipv4DynamicArbiterRouting::~Ipv4DynamicArbiterRouting() {
         NS_LOG_FUNCTION(this);
     }
 
     void
-    Ipv4SatelliteArbiterRouting::NotifyInterfaceUp(uint32_t i) {
+    Ipv4DynamicArbiterRouting::NotifyInterfaceUp(uint32_t i) {
 
         // One IP address per interface
         if (m_ipv4->GetNAddresses(i) != 1) {
@@ -246,26 +246,26 @@ namespace ns3 {
     }
 
     void
-    Ipv4SatelliteArbiterRouting::NotifyInterfaceDown(uint32_t i) {
+    Ipv4DynamicArbiterRouting::NotifyInterfaceDown(uint32_t i) {
         throw std::runtime_error("Interfaces are not permitted to go down.");
     }
 
     void
-    Ipv4SatelliteArbiterRouting::NotifyAddAddress(uint32_t interface, Ipv4InterfaceAddress address) {
+    Ipv4DynamicArbiterRouting::NotifyAddAddress(uint32_t interface, Ipv4InterfaceAddress address) {
         if (m_ipv4->IsUp(interface)) {
             throw std::runtime_error("Not permitted to add IP addresses after the interface has gone up.");
         }
     }
 
     void
-    Ipv4SatelliteArbiterRouting::NotifyRemoveAddress(uint32_t interface, Ipv4InterfaceAddress address) {
+    Ipv4DynamicArbiterRouting::NotifyRemoveAddress(uint32_t interface, Ipv4InterfaceAddress address) {
         if (m_ipv4->IsUp(interface)) {
             throw std::runtime_error("Not permitted to remove IP addresses after the interface has gone up.");
         }
     }
 
     void
-    Ipv4SatelliteArbiterRouting::SetIpv4(Ptr <Ipv4> ipv4) {
+    Ipv4DynamicArbiterRouting::SetIpv4(Ptr <Ipv4> ipv4) {
         NS_LOG_FUNCTION(this << ipv4);
         NS_ASSERT(m_ipv4 == 0 && ipv4 != 0);
         m_ipv4 = ipv4;
@@ -280,23 +280,23 @@ namespace ns3 {
     }
 
     void 
-    Ipv4SatelliteArbiterRouting::PrintRoutingTable(Ptr<OutputStreamWrapper> stream, Time::Unit unit) const {
+    Ipv4DynamicArbiterRouting::PrintRoutingTable(Ptr<OutputStreamWrapper> stream, Time::Unit unit) const {
         std::ostream* os = stream->GetStream ();
         *os << m_arbiter->StringReprOfForwardingState();
     }
 
     void
-    Ipv4SatelliteArbiterRouting::SetArbiter (Ptr<ArbiterSingleForward> arbiter) {
+    Ipv4DynamicArbiterRouting::SetArbiter (Ptr<ArbiterDynamic> arbiter) {
         m_arbiter = arbiter;
     }
 
-    Ptr<ArbiterSingleForward>
-    Ipv4SatelliteArbiterRouting::GetArbiter () {
+    Ptr<ArbiterDynamic>
+    Ipv4DynamicArbiterRouting::GetArbiter () {
         return m_arbiter;
     }
 
     void
-    Ipv4SatelliteArbiterRouting::IncreaseArbiterDistance(Ptr<Packet> p) { 
+    Ipv4DynamicArbiterRouting::IncreaseArbiterDistance(Ptr<Packet> p) { 
         Ipv4Header ipHeader;
         p->RemoveHeader(ipHeader);
         // adjust by number of nodes in the network, as determined by the arbiter
@@ -306,7 +306,7 @@ namespace ns3 {
     }
 
     void
-    Ipv4SatelliteArbiterRouting::ReduceArbiterDistance(Ptr<Packet> p) { 
+    Ipv4DynamicArbiterRouting::ReduceArbiterDistance(Ptr<Packet> p) { 
         Ipv4Header ipHeader;
         p->RemoveHeader(ipHeader);
         // adjust by number of nodes in the network, as determined by the arbiter
