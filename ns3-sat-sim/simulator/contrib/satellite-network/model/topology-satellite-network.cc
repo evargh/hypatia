@@ -32,11 +32,17 @@ namespace ns3 {
         ;
         return tid;
     }
-
+    
     TopologySatelliteNetwork::TopologySatelliteNetwork(Ptr<BasicSimulation> basicSimulation, const Ipv4RoutingHelper& ipv4RoutingHelper) {
         m_basicSimulation = basicSimulation;
         ReadConfig();
-        Build(ipv4RoutingHelper);
+        Build(ipv4RoutingHelper, PointToPointLaserHelper(), GSLHelper());
+    }
+
+    TopologySatelliteNetwork::TopologySatelliteNetwork(Ptr<BasicSimulation> basicSimulation, const Ipv4RoutingHelper& ipv4RoutingHelper, PointToPointLaserHelper p2pLaserHelper, GSLHelper gslHelper) {
+        m_basicSimulation = basicSimulation;
+        ReadConfig();
+        Build(ipv4RoutingHelper, p2pLaserHelper, gslHelper);
     }
 
     void TopologySatelliteNetwork::ReadConfig() {
@@ -46,7 +52,7 @@ namespace ns3 {
     }
 
     void
-    TopologySatelliteNetwork::Build(const Ipv4RoutingHelper& ipv4RoutingHelper) {
+    TopologySatelliteNetwork::Build(const Ipv4RoutingHelper& ipv4RoutingHelper, PointToPointLaserHelper p2pLaserHelper, GSLHelper gslHelper) {
         std::cout << "SATELLITE NETWORK" << std::endl;
 
         // Initialize satellites
@@ -88,11 +94,11 @@ namespace ns3 {
 
         // Create ISLs
         std::cout << "  > Reading and creating ISLs" << std::endl;
-        ReadISLs();
+        ReadISLs(p2pLaserHelper);
 
         // Create GSLs
         std::cout << "  > Creating GSLs" << std::endl;
-        CreateGSLs();
+        CreateGSLs(gslHelper);
 
         // ARP caches
         std::cout << "  > Populating ARP caches" << std::endl;
@@ -233,11 +239,9 @@ namespace ns3 {
     }
 
     void
-    TopologySatelliteNetwork::ReadISLs()
+    TopologySatelliteNetwork::ReadISLs(PointToPointLaserHelper p2p_laser_helper)
     {
-
         // Link helper
-        PointToPointLaserHelper p2p_laser_helper;
         std::string max_queue_size_str = format_string("%" PRId64 "p", m_isl_max_queue_size_pkts);
         p2p_laser_helper.SetQueue("ns3::DropTailQueue<Packet>", "MaxSize", QueueSizeValue(QueueSize(max_queue_size_str)));
         p2p_laser_helper.SetDeviceAttribute ("DataRate", DataRateValue (DataRate (std::to_string(m_isl_data_rate_megabit_per_s) + "Mbps")));
@@ -305,10 +309,9 @@ namespace ns3 {
     }
 
     void
-    TopologySatelliteNetwork::CreateGSLs() {
+    TopologySatelliteNetwork::CreateGSLs(GSLHelper gsl_helper) {
 
         // Link helper
-        GSLHelper gsl_helper;
         std::string max_queue_size_str = format_string("%" PRId64 "p", m_gsl_max_queue_size_pkts);
         gsl_helper.SetQueue("ns3::DropTailQueue<Packet>", "MaxSize", QueueSizeValue(QueueSize(max_queue_size_str)));
         gsl_helper.SetDeviceAttribute ("DataRate", DataRateValue (DataRate (std::to_string(m_gsl_data_rate_megabit_per_s) + "Mbps")));

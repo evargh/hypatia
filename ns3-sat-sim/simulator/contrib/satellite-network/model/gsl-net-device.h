@@ -36,7 +36,6 @@
 #include "ns3/ptr.h"
 #include "ns3/mac48-address.h"
 #include "ns3/node-container.h"
-#include "p2p-laser-net-device-header.h"
 
 namespace ns3 {
 
@@ -314,8 +313,6 @@ private:
      * The FIFO queue for the destination MAC addresses
      */
   std::queue<Address> m_queueDests;
-
-  Time m_L2SendInterval;
 
   /**
    * Error model for receive packet events

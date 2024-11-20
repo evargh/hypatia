@@ -86,7 +86,7 @@ void ArbiterSingleForwardHelper::UpdateForwardingState(int64_t t) {
         while (getline(fstate_file, line)) {
 
             // Split on ,
-            std::vector<std::string> comma_split = split_string(line, ",", 5);
+            std::vector<std::string> comma_split = split_string(line, ",", 6);
 
             // Retrieve identifiers
             int64_t current_node_id = parse_positive_int64(comma_split[0]);

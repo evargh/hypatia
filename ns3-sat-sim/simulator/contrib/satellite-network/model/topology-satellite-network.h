@@ -65,6 +65,7 @@ namespace ns3 {
         // Constructors
         static TypeId GetTypeId (void);
         TopologySatelliteNetwork(Ptr<BasicSimulation> basicSimulation, const Ipv4RoutingHelper& ipv4RoutingHelper);
+        TopologySatelliteNetwork(Ptr<BasicSimulation> basicSimulation, const Ipv4RoutingHelper& ipv4RoutingHelper, PointToPointLaserHelper p2pLaserHelper, GSLHelper gslHelper);
 
         // Inherited accessors
         const NodeContainer& GetNodes();
@@ -91,12 +92,12 @@ namespace ns3 {
 
         // Build functions
         void ReadConfig();
-        void Build(const Ipv4RoutingHelper& ipv4RoutingHelper);
+        void Build(const Ipv4RoutingHelper& ipv4RoutingHelper, PointToPointLaserHelper p2pLaserHelper, GSLHelper gslHelper);
         void ReadGroundStations();
         void ReadSatellites();
         void InstallInternetStacks(const Ipv4RoutingHelper& ipv4RoutingHelper);
-        void ReadISLs();
-        void CreateGSLs();
+        void ReadISLs(PointToPointLaserHelper p2p_laser_helper);
+        void CreateGSLs(GSLHelper gsl_helper);
 
         // Helper
         void EnsureValidNodeId(uint32_t node_id);

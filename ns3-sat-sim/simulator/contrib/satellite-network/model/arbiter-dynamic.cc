@@ -35,9 +35,7 @@ TypeId ArbiterDynamic::GetTypeId (void)
 ArbiterDynamic::ArbiterDynamic(
         Ptr<Node> this_node,
         NodeContainer nodes,
-        std::vector<std::tuple<int32_t, int32_t, int32_t>> next_hop_list,
-        double inclination_angle,
-        int32_t num_orbits
+        std::vector<std::tuple<int32_t, int32_t, int32_t>> next_hop_list
 ) : ArbiterSatnet(this_node, nodes)
 {
     m_next_hop_list = next_hop_list;
@@ -46,10 +44,6 @@ ArbiterDynamic::ArbiterDynamic(
     for(auto& item : m_neighbor_queueing_distances) {
         item.fill(0);
     }
-    m_inclination_angle = inclination_angle;
-    m_num_orbits = num_orbits;
-    m_satellites_per_orbit = (m_nodes.GetN() - 100)/num_orbits;
-    NS_ASSERT((m_nodes.GetN() - 100) % num_orbits == 0);
 }
 
 Vector3D 

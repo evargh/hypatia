@@ -43,9 +43,7 @@ public:
     ArbiterDynamic(
             Ptr<Node> this_node,
             NodeContainer nodes,
-            std::vector<std::tuple<int32_t, int32_t, int32_t>> next_hop_list,
-            double inclination_angle,
-            int32_t num_orbits
+            std::vector<std::tuple<int32_t, int32_t, int32_t>> next_hop_list
     );
 
     // Single forward next-hop implementation
@@ -108,10 +106,6 @@ private:
         int32_t target_node_id,
         int32_t snapshot_forward_node_id
     );
-
-    double m_inclination_angle; 
-    int32_t m_num_orbits;
-    int32_t m_satellites_per_orbit;
 
     std::vector<std::tuple<int32_t, int32_t, int32_t>> m_next_hop_list;
 
