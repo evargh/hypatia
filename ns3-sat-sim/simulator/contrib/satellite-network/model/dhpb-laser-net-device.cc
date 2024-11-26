@@ -32,46 +32,47 @@
 #include "ns3/uinteger.h"
 #include "ns3/pointer.h"
 #include "ns3/ppp-header.h"
-#include "point-to-point-laser-net-device.h"
+#include "dhpb-laser-net-device.h"
 #include "point-to-point-laser-channel.h"
+#include "ns3/ipv4-dynamic-arbiter-routing.h"
 
 namespace ns3 {
 
-NS_LOG_COMPONENT_DEFINE ("PointToPointLaserNetDevice");
+NS_LOG_COMPONENT_DEFINE ("DhpbPointToPointLaserNetDevice");
 
-NS_OBJECT_ENSURE_REGISTERED (PointToPointLaserNetDevice);
+NS_OBJECT_ENSURE_REGISTERED (DhpbPointToPointLaserNetDevice);
 
 TypeId 
-PointToPointLaserNetDevice::GetTypeId (void)
+DhpbPointToPointLaserNetDevice::GetTypeId (void)
 {
-  static TypeId tid = TypeId ("ns3::PointToPointLaserNetDevice")
+  static TypeId tid = TypeId ("ns3::DhpbPointToPointLaserNetDevice")
     .SetParent<NetDevice> ()
     .SetGroupName ("PointToPoint")
-    .AddConstructor<PointToPointLaserNetDevice> ()
+    .AddConstructor<DhpbPointToPointLaserNetDevice> ()
     .AddAttribute ("Mtu", "The MAC-level Maximum Transmission Unit",
                    UintegerValue (DEFAULT_MTU),
-                   MakeUintegerAccessor (&PointToPointLaserNetDevice::SetMtu,
-                                         &PointToPointLaserNetDevice::GetMtu),
+                   MakeUintegerAccessor (&DhpbPointToPointLaserNetDevice::SetMtu,
+                                         &DhpbPointToPointLaserNetDevice::GetMtu),
                    MakeUintegerChecker<uint16_t> ())
     .AddAttribute ("Address", 
                    "The MAC address of this device.",
                    Mac48AddressValue (Mac48Address ("ff:ff:ff:ff:ff:ff")),
-                   MakeMac48AddressAccessor (&PointToPointLaserNetDevice::m_address),
+                   MakeMac48AddressAccessor (&DhpbPointToPointLaserNetDevice::m_address),
                    MakeMac48AddressChecker ())
     .AddAttribute ("DataRate", 
                    "The default data rate for point to point links",
                    DataRateValue (DataRate ("32768b/s")),
-                   MakeDataRateAccessor (&PointToPointLaserNetDevice::m_bps),
+                   MakeDataRateAccessor (&DhpbPointToPointLaserNetDevice::m_bps),
                    MakeDataRateChecker ())
     .AddAttribute ("ReceiveErrorModel", 
                    "The receiver error model used to simulate packet loss",
                    PointerValue (),
-                   MakePointerAccessor (&PointToPointLaserNetDevice::m_receiveErrorModel),
+                   MakePointerAccessor (&DhpbPointToPointLaserNetDevice::m_receiveErrorModel),
                    MakePointerChecker<ErrorModel> ())
     .AddAttribute ("InterframeGap", 
                    "The time to wait between packet (frame) transmissions",
                    TimeValue (Seconds (0.0)),
-                   MakeTimeAccessor (&PointToPointLaserNetDevice::m_tInterframeGap),
+                   MakeTimeAccessor (&DhpbPointToPointLaserNetDevice::m_tInterframeGap),
                    MakeTimeChecker ())
 
     //
@@ -81,7 +82,7 @@ PointToPointLaserNetDevice::GetTypeId (void)
     .AddAttribute ("TxQueue", 
                    "A queue to use as the transmit queue in the device.",
                    PointerValue (),
-                   MakePointerAccessor (&PointToPointLaserNetDevice::m_queue),
+                   MakePointerAccessor (&DhpbPointToPointLaserNetDevice::m_queue),
                    MakePointerChecker<Queue<Packet> > ())
 
     //
@@ -91,33 +92,33 @@ PointToPointLaserNetDevice::GetTypeId (void)
     .AddTraceSource ("MacTx", 
                      "Trace source indicating a packet has arrived "
                      "for transmission by this device",
-                     MakeTraceSourceAccessor (&PointToPointLaserNetDevice::m_macTxTrace),
+                     MakeTraceSourceAccessor (&DhpbPointToPointLaserNetDevice::m_macTxTrace),
                      "ns3::Packet::TracedCallback")
     .AddTraceSource ("MacTxDrop", 
                      "Trace source indicating a packet has been dropped "
                      "by the device before transmission",
-                     MakeTraceSourceAccessor (&PointToPointLaserNetDevice::m_macTxDropTrace),
+                     MakeTraceSourceAccessor (&DhpbPointToPointLaserNetDevice::m_macTxDropTrace),
                      "ns3::Packet::TracedCallback")
     .AddTraceSource ("MacPromiscRx", 
                      "A packet has been received by this device, "
                      "has been passed up from the physical layer "
                      "and is being forwarded up the local protocol stack.  "
                      "This is a promiscuous trace,",
-                     MakeTraceSourceAccessor (&PointToPointLaserNetDevice::m_macPromiscRxTrace),
+                     MakeTraceSourceAccessor (&DhpbPointToPointLaserNetDevice::m_macPromiscRxTrace),
                      "ns3::Packet::TracedCallback")
     .AddTraceSource ("MacRx", 
                      "A packet has been received by this device, "
                      "has been passed up from the physical layer "
                      "and is being forwarded up the local protocol stack.  "
                      "This is a non-promiscuous trace,",
-                     MakeTraceSourceAccessor (&PointToPointLaserNetDevice::m_macRxTrace),
+                     MakeTraceSourceAccessor (&DhpbPointToPointLaserNetDevice::m_macRxTrace),
                      "ns3::Packet::TracedCallback")
 #if 0
     // Not currently implemented for this device
     .AddTraceSource ("MacRxDrop", 
                      "Trace source indicating a packet was dropped "
                      "before being forwarded up the stack",
-                     MakeTraceSourceAccessor (&PointToPointLaserNetDevice::m_macRxDropTrace),
+                     MakeTraceSourceAccessor (&DhpbPointToPointLaserNetDevice::m_macRxDropTrace),
                      "ns3::Packet::TracedCallback")
 #endif
     //
@@ -127,35 +128,35 @@ PointToPointLaserNetDevice::GetTypeId (void)
     .AddTraceSource ("PhyTxBegin", 
                      "Trace source indicating a packet has begun "
                      "transmitting over the channel",
-                     MakeTraceSourceAccessor (&PointToPointLaserNetDevice::m_phyTxBeginTrace),
+                     MakeTraceSourceAccessor (&DhpbPointToPointLaserNetDevice::m_phyTxBeginTrace),
                      "ns3::Packet::TracedCallback")
     .AddTraceSource ("PhyTxEnd", 
                      "Trace source indicating a packet has been "
                      "completely transmitted over the channel",
-                     MakeTraceSourceAccessor (&PointToPointLaserNetDevice::m_phyTxEndTrace),
+                     MakeTraceSourceAccessor (&DhpbPointToPointLaserNetDevice::m_phyTxEndTrace),
                      "ns3::Packet::TracedCallback")
     .AddTraceSource ("PhyTxDrop", 
                      "Trace source indicating a packet has been "
                      "dropped by the device during transmission",
-                     MakeTraceSourceAccessor (&PointToPointLaserNetDevice::m_phyTxDropTrace),
+                     MakeTraceSourceAccessor (&DhpbPointToPointLaserNetDevice::m_phyTxDropTrace),
                      "ns3::Packet::TracedCallback")
 #if 0
     // Not currently implemented for this device
     .AddTraceSource ("PhyRxBegin", 
                      "Trace source indicating a packet has begun "
                      "being received by the device",
-                     MakeTraceSourceAccessor (&PointToPointLaserNetDevice::m_phyRxBeginTrace),
+                     MakeTraceSourceAccessor (&DhpbPointToPointLaserNetDevice::m_phyRxBeginTrace),
                      "ns3::Packet::TracedCallback")
 #endif
     .AddTraceSource ("PhyRxEnd", 
                      "Trace source indicating a packet has been "
                      "completely received by the device",
-                     MakeTraceSourceAccessor (&PointToPointLaserNetDevice::m_phyRxEndTrace),
+                     MakeTraceSourceAccessor (&DhpbPointToPointLaserNetDevice::m_phyRxEndTrace),
                      "ns3::Packet::TracedCallback")
     .AddTraceSource ("PhyRxDrop", 
                      "Trace source indicating a packet has been "
                      "dropped by the device during reception",
-                     MakeTraceSourceAccessor (&PointToPointLaserNetDevice::m_phyRxDropTrace),
+                     MakeTraceSourceAccessor (&DhpbPointToPointLaserNetDevice::m_phyRxDropTrace),
                      "ns3::Packet::TracedCallback")
 
     //
@@ -166,19 +167,19 @@ PointToPointLaserNetDevice::GetTypeId (void)
     .AddTraceSource ("Sniffer", 
                     "Trace source simulating a non-promiscuous packet sniffer "
                      "attached to the device",
-                     MakeTraceSourceAccessor (&PointToPointLaserNetDevice::m_snifferTrace),
+                     MakeTraceSourceAccessor (&DhpbPointToPointLaserNetDevice::m_snifferTrace),
                      "ns3::Packet::TracedCallback")
     .AddTraceSource ("PromiscSniffer", 
                      "Trace source simulating a promiscuous packet sniffer "
                      "attached to the device",
-                     MakeTraceSourceAccessor (&PointToPointLaserNetDevice::m_promiscSnifferTrace),
+                     MakeTraceSourceAccessor (&DhpbPointToPointLaserNetDevice::m_promiscSnifferTrace),
                      "ns3::Packet::TracedCallback")
   ;
   return tid;
 }
 
 
-PointToPointLaserNetDevice::PointToPointLaserNetDevice () 
+DhpbPointToPointLaserNetDevice::DhpbPointToPointLaserNetDevice () 
   :
     m_txMachineState (READY),
     m_channel (0),
@@ -186,15 +187,16 @@ PointToPointLaserNetDevice::PointToPointLaserNetDevice ()
     m_currentPkt (0)
 {
   NS_LOG_FUNCTION (this);
+  m_L2SendInterval = Simulator::Now();
 }
 
-PointToPointLaserNetDevice::~PointToPointLaserNetDevice ()
+DhpbPointToPointLaserNetDevice::~DhpbPointToPointLaserNetDevice ()
 {
   NS_LOG_FUNCTION (this);
 }
 
 void
-PointToPointLaserNetDevice::AddHeader (Ptr<Packet> p, uint16_t protocolNumber)
+DhpbPointToPointLaserNetDevice::AddHeader (Ptr<Packet> p, uint16_t protocolNumber)
 {
   NS_LOG_FUNCTION (this << p << protocolNumber);
   PppHeader ppp;
@@ -204,7 +206,7 @@ PointToPointLaserNetDevice::AddHeader (Ptr<Packet> p, uint16_t protocolNumber)
 }
 
 bool
-PointToPointLaserNetDevice::ProcessHeader (Ptr<Packet> p, uint16_t& param)
+DhpbPointToPointLaserNetDevice::ProcessHeader (Ptr<Packet> p, uint16_t& param)
 {
   NS_LOG_FUNCTION (this << p << param);
   PppHeader ppp;
@@ -214,7 +216,7 @@ PointToPointLaserNetDevice::ProcessHeader (Ptr<Packet> p, uint16_t& param)
 }
 
 void
-PointToPointLaserNetDevice::DoDispose ()
+DhpbPointToPointLaserNetDevice::DoDispose ()
 {
   NS_LOG_FUNCTION (this);
   m_node = 0;
@@ -226,21 +228,21 @@ PointToPointLaserNetDevice::DoDispose ()
 }
 
 void
-PointToPointLaserNetDevice::SetDataRate (DataRate bps)
+DhpbPointToPointLaserNetDevice::SetDataRate (DataRate bps)
 {
   NS_LOG_FUNCTION (this);
   m_bps = bps;
 }
 
 void
-PointToPointLaserNetDevice::SetInterframeGap (Time t)
+DhpbPointToPointLaserNetDevice::SetInterframeGap (Time t)
 {
   NS_LOG_FUNCTION (this << t.GetSeconds ());
   m_tInterframeGap = t;
 }
 
 bool
-PointToPointLaserNetDevice::TransmitStart (Ptr<Packet> p)
+DhpbPointToPointLaserNetDevice::TransmitStart (Ptr<Packet> p)
 {
   NS_LOG_FUNCTION (this << p);
   NS_LOG_LOGIC ("UID is " << p->GetUid () << ")");
@@ -260,20 +262,44 @@ PointToPointLaserNetDevice::TransmitStart (Ptr<Packet> p)
   Time txCompleteTime = txTime + m_tInterframeGap;
 
   NS_LOG_LOGIC ("Schedule TransmitCompleteEvent in " << txCompleteTime.GetSeconds () << "sec");
-  Simulator::Schedule (txCompleteTime, &PointToPointLaserNetDevice::TransmitComplete, this);
+  Simulator::Schedule (txCompleteTime, &DhpbPointToPointLaserNetDevice::TransmitComplete, this);
 
   bool result = m_channel->TransmitStart (p, this, m_destination_node, txTime);
+  // TODO: make it so that only changed flows are transmitted.
+  // In this case, the paper does not mention the fact that more queues can change due to the packet leaving a node
+  // we will have to come up with a solution
+  bool result_p2p = m_channel->TransmitStart (CreateL2Frame(), this, m_destination_node, txTime);
   if (result == false)
     {
       // result is always true anyway, so there should be no drop
       m_phyTxDropTrace (p);
     }
-  NS_LOG_DEBUG ("From " << m_node->GetId() << " -- To " << m_destination_node->GetId() << " -- UID is " << p->GetUid() << " -- Delay is " << txCompleteTime.GetSeconds());
+  else if (result_p2p == false) 
+    {
+      // if the packet was sent, but not the control information
+      NS_LOG_DEBUG("L2 Frame Dropped from " << m_node->GetId());
+    }
+  else 
+    { 
+      // make a copy of the packet, check packet protocol, only log the UID if the protocol is not ours
+      uint16_t protocol = 0;
+      uint32_t puid = p->GetUid();    
+      ProcessHeader(p, protocol);
+      if (protocol != 0x0001) {
+        NS_LOG_DEBUG (
+            "From " << m_node->GetId() << " -- To " << m_destination_node->GetId() << 
+            " -- UID is " << puid << " -- Delay is " << txCompleteTime.GetSeconds());
+        if (protocol == 0x0800) { 
+	    m_node->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4DynamicArbiterRouting>()->ReduceArbiterDistance(p);
+        }
+      }
+      // then pass the copy of that packet to the arbiter, which can determine its destination by reading its ipv4 header
+    }
   return result;
 }
 
 void
-PointToPointLaserNetDevice::TransmitComplete (void)
+DhpbPointToPointLaserNetDevice::TransmitComplete (void)
 {
   NS_LOG_FUNCTION (this);
 
@@ -286,7 +312,7 @@ PointToPointLaserNetDevice::TransmitComplete (void)
   NS_ASSERT_MSG (m_txMachineState == BUSY, "Must be BUSY if transmitting");
   m_txMachineState = READY;
 
-  NS_ASSERT_MSG (m_currentPkt != 0, "PointToPointLaserNetDevice::TransmitComplete(): m_currentPkt zero");
+  NS_ASSERT_MSG (m_currentPkt != 0, "DhpbPointToPointLaserNetDevice::TransmitComplete(): m_currentPkt zero");
 
   m_phyTxEndTrace (m_currentPkt);
   TrackUtilization(false);
@@ -305,7 +331,7 @@ PointToPointLaserNetDevice::TransmitComplete (void)
 }
 
 bool
-PointToPointLaserNetDevice::Attach (Ptr<PointToPointLaserChannel> ch)
+DhpbPointToPointLaserNetDevice::Attach (Ptr<PointToPointLaserChannel> ch)
 {
   NS_LOG_FUNCTION (this << &ch);
 
@@ -323,21 +349,21 @@ PointToPointLaserNetDevice::Attach (Ptr<PointToPointLaserChannel> ch)
 }
 
 void
-PointToPointLaserNetDevice::SetQueue (Ptr<Queue<Packet> > q)
+DhpbPointToPointLaserNetDevice::SetQueue (Ptr<Queue<Packet> > q)
 {
   NS_LOG_FUNCTION (this << q);
   m_queue = q;
 }
 
 void
-PointToPointLaserNetDevice::SetReceiveErrorModel (Ptr<ErrorModel> em)
+DhpbPointToPointLaserNetDevice::SetReceiveErrorModel (Ptr<ErrorModel> em)
 {
   NS_LOG_FUNCTION (this << em);
   m_receiveErrorModel = em;
 }
 
 void
-PointToPointLaserNetDevice::Receive (Ptr<Packet> packet)
+DhpbPointToPointLaserNetDevice::Receive (Ptr<Packet> packet)
 {
   NS_LOG_FUNCTION (this << packet);
   uint16_t protocol = 0;
@@ -366,6 +392,7 @@ PointToPointLaserNetDevice::Receive (Ptr<Packet> packet)
       // headers.
       //
       Ptr<Packet> originalPacket = packet->Copy ();
+      Ptr<Packet> ipv4Packet = packet->Copy ();
       //
       // Strip off the point-to-point protocol header and forward this packet
       // up the protocol stack.  Since this is a simple point-to-point link,
@@ -373,30 +400,44 @@ PointToPointLaserNetDevice::Receive (Ptr<Packet> packet)
       // normal receive callback sees.
       //
       ProcessHeader (packet, protocol);
+      ProcessHeader (ipv4Packet, protocol);
      
-      NS_LOG_DEBUG ("From " << m_destination_node->GetId() << " -- To " << m_node->GetId() << " -- UID is " << packet->GetUid());
-        
-      if (!m_promiscCallback.IsNull ())
+      // Check if this is our custom packet 
+      if (protocol == 0x0001) {
+        DHPBLaserNetDeviceHeader p2ph;
+        packet->RemoveHeader(p2ph);
+        ProcessL2Frame(&p2ph);
+	// TODO: When mutation is actually implemented, we need to verify that race conditions do not affect us here
+      }
+      else
+      {
+        // If it's a packet with higher-layer data, log it
+        NS_LOG_DEBUG ("From " << m_destination_node->GetId() << " -- To " << m_node->GetId() << " -- UID is " << packet->GetUid());
+	if (protocol == 0x0800) { 
+	  m_node->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4DynamicArbiterRouting>()->IncreaseArbiterDistance(ipv4Packet);
+	}
+        if (!m_promiscCallback.IsNull ())
 	{
 	  m_macPromiscRxTrace (originalPacket);
 	  m_promiscCallback (this, packet, protocol, GetRemote (), GetAddress (), NetDevice::PACKET_HOST);
 	}
 
-      m_macRxTrace (originalPacket);
-      m_rxCallback (this, packet, protocol, GetRemote ());
+	m_macRxTrace (originalPacket);
+        m_rxCallback (this, packet, protocol, GetRemote ());
+      }
 
     }
 }
 
 Ptr<Queue<Packet> >
-PointToPointLaserNetDevice::GetQueue (void) const
+DhpbPointToPointLaserNetDevice::GetQueue (void) const
 { 
   NS_LOG_FUNCTION (this);
   return m_queue;
 }
 
 void
-PointToPointLaserNetDevice::NotifyLinkUp (void)
+DhpbPointToPointLaserNetDevice::NotifyLinkUp (void)
 {
   NS_LOG_FUNCTION (this);
   m_linkUp = true;
@@ -404,20 +445,20 @@ PointToPointLaserNetDevice::NotifyLinkUp (void)
 }
 
 void
-PointToPointLaserNetDevice::SetIfIndex (const uint32_t index)
+DhpbPointToPointLaserNetDevice::SetIfIndex (const uint32_t index)
 {
   NS_LOG_FUNCTION (this);
   m_ifIndex = index;
 }
 
 uint32_t
-PointToPointLaserNetDevice::GetIfIndex (void) const
+DhpbPointToPointLaserNetDevice::GetIfIndex (void) const
 {
   return m_ifIndex;
 }
 
 Ptr<Channel>
-PointToPointLaserNetDevice::GetChannel (void) const
+DhpbPointToPointLaserNetDevice::GetChannel (void) const
 {
   return m_channel;
 }
@@ -429,40 +470,40 @@ PointToPointLaserNetDevice::GetChannel (void) const
 // clients get and set the address, but simply ignore them.
 
 void
-PointToPointLaserNetDevice::SetAddress (Address address)
+DhpbPointToPointLaserNetDevice::SetAddress (Address address)
 {
   NS_LOG_FUNCTION (this << address);
   m_address = Mac48Address::ConvertFrom (address);
 }
 
 Address
-PointToPointLaserNetDevice::GetAddress (void) const
+DhpbPointToPointLaserNetDevice::GetAddress (void) const
 {
   return m_address;
 }
 
 void
-PointToPointLaserNetDevice::SetDestinationNode (Ptr<Node> node)
+DhpbPointToPointLaserNetDevice::SetDestinationNode (Ptr<Node> node)
 {
   NS_LOG_FUNCTION (this << node);
   m_destination_node = node;
 }
 
 Ptr<Node>
-PointToPointLaserNetDevice::GetDestinationNode (void) const
+DhpbPointToPointLaserNetDevice::GetDestinationNode (void) const
 {
   return m_destination_node;
 }
 
 bool
-PointToPointLaserNetDevice::IsLinkUp (void) const
+DhpbPointToPointLaserNetDevice::IsLinkUp (void) const
 {
   NS_LOG_FUNCTION (this);
   return m_linkUp;
 }
 
 void
-PointToPointLaserNetDevice::AddLinkChangeCallback (Callback<void> callback)
+DhpbPointToPointLaserNetDevice::AddLinkChangeCallback (Callback<void> callback)
 {
   NS_LOG_FUNCTION (this);
   m_linkChangeCallbacks.ConnectWithoutContext (callback);
@@ -473,7 +514,7 @@ PointToPointLaserNetDevice::AddLinkChangeCallback (Callback<void> callback)
 // all of the devices on the network.
 //
 bool
-PointToPointLaserNetDevice::IsBroadcast (void) const
+DhpbPointToPointLaserNetDevice::IsBroadcast (void) const
 {
   NS_LOG_FUNCTION (this);
   return true;
@@ -485,49 +526,87 @@ PointToPointLaserNetDevice::IsBroadcast (void) const
 // broadcast address, so we make up something reasonable.
 //
 Address
-PointToPointLaserNetDevice::GetBroadcast (void) const
+DhpbPointToPointLaserNetDevice::GetBroadcast (void) const
 {
   NS_LOG_FUNCTION (this);
   return Mac48Address ("ff:ff:ff:ff:ff:ff");
 }
 
 bool
-PointToPointLaserNetDevice::IsMulticast (void) const
+DhpbPointToPointLaserNetDevice::IsMulticast (void) const
 {
   NS_LOG_FUNCTION (this);
   return true;
 }
 
 Address
-PointToPointLaserNetDevice::GetMulticast (Ipv4Address multicastGroup) const
+DhpbPointToPointLaserNetDevice::GetMulticast (Ipv4Address multicastGroup) const
 {
   NS_LOG_FUNCTION (this);
   return Mac48Address ("01:00:5e:00:00:00");
 }
 
 Address
-PointToPointLaserNetDevice::GetMulticast (Ipv6Address addr) const
+DhpbPointToPointLaserNetDevice::GetMulticast (Ipv6Address addr) const
 {
   NS_LOG_FUNCTION (this << addr);
   return Mac48Address ("33:33:00:00:00:00");
 }
 
 bool
-PointToPointLaserNetDevice::IsPointToPoint (void) const
+DhpbPointToPointLaserNetDevice::IsPointToPoint (void) const
 {
   NS_LOG_FUNCTION (this);
   return true;
 }
 
 bool
-PointToPointLaserNetDevice::IsBridge (void) const
+DhpbPointToPointLaserNetDevice::IsBridge (void) const
 {
   NS_LOG_FUNCTION (this);
   return false;
 }
 
+void
+DhpbPointToPointLaserNetDevice::ProcessL2Frame (DHPBLaserNetDeviceHeader* p)
+{
+  NS_LOG_FUNCTION (this);
+  m_node->
+    GetObject<Ipv4>()->
+    GetRoutingProtocol()->
+    GetObject<Ipv4DynamicArbiterRouting>()->
+    GetArbiter()->SetNeighborQueueDistance(m_destination_node->GetId(), GetIfIndex()-1, GetRemoteIf()-1, p->GetQueueDistances());
+}
+
+Ptr<Packet>
+DhpbPointToPointLaserNetDevice::CreateL2Frame ()
+{
+  NS_LOG_FUNCTION (this);
+  
+  // right now, this function computes things in terms of packets, since the queues are configured based on packets
+  // this may be a mistake, however, since it misrepresents how full the queue actually is (e.g. ACKs may be queued, which barely take up space)
+  Ptr<Packet> p = Create<Packet>();
+   
+  // queueing the packet (instead of immediately sending it over the channel)
+  // prevents this device from polling the channel to see if the link is up or not, but
+  // it is slow. Making this immediately send packets could be implemented by changing
+  // m_queue into a double-ended queue
+
+  DHPBLaserNetDeviceHeader p2ph;
+  std::pair<std::array<uint64_t, 100>*, std::array<uint32_t, 100>*> arbiter_distances = m_node->
+                                                GetObject<Ipv4>()->
+                                                GetRoutingProtocol()->
+                                                GetObject<Ipv4DynamicArbiterRouting>()->
+                                                GetArbiter()->GetQueueDistances();
+  p2ph.SetQueueDistances(std::get<0>(arbiter_distances), std::get<1>(arbiter_distances));
+  p->AddHeader(p2ph);
+  AddHeader(p, 0x0001);
+
+  return p;
+}
+
 bool
-PointToPointLaserNetDevice::Send (
+DhpbPointToPointLaserNetDevice::Send (
   Ptr<Packet> packet, 
   const Address &dest, 
   uint16_t protocolNumber)
@@ -581,7 +660,7 @@ PointToPointLaserNetDevice::Send (
 }
 
 bool
-PointToPointLaserNetDevice::SendFrom (Ptr<Packet> packet, 
+DhpbPointToPointLaserNetDevice::SendFrom (Ptr<Packet> packet, 
                                  const Address &source, 
                                  const Address &dest, 
                                  uint16_t protocolNumber)
@@ -591,53 +670,53 @@ PointToPointLaserNetDevice::SendFrom (Ptr<Packet> packet,
 }
 
 Ptr<Node>
-PointToPointLaserNetDevice::GetNode (void) const
+DhpbPointToPointLaserNetDevice::GetNode (void) const
 {
   return m_node;
 }
 
 void
-PointToPointLaserNetDevice::SetNode (Ptr<Node> node)
+DhpbPointToPointLaserNetDevice::SetNode (Ptr<Node> node)
 {
   NS_LOG_FUNCTION (this);
   m_node = node;
 }
 
 bool
-PointToPointLaserNetDevice::NeedsArp (void) const
+DhpbPointToPointLaserNetDevice::NeedsArp (void) const
 {
   NS_LOG_FUNCTION (this);
   return false;
 }
 
 void
-PointToPointLaserNetDevice::SetReceiveCallback (NetDevice::ReceiveCallback cb)
+DhpbPointToPointLaserNetDevice::SetReceiveCallback (NetDevice::ReceiveCallback cb)
 {
   m_rxCallback = cb;
 }
 
 void
-PointToPointLaserNetDevice::SetPromiscReceiveCallback (NetDevice::PromiscReceiveCallback cb)
+DhpbPointToPointLaserNetDevice::SetPromiscReceiveCallback (NetDevice::PromiscReceiveCallback cb)
 {
   m_promiscCallback = cb;
 }
 
 bool
-PointToPointLaserNetDevice::SupportsSendFrom (void) const
+DhpbPointToPointLaserNetDevice::SupportsSendFrom (void) const
 {
   NS_LOG_FUNCTION (this);
   return false;
 }
 
 void
-PointToPointLaserNetDevice::DoMpiReceive (Ptr<Packet> p)
+DhpbPointToPointLaserNetDevice::DoMpiReceive (Ptr<Packet> p)
 {
   NS_LOG_FUNCTION (this << p);
   Receive (p);
 }
 
 Address 
-PointToPointLaserNetDevice::GetRemote (void) const
+DhpbPointToPointLaserNetDevice::GetRemote (void) const
 {
   NS_LOG_FUNCTION (this);
   NS_ASSERT (m_channel->GetNDevices () == 2);
@@ -655,7 +734,7 @@ PointToPointLaserNetDevice::GetRemote (void) const
 }
 
 uint32_t 
-PointToPointLaserNetDevice::GetRemoteIf (void) const
+DhpbPointToPointLaserNetDevice::GetRemoteIf (void) const
 {
   NS_LOG_FUNCTION (this);
   NS_ASSERT (m_channel->GetNDevices () == 2);
@@ -673,7 +752,7 @@ PointToPointLaserNetDevice::GetRemoteIf (void) const
 }
 
 bool
-PointToPointLaserNetDevice::SetMtu (uint16_t mtu)
+DhpbPointToPointLaserNetDevice::SetMtu (uint16_t mtu)
 {
   NS_LOG_FUNCTION (this << mtu);
   m_mtu = mtu;
@@ -681,40 +760,42 @@ PointToPointLaserNetDevice::SetMtu (uint16_t mtu)
 }
 
 uint16_t
-PointToPointLaserNetDevice::GetMtu (void) const
+DhpbPointToPointLaserNetDevice::GetMtu (void) const
 {
   NS_LOG_FUNCTION (this);
   return m_mtu;
 }
 
 uint16_t
-PointToPointLaserNetDevice::PppToEther (uint16_t proto)
+DhpbPointToPointLaserNetDevice::PppToEther (uint16_t proto)
 {
   NS_LOG_FUNCTION_NOARGS();
   switch(proto)
     {
     case 0x0021: return 0x0800;   //IPv4
     case 0x0057: return 0x86DD;   //IPv6
+    case 0x8037: return 0x0001;   //our custom packet 
     default: NS_ASSERT_MSG (false, "PPP Protocol number not defined!");
     }
   return 0;
 }
 
 uint16_t
-PointToPointLaserNetDevice::EtherToPpp (uint16_t proto)
+DhpbPointToPointLaserNetDevice::EtherToPpp (uint16_t proto)
 {
   NS_LOG_FUNCTION_NOARGS();
   switch(proto)
     {
     case 0x0800: return 0x0021;   //IPv4
     case 0x86DD: return 0x0057;   //IPv6
+    case 0x0001: return 0x8037;   //our custom packet
     default: NS_ASSERT_MSG (false, "PPP Protocol number not defined!");
     }
   return 0;
 }
 
 void
-PointToPointLaserNetDevice::EnableUtilizationTracking(int64_t interval_ns) {
+DhpbPointToPointLaserNetDevice::EnableUtilizationTracking(int64_t interval_ns) {
     m_utilization_tracking_enabled = true;
     m_interval_ns = interval_ns;
     m_prev_time_ns = 0;
@@ -726,7 +807,7 @@ PointToPointLaserNetDevice::EnableUtilizationTracking(int64_t interval_ns) {
 }
 
 void
-PointToPointLaserNetDevice::TrackUtilization(bool next_state_is_on) {
+DhpbPointToPointLaserNetDevice::TrackUtilization(bool next_state_is_on) {
     if (m_utilization_tracking_enabled) {
 
         // Current time in nanoseconds
@@ -771,7 +852,7 @@ PointToPointLaserNetDevice::TrackUtilization(bool next_state_is_on) {
 
 
 const std::vector<double>&
-PointToPointLaserNetDevice::FinalizeUtilization() {
+DhpbPointToPointLaserNetDevice::FinalizeUtilization() {
     TrackUtilization(!m_current_state_is_on);
     return m_utilization;
 }

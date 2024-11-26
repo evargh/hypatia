@@ -20,7 +20,6 @@
 #include "arbiter-single-forward.h"
 
 namespace ns3 {
-
 NS_LOG_COMPONENT_DEFINE ("ArbiterSingleForward");
 NS_OBJECT_ENSURE_REGISTERED (ArbiterSingleForward);
 TypeId ArbiterSingleForward::GetTypeId (void)
@@ -49,10 +48,6 @@ std::tuple<int32_t, int32_t, int32_t> ArbiterSingleForward::TopologySatelliteNet
         bool is_request_for_source_ip_so_no_next_header
 ) {
     return m_next_hop_list[target_node_id];
-}
-
-void ArbiterSingleForward::MutateForwardingState() {
-    NS_LOG_DEBUG("forwarding state mutated");
 }
 
 void ArbiterSingleForward::SetSingleForwardState(int32_t target_node_id, int32_t next_node_id, int32_t own_if_id, int32_t next_if_id) {

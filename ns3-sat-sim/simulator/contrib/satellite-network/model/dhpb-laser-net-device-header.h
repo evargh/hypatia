@@ -9,10 +9,11 @@
  * To work with PPP, we use protocol number 8037 since it's unassigned by the IANA
  */
 
-#ifndef P2P_LASER_NET_DEVICE_HEADER_H
-#define P2P_LASER_NET_DEVICE_HEADER_H
+#ifndef DHPB_LASER_NET_DEVICE_HEADER_H
+#define DHPB_LASER_NET_DEVICE_HEADER_H
 
 #include <cstring>
+#include <array>
 #include <stdint.h>
 #include "ns3/header.h"
 
@@ -25,14 +26,14 @@ namespace ns3 {
  *
  * At the
  */ 
-class P2PLaserNetDeviceHeader : public Header
+class DHPBLaserNetDeviceHeader : public Header
 {
 public:
-    P2PLaserNetDeviceHeader ();
-    ~P2PLaserNetDeviceHeader ();
+    DHPBLaserNetDeviceHeader ();
+    ~DHPBLaserNetDeviceHeader ();
 
-    void SetQueueSize (uint32_t qs);
-    uint32_t GetQueueSize ();
+    void SetQueueDistances (std::array<uint64_t, 100>* qlens, std::array<uint32_t, 100>* distances);
+    std::array<uint64_t, 100>* GetQueueDistances ();
     static TypeId GetTypeId ();
 
     virtual TypeId GetInstanceTypeId (void) const;
@@ -42,9 +43,9 @@ public:
     virtual uint32_t Deserialize (Buffer::Iterator start);
         
 private:
-    uint32_t m_queueSize;
+    std::array<uint64_t, 100> m_queue_distances;
 };
 }
 
-#endif
+#endif /*DHPB_NET_DEVICE_HEADER*/
 

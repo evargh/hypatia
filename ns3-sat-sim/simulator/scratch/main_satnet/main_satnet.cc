@@ -37,8 +37,14 @@
 #include "ns3/topology-satellite-network.h"
 #include "ns3/tcp-optimizer.h"
 #include "ns3/arbiter-single-forward-helper.h"
-#include "ns3/ipv4-satellite-arbiter-routing-helper.h"
+#include "ns3/arbiter-dynamic-helper.h"
+#include "ns3/ipv4-arbiter-routing-helper.h"
+#include "ns3/ipv4-dynamic-arbiter-routing-helper.h"
 #include "ns3/gsl-if-bandwidth-helper.h"
+#include "ns3/point-to-point-laser-helper.h"
+#include "ns3/gsl-helper.h"
+#include "ns3/dhpb-laser-helper.h"
+#include "ns3/dhpb-gsl-helper.h"
 
 using namespace ns3;
 
@@ -68,8 +74,10 @@ int main(int argc, char *argv[]) {
     TcpOptimizer::OptimizeBasic(basicSimulation);
 
     // Read topology, and install routing arbiters
-    Ptr<TopologySatelliteNetwork> topology = CreateObject<TopologySatelliteNetwork>(basicSimulation, Ipv4SatelliteArbiterRoutingHelper());
-    ArbiterSingleForwardHelper arbiterHelper(basicSimulation, topology->GetNodes());
+    //Ptr<TopologySatelliteNetwork> topology = CreateObject<TopologySatelliteNetwork>(basicSimulation, Ipv4ArbiterRoutingHelper(), PointToPointLaserHelper(), GSLHelper());
+    //ArbiterSingleForwardHelper arbiterHelper(basicSimulation, topology->GetNodes());
+    Ptr<TopologySatelliteNetwork> topology = CreateObject<TopologySatelliteNetwork>(basicSimulation, Ipv4DynamicArbiterRoutingHelper(), DhpbPointToPointLaserHelper(), DhpbGSLHelper());
+    ArbiterDynamicHelper arbiterHelper(basicSimulation, topology->GetNodes());
     GslIfBandwidthHelper gslIfBandwidthHelper(basicSimulation, topology->GetNodes());
 
     // Schedule flows

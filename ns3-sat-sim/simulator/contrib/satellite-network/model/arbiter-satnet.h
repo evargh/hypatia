@@ -80,6 +80,8 @@ public:
     ) = 0;
 
     virtual std::string StringReprOfForwardingState() = 0;
+    
+    uint32_t GetNumNodes();
 
 };
 

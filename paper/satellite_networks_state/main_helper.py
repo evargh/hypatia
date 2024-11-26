@@ -112,7 +112,9 @@ class MainHelper:
                 output_generated_data_dir + "/" + name + "/isls.txt",
                 self.NUM_ORBS,
                 self.NUM_SATS_PER_ORB,
-                isl_shift=0,
+                # EVAN TODO: depending on the inclination, this makes the orbits more realistic
+		# make this a function of the received inclination
+                isl_shift=-1,
                 idx_offset=0
             )
         elif isl_selection == "isls_none":

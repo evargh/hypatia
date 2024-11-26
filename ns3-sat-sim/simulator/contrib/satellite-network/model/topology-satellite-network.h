@@ -47,6 +47,8 @@
 #include "ns3/satellite-position-helper.h"
 #include "ns3/point-to-point-laser-helper.h"
 #include "ns3/gsl-helper.h"
+#include "ns3/dhpb-laser-helper.h"
+#include "ns3/dhpb-gsl-helper.h"
 #include "ns3/mobility-helper.h"
 #include "ns3/mobility-model.h"
 #include "ns3/ipv4-static-routing-helper.h"
@@ -54,6 +56,7 @@
 #include "ns3/ipv4-routing-table-entry.h"
 #include "ns3/wifi-net-device.h"
 #include "ns3/point-to-point-laser-net-device.h"
+#include "ns3/dhpb-laser-net-device.h"
 #include "ns3/ipv4.h"
 
 namespace ns3 {
@@ -65,6 +68,8 @@ namespace ns3 {
         // Constructors
         static TypeId GetTypeId (void);
         TopologySatelliteNetwork(Ptr<BasicSimulation> basicSimulation, const Ipv4RoutingHelper& ipv4RoutingHelper);
+        TopologySatelliteNetwork(Ptr<BasicSimulation> basicSimulation, const Ipv4RoutingHelper& ipv4RoutingHelper, PointToPointLaserHelper p2pLaserHelper, GSLHelper gslHelper);
+        TopologySatelliteNetwork(Ptr<BasicSimulation> basicSimulation, const Ipv4RoutingHelper& ipv4RoutingHelper, DhpbPointToPointLaserHelper p2pLaserHelper, DhpbGSLHelper gslHelper);
 
         // Inherited accessors
         const NodeContainer& GetNodes();
@@ -91,12 +96,15 @@ namespace ns3 {
 
         // Build functions
         void ReadConfig();
-        void Build(const Ipv4RoutingHelper& ipv4RoutingHelper);
+        void Build(const Ipv4RoutingHelper& ipv4RoutingHelper, PointToPointLaserHelper p2pLaserHelper, GSLHelper gslHelper);
+        void Build(const Ipv4RoutingHelper& ipv4RoutingHelper, DhpbPointToPointLaserHelper p2pLaserHelper, DhpbGSLHelper gslHelper);
         void ReadGroundStations();
         void ReadSatellites();
         void InstallInternetStacks(const Ipv4RoutingHelper& ipv4RoutingHelper);
-        void ReadISLs();
-        void CreateGSLs();
+        void ReadISLs(PointToPointLaserHelper p2p_laser_helper);
+        void ReadISLs(DhpbPointToPointLaserHelper p2p_laser_helper);
+        void CreateGSLs(DhpbGSLHelper gsl_helper);
+        void CreateGSLs(GSLHelper gsl_helper);
 
         // Helper
         void EnsureValidNodeId(uint32_t node_id);

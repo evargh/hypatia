@@ -21,8 +21,8 @@
  * 
  */
 
-#ifndef POINT_TO_POINT_LASER_NET_DEVICE_H
-#define POINT_TO_POINT_LASER_NET_DEVICE_H
+#ifndef DHPB_POINT_TO_POINT_LASER_NET_DEVICE_H
+#define DHPB_POINT_TO_POINT_LASER_NET_DEVICE_H
 
 #include <cstring>
 #include "ns3/address.h"
@@ -36,6 +36,8 @@
 #include "ns3/ptr.h"
 #include "ns3/mac48-address.h"
 #include "ns3/abort.h"
+#include "point-to-point-laser-net-device.h"
+#include "dhpb-laser-net-device-header.h"
 
 namespace ns3 {
 
@@ -56,7 +58,7 @@ class ErrorModel;
  * include a queue, data rate, and interframe transmission gap (the 
  * propagation delay is set in the PointToPointLaserChannel).
  */
-class PointToPointLaserNetDevice : public NetDevice
+class DhpbPointToPointLaserNetDevice : public PointToPointLaserNetDevice
 {
 public:
   /**
@@ -71,14 +73,14 @@ public:
    *
    * This is the constructor for the PointToPointLaserNetDevice
    */
-  PointToPointLaserNetDevice ();
+  DhpbPointToPointLaserNetDevice ();
 
   /**
    * Destroy a PointToPointLaserNetDevice
    *
    * This is the destructor for the PointToPointLaserNetDevice.
    */
-  virtual ~PointToPointLaserNetDevice ();
+  virtual ~DhpbPointToPointLaserNetDevice ();
 
   /**
    * Set the Data Rate used for transmission of packets.  The data rate is
@@ -213,7 +215,7 @@ private:
    * \param o Other NetDevice
    * \return New instance of the NetDevice
    */
-  PointToPointLaserNetDevice& operator = (const PointToPointLaserNetDevice &o);
+  DhpbPointToPointLaserNetDevice& operator = (const DhpbPointToPointLaserNetDevice &o);
 
   /**
    * \brief Copy constructor
@@ -222,7 +224,7 @@ private:
 
    * \param o Other NetDevice
    */
-  PointToPointLaserNetDevice (const PointToPointLaserNetDevice &o);
+  DhpbPointToPointLaserNetDevice (const DhpbPointToPointLaserNetDevice &o);
 
   /**
    * \brief Dispose of the object
@@ -230,6 +232,15 @@ private:
   virtual void DoDispose (void);
 
 private:
+  /**
+   * This function is called to add the frame relevant for L2 communication
+   * into the queue
+   */ 
+  Ptr<Packet> CreateL2Frame (void);
+
+  void ProcessL2Frame (DHPBLaserNetDeviceHeader* p);
+
+
   /**
    * Adds the necessary headers and trailers to a packet of data in order to
    * respect the protocol implemented by the agent.
@@ -318,6 +329,11 @@ private:
    * \see class DropTailQueue
    */
   Ptr<Queue<Packet> > m_queue;
+
+ /**
+  * Determines how often an L2 Frame should be sent, in seconds.
+  */
+  Time m_L2SendInterval;
 
   /**
    * Error model for receive packet events

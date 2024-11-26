@@ -99,15 +99,27 @@ PointToPointLaserChannel::TransmitStart (
 
   Ptr<MobilityModel> senderMobility = src->GetNode()->GetObject<MobilityModel>();
   Ptr<MobilityModel> receiverMobility = node_other_end->GetObject<MobilityModel>();
+
   Time delay = this->GetDelay(senderMobility, receiverMobility); 
 
   // log propagation delay as estimated by this device
   NS_LOG_DEBUG (delay.GetNanoSeconds());
   uint32_t wire = src == m_link[0].m_src ? 0 : 1;
 
-  Simulator::ScheduleWithContext (m_link[wire].m_dst->GetNode()->GetId (),
+  if(src->GetInstanceTypeId() == TypeId::LookupByName("ns3::PointToPointLaserNetDevice")) {
+      Simulator::ScheduleWithContext (m_link[wire].m_dst->GetNode()->GetId (),
                                   txTime + delay, &PointToPointLaserNetDevice::Receive,
                                   m_link[wire].m_dst, p->Copy ());
+  }
+  if(src->GetInstanceTypeId() == TypeId::LookupByName("ns3::DhpbPointToPointLaserNetDevice")) {
+      Ptr<DhpbPointToPointLaserNetDevice> dhpb_dst = DynamicCast<DhpbPointToPointLaserNetDevice>(m_link[wire].m_dst);
+      Simulator::ScheduleWithContext (m_link[wire].m_dst->GetNode()->GetId (),
+                                  txTime + delay, &DhpbPointToPointLaserNetDevice::Receive,
+                                  dhpb_dst, p->Copy ());
+  }
+  else {
+      NS_ASSERT_MSG(false, "point to point net device not found by channel");
+  }
 
   // Call the tx anim callback on the net device
   m_txrxPointToPoint (p, src, m_link[wire].m_dst, txTime, txTime + delay);

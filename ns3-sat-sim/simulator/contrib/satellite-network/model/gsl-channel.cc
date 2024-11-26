@@ -26,6 +26,7 @@
 #include "ns3/abort.h"
 #include "ns3/mpi-interface.h"
 #include "ns3/gsl-net-device.h"
+#include "ns3/dhpb-gsl-net-device.h"
 
 namespace ns3 {
 
@@ -103,13 +104,28 @@ GSLChannel::TransmitTo(Ptr<const Packet> p, Ptr<GSLNetDevice> srcNetDevice, Ptr<
   NS_ABORT_MSG_UNLESS(isSameSystem, "MPI distributed mode is currently not supported by the GSL channel.");
 
   // Schedule arrival of packet at destination network device
-  Simulator::ScheduleWithContext(
+  if(destNetDevice->GetInstanceTypeId() == TypeId::LookupByName("ns3::GSLNetDevice")) {
+      Simulator::ScheduleWithContext(
           receiverNode->GetId(),
           txTime + delay,
           &GSLNetDevice::Receive,
           destNetDevice,
           p->Copy ()
-  );
+      );
+  }
+  else if(destNetDevice->GetInstanceTypeId() == TypeId::LookupByName("ns3::DhpbGSLNetDevice")) {
+      Ptr<DhpbGSLNetDevice> dhpb_destNetDevice = DynamicCast<DhpbGSLNetDevice>(destNetDevice);
+      Simulator::ScheduleWithContext(
+          receiverNode->GetId(),
+          txTime + delay,
+          &DhpbGSLNetDevice::Receive,
+          dhpb_destNetDevice,
+          p->Copy ()
+      );
+  }
+  else {
+      NS_ASSERT_MSG(false, "GSL net device not found");
+  }
 
   // Re-enabled below code if distributed is again enabled:
   //  if (isSameSystem) {

@@ -16,15 +16,15 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  * 
  * (Based on point-to-point network device)
- * Author: Andre Aguas    March 2020
- *         Simon          2020
- * 
+ * Author: Andre Aguas  March 2020
  */
 
-#ifndef POINT_TO_POINT_LASER_NET_DEVICE_H
-#define POINT_TO_POINT_LASER_NET_DEVICE_H
+
+#ifndef DHPB_GSL_NET_DEVICE_H
+#define DHPB_GSL_NET_DEVICE_H
 
 #include <cstring>
+#include <queue>
 #include "ns3/address.h"
 #include "ns3/node.h"
 #include "ns3/net-device.h"
@@ -35,28 +35,28 @@
 #include "ns3/data-rate.h"
 #include "ns3/ptr.h"
 #include "ns3/mac48-address.h"
-#include "ns3/abort.h"
+#include "ns3/node-container.h"
+#include "gsl-net-device.h"
 
 namespace ns3 {
 
 template <typename Item> class Queue;
-class PointToPointLaserChannel;
+class GSLChannel;
 class ErrorModel;
 
 /**
- * \ingroup point-to-point
- * \class PointToPoinLasertNetDevice
- * \brief A Device for a Point to Point Laser Network Link.
+ * \class GSLNetDevice
+ * \brief A Device for a GSL Network Link.
  *
- * This PointToPointLaserNetDevice class specializes the NetDevice abstract
- * base class.  Together with a PointToPointLaserChannel (and a peer 
- * PointToPointLaserNetDevice), the class models, with some level of 
- * abstraction, a generic point-to-point-laser or serial link.
+ * This GSLNetDevice class specializes the NetDevice abstract
+ * base class.  Together with a GSLChannel (and a peer 
+ * GSLDevice), the class models, with some level of 
+ * abstraction, a generic GSL.
  * Key parameters or objects that can be specified for this device 
  * include a queue, data rate, and interframe transmission gap (the 
- * propagation delay is set in the PointToPointLaserChannel).
+ * propagation delay is set in the GSLChannel).
  */
-class PointToPointLaserNetDevice : public NetDevice
+class DhpbGSLNetDevice : public GSLNetDevice
 {
 public:
   /**
@@ -67,18 +67,18 @@ public:
   static TypeId GetTypeId (void);
 
   /**
-   * Construct a PointToPointLaserNetDevice
+   * Construct a GSLNetDevice
    *
-   * This is the constructor for the PointToPointLaserNetDevice
+   * This is the constructor for the GSLNetDevice
    */
-  PointToPointLaserNetDevice ();
+  DhpbGSLNetDevice ();
 
   /**
-   * Destroy a PointToPointLaserNetDevice
+   * Destroy a GSLNetDevice
    *
-   * This is the destructor for the PointToPointLaserNetDevice.
+   * This is the destructor for the GSLNetDevice.
    */
-  virtual ~PointToPointLaserNetDevice ();
+  virtual ~DhpbGSLNetDevice ();
 
   /**
    * Set the Data Rate used for transmission of packets.  The data rate is
@@ -103,12 +103,12 @@ public:
    * \param ch Ptr to the channel to which this object is being attached.
    * \return true if the operation was successful (always true actually)
    */
-  bool Attach (Ptr<PointToPointLaserChannel> ch);
+  bool Attach (Ptr<GSLChannel> ch);
 
   /**
-   * Attach a queue to the PointToPointLaserNetDevice.
+   * Attach a queue to the GSLNetDevice.
    *
-   * The PointToPointLaserNetDevice "owns" a queue that implements a queueing 
+   * The GSLtNetDevice "owns" a queue that implements a queueing 
    * method such as DropTailQueue or RedQueue
    *
    * \param queue Ptr to the new queue.
@@ -123,9 +123,9 @@ public:
   Ptr<Queue<Packet> > GetQueue (void) const;
 
   /**
-   * Attach a receive ErrorModel to the PointToPointLaserNetDevice.
+   * Attach a receive ErrorModel to the GSLNetDevice.
    *
-   * The PointToPointNetLaserDevice may optionally include an ErrorModel in
+   * The GSLNetDevice may optionally include an ErrorModel in
    * the packet receive chain.
    *
    * \param em Ptr to the ErrorModel.
@@ -133,9 +133,9 @@ public:
   void SetReceiveErrorModel (Ptr<ErrorModel> em);
 
   /**
-   * Receive a packet from a connected PointToPointLaserChannel.
+   * Receive a packet from a connected GSLChannel.
    *
-   * The PointToPointLaserNetDevice receives packets from its connected channel
+   * The GSLNetDevice receives packets from its connected channel
    * and forwards them up the protocol stack.  This is the public method
    * used by the channel to indicate that the last bit of a packet has 
    * arrived at the device.
@@ -153,9 +153,6 @@ public:
 
   virtual void SetAddress (Address address);
   virtual Address GetAddress (void) const;
-
-  virtual void SetDestinationNode (Ptr<Node> node);
-  virtual Ptr<Node> GetDestinationNode (void) const;
 
   virtual bool SetMtu (const uint16_t mtu);
   virtual uint16_t GetMtu (void) const;
@@ -188,13 +185,6 @@ public:
   virtual void SetPromiscReceiveCallback (PromiscReceiveCallback cb);
   virtual bool SupportsSendFrom (void) const;
 
-  /**
-   * \returns the address of the remote device connected to this device
-   * through the point to point channel.
-   */
-  Address GetRemote (void) const;
-  uint32_t GetRemoteIf (void) const;
-
 protected:
   /**
    * \brief Handler for MPI receive event
@@ -213,7 +203,7 @@ private:
    * \param o Other NetDevice
    * \return New instance of the NetDevice
    */
-  PointToPointLaserNetDevice& operator = (const PointToPointLaserNetDevice &o);
+  DhpbGSLNetDevice& operator = (const DhpbGSLNetDevice &o);
 
   /**
    * \brief Copy constructor
@@ -222,7 +212,7 @@ private:
 
    * \param o Other NetDevice
    */
-  PointToPointLaserNetDevice (const PointToPointLaserNetDevice &o);
+  DhpbGSLNetDevice (const DhpbGSLNetDevice &o);
 
   /**
    * \brief Dispose of the object
@@ -252,18 +242,19 @@ private:
    * Start Sending a Packet Down the Wire.
    *
    * The TransmitStart method is the method that is used internally in the
-   * PointToPointLaserNetDevice to begin the process of sending a packet out on
+   * GSLNetDevice to begin the process of sending a packet out on
    * the channel.  The corresponding method is called on the channel to let
    * it know that the physical device this class represents has virtually
    * started sending signals.  An event is scheduled for the time at which
    * the bits have been completely transmitted.
    *
-   * \see PointToPointLaserChannel::TransmitStart ()
+   * \see GSLChannel::TransmitStart ()
    * \see TransmitComplete()
    * \param p a reference to the packet to send
+   * \param address where the packet is to be sent
    * \returns true if success, false on failure
    */
-  bool TransmitStart (Ptr<Packet> p);
+  bool TransmitStart (Ptr<Packet> p, const Address address);
 
   /**
    * Stop Sending a Packet Down the Wire and Begin the Interframe Gap.
@@ -271,7 +262,7 @@ private:
    * The TransmitComplete method is used internally to finish the process
    * of sending a packet out on the channel.
    */
-  void TransmitComplete (void);
+  void TransmitComplete (const Address destination);
 
   /**
    * \brief Make the link up and running
@@ -306,18 +297,25 @@ private:
   Time           m_tInterframeGap;
 
   /**
-   * The PointToPointLaserChannel to which this PointToPointLaserNetDevice
-   * has been attached.
+   * The GSLChannel to which this GSLNetDevice has been
+   * attached.
    */
-  Ptr<PointToPointLaserChannel> m_channel;
+  Ptr<GSLChannel> m_channel;
 
   /**
-   * The Queue which this PointToPointLaserNetDevice uses as a packet source.
-   * Management of this Queue has been delegated to the PointToPointLaserNetDevice
+   * The Queue which this GSLNetDevice uses as a packet source.
+   * Management of this Queue has been delegated to the GSLNetDevice
    * and it has the responsibility for deletion.
    * \see class DropTailQueue
    */
   Ptr<Queue<Packet> > m_queue;
+
+    /**
+     * The FIFO queue for the destination MAC addresses
+     */
+  std::queue<Address> m_queueDests;
+
+  Time m_L2SendInterval;
 
   /**
    * Error model for receive packet events
@@ -340,7 +338,7 @@ private:
    * The trace source fired for packets successfully received by the device
    * immediately before being forwarded up to higher layers (at the L2/L3 
    * transition).  This is a promiscuous trace (which doesn't mean a lot here
-   * in the point-to-point-laser device).
+   * in the GSL device).
    */
   TracedCallback<Ptr<const Packet> > m_macPromiscRxTrace;
 
@@ -348,7 +346,7 @@ private:
    * The trace source fired for packets successfully received by the device
    * immediately before being forwarded up to higher layers (at the L2/L3 
    * transition).  This is a non-promiscuous trace (which doesn't mean a lot 
-   * here in the point-to-point-laser device).
+   * here in the GSL device).
    */
   TracedCallback<Ptr<const Packet> > m_macRxTrace;
 
@@ -432,14 +430,13 @@ private:
    */
   TracedCallback<Ptr<const Packet> > m_promiscSnifferTrace;
 
-  Ptr<Node> m_node;              //!< Node owning this NetDevice
-  Ptr<Node> m_destination_node;  //!< Node at the other end of the p2pLaserLink
-  Mac48Address m_address;        //!< Mac48Address of this NetDevice
-  NetDevice::ReceiveCallback m_rxCallback;   //!< Receive callback
+  Ptr<Node> m_node;                                     //!< Node owning this NetDevice
+  Mac48Address m_address;                               //!< Mac48Address of this NetDevice
+  NetDevice::ReceiveCallback m_rxCallback;              //!< Receive callback
   NetDevice::PromiscReceiveCallback m_promiscCallback;  //!< Receive callback
                                                         //   (promisc data)
-  uint32_t m_ifIndex; //!< Index of the interface
-  bool m_linkUp;      //!< Identify if the link is up or not
+  uint32_t m_ifIndex;                      //!< Index of the interface
+  bool m_linkUp;                           //!< Identify if the link is up or not
   TracedCallback<> m_linkChangeCallbacks;  //!< Callback for the link change event
 
   static const uint16_t DEFAULT_MTU = 1500; //!< Default MTU
@@ -469,25 +466,8 @@ private:
    * \return The corresponding PPP protocol number
    */
   static uint16_t EtherToPpp (uint16_t protocol);
-
-private:
-  bool m_utilization_tracking_enabled = false;
-  int64_t m_interval_ns;
-  int64_t m_prev_time_ns;
-  int64_t m_current_interval_start;
-  int64_t m_current_interval_end;
-  int64_t m_idle_time_counter_ns;
-  int64_t m_busy_time_counter_ns;
-  bool m_current_state_is_on;
-  std::vector<double> m_utilization;
-  void TrackUtilization(bool next_state_is_on);
-
-public:
-    void EnableUtilizationTracking(int64_t interval_ns);
-    const std::vector<double>& FinalizeUtilization();
-
 };
 
 } // namespace ns3
 
-#endif /* POINT_TO_POINT_LASER_NET_DEVICE_H */
+#endif /* GSL_NET_DEVICE_H */

@@ -219,7 +219,6 @@ private:
   virtual void DoDispose (void);
 
 private:
-
   /**
    * Adds the necessary headers and trailers to a packet of data in order to
    * respect the protocol implemented by the agent.
