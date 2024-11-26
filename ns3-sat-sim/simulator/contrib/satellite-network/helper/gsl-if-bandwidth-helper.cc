@@ -73,10 +73,21 @@ namespace ns3 {
                 // Check the interface
                 NS_ABORT_MSG_IF(if_id < 0 || if_id + 1 >= m_nodes.Get(node_id)->GetObject<Ipv4>()->GetNInterfaces(), "Invalid interface");
 
-                // Set data rate (the ->GetObject<GSLNetDevice>() will fail if it is not a GSL network device)
-                m_nodes.Get(node_id)->GetObject<Ipv4>()->GetNetDevice(1 + if_id)->GetObject<GSLNetDevice>()->SetDataRate(
+                // Set data rate
+                Ptr<NetDevice> nd = m_nodes.Get(node_id)->GetObject<Ipv4>()->GetNetDevice(1 + if_id);
+                if(nd->GetObject<GSLNetDevice>() != 0) {
+		    nd->GetObject<GSLNetDevice>()->SetDataRate(
                         DataRate (std::to_string(m_gsl_data_rate_megabit_per_s * bandwidth_fraction) + "Mbps")
-                );
+		    );
+                }
+                else if(nd->GetObject<DhpbGSLNetDevice>() != 0) {
+		    nd->GetObject<DhpbGSLNetDevice>()->SetDataRate(
+                        DataRate (std::to_string(m_gsl_data_rate_megabit_per_s * bandwidth_fraction) + "Mbps")
+		    );
+                }
+		else {
+		    NS_ASSERT_MSG(false, "no GSLNetDevice found");
+		}
 
                 // Next line
                 line_counter++;

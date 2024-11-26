@@ -29,7 +29,7 @@
 #include "ns3/net-device-container.h"
 #include "ns3/node-container.h"
 #include "ns3/dhpb-gsl-net-device.h"
-
+#include "ns3/gsl-helper.h"
 
 namespace ns3 {
 

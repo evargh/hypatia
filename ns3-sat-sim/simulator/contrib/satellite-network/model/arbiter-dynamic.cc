@@ -173,7 +173,7 @@ void ArbiterDynamic::GetNeighborInfo() {
     // interfaces 1,2,3,4 are point to pont
     // 0 is loopback, 5 is gsl
     for (uint32_t i = 1; i < num_interfaces; i++) {
-        Ptr<PointToPointLaserNetDevice> p2p = m_nodes.Get(m_node_id)->GetObject<Ipv4>()->GetNetDevice(i)->GetObject<PointToPointLaserNetDevice>();
+        Ptr<DhpbPointToPointLaserNetDevice> p2p = m_nodes.Get(m_node_id)->GetObject<Ipv4>()->GetNetDevice(i)->GetObject<DhpbPointToPointLaserNetDevice>();
         if (p2p != 0) {
             m_neighbor_ids.at(i-1) = p2p->GetDestinationNode()->GetId();
             m_neighbor_interfaces.at(i-1) = p2p->GetRemoteIf();

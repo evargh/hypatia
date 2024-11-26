@@ -406,7 +406,6 @@ DhpbPointToPointLaserNetDevice::Receive (Ptr<Packet> packet)
       if (protocol == 0x0001) {
         DHPBLaserNetDeviceHeader p2ph;
         packet->RemoveHeader(p2ph);
-        NS_LOG_DEBUG ("received L2 frame");
         ProcessL2Frame(&p2ph);
 	// TODO: When mutation is actually implemented, we need to verify that race conditions do not affect us here
       }
@@ -572,7 +571,6 @@ void
 DhpbPointToPointLaserNetDevice::ProcessL2Frame (DHPBLaserNetDeviceHeader* p)
 {
   NS_LOG_FUNCTION (this);
-  NS_LOG_DEBUG(m_node->GetId() << " Processing L2 Frame: " << p->GetQueueDistances()->at(0));
   m_node->
     GetObject<Ipv4>()->
     GetRoutingProtocol()->
@@ -588,7 +586,6 @@ DhpbPointToPointLaserNetDevice::CreateL2Frame ()
   // right now, this function computes things in terms of packets, since the queues are configured based on packets
   // this may be a mistake, however, since it misrepresents how full the queue actually is (e.g. ACKs may be queued, which barely take up space)
   Ptr<Packet> p = Create<Packet>();
-  NS_LOG_DEBUG("creating L2 frame");
    
   // queueing the packet (instead of immediately sending it over the channel)
   // prevents this device from polling the channel to see if the link is up or not, but

@@ -74,10 +74,10 @@ int main(int argc, char *argv[]) {
     TcpOptimizer::OptimizeBasic(basicSimulation);
 
     // Read topology, and install routing arbiters
-    Ptr<TopologySatelliteNetwork> topology = CreateObject<TopologySatelliteNetwork>(basicSimulation, Ipv4ArbiterRoutingHelper(), PointToPointLaserHelper(), GSLHelper());
-    ArbiterSingleForwardHelper arbiterHelper(basicSimulation, topology->GetNodes());
-    //Ptr<TopologySatelliteNetwork> topology = CreateObject<TopologySatelliteNetwork>(basicSimulation, Ipv4DynamicArbiterRoutingHelper(), DhpbPointToPointLaserHelper(), DhpbGSLHelper());
-    //ArbiterDynamicHelper arbiterHelper(basicSimulation, topology->GetNodes());
+    //Ptr<TopologySatelliteNetwork> topology = CreateObject<TopologySatelliteNetwork>(basicSimulation, Ipv4ArbiterRoutingHelper(), PointToPointLaserHelper(), GSLHelper());
+    //ArbiterSingleForwardHelper arbiterHelper(basicSimulation, topology->GetNodes());
+    Ptr<TopologySatelliteNetwork> topology = CreateObject<TopologySatelliteNetwork>(basicSimulation, Ipv4DynamicArbiterRoutingHelper(), DhpbPointToPointLaserHelper(), DhpbGSLHelper());
+    ArbiterDynamicHelper arbiterHelper(basicSimulation, topology->GetNodes());
     GslIfBandwidthHelper gslIfBandwidthHelper(basicSimulation, topology->GetNodes());
 
     // Schedule flows
