@@ -111,7 +111,7 @@ PointToPointLaserChannel::TransmitStart (
                                   txTime + delay, &PointToPointLaserNetDevice::Receive,
                                   m_link[wire].m_dst, p->Copy ());
   }
-  if(src->GetInstanceTypeId() == TypeId::LookupByName("ns3::DhpbPointToPointLaserNetDevice")) {
+  else if(src->GetInstanceTypeId() == TypeId::LookupByName("ns3::DhpbPointToPointLaserNetDevice")) {
       Ptr<DhpbPointToPointLaserNetDevice> dhpb_dst = DynamicCast<DhpbPointToPointLaserNetDevice>(m_link[wire].m_dst);
       Simulator::ScheduleWithContext (m_link[wire].m_dst->GetNode()->GetId (),
                                   txTime + delay, &DhpbPointToPointLaserNetDevice::Receive,

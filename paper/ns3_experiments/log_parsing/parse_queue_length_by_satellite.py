@@ -14,7 +14,7 @@ with open(args.filename) as ifile:
     for line in ifile:
         inp = line.split(" ")
         if len(inp) > 1:
-            if inp[1] == "PointToPointLaserNetDevice:Send():":
+            if inp[1] == "DhpbPointToPointLaserNetDevice:Send():":
                 if int(int(inp[3])/args.satellites_per_orbit) not in len_by_satellite:
                     len_by_satellite[int(int(inp[3])/args.satellites_per_orbit)] = []
                 len_by_satellite[int(int(inp[3])/args.satellites_per_orbit)].append(int(inp[-1]))

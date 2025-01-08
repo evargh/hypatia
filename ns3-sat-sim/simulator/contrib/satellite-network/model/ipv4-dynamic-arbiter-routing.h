@@ -107,6 +107,7 @@ public:
   void SetArbiter (Ptr<ArbiterDynamic> arbiter);
   void IncreaseArbiterDistance (Ptr<Packet> p);
   void ReduceArbiterDistance (Ptr<Packet> p);
+  uint32_t ResolveNodeIdFromPacket (Ptr<Packet> p); 
   Ptr<ArbiterDynamic> GetArbiter ();
   
 

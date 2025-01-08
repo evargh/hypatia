@@ -71,13 +71,14 @@ public:
     void ReduceQueueDistance(int32_t target_node_id);
     void ModifyDistanceLookup(int32_t target_node_id, uint32_t distance);
     
-    std::pair<std::array<uint64_t, NUM_GROUND_STATIONS>*, std::array<uint32_t, NUM_GROUND_STATIONS>*> GetQueueDistances();
+    std::pair<uint64_t, uint32_t> GetQueueDistances(uint32_t gid);
     
     void SetNeighborQueueDistance(
         int32_t neighbor_node_id,
         uint32_t my_interface_id,
         uint32_t remote_node_id,
-        std::array<uint64_t, NUM_GROUND_STATIONS> *neighbor_queueing_distance
+        uint64_t neighbor_queueing_distance,
+        uint32_t flow_id
     );
 
 private:

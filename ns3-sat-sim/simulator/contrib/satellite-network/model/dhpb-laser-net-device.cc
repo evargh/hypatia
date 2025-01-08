@@ -262,22 +262,12 @@ DhpbPointToPointLaserNetDevice::TransmitStart (Ptr<Packet> p)
   Time txCompleteTime = txTime + m_tInterframeGap;
 
   NS_LOG_LOGIC ("Schedule TransmitCompleteEvent in " << txCompleteTime.GetSeconds () << "sec");
-  Simulator::Schedule (txCompleteTime, &DhpbPointToPointLaserNetDevice::TransmitComplete, this);
-
+  Simulator::Schedule (txCompleteTime, &DhpbPointToPointLaserNetDevice::TransmitComplete, this); 
   bool result = m_channel->TransmitStart (p, this, m_destination_node, txTime);
-  // TODO: make it so that only changed flows are transmitted.
-  // In this case, the paper does not mention the fact that more queues can change due to the packet leaving a node
-  // we will have to come up with a solution
-  bool result_p2p = m_channel->TransmitStart (CreateL2Frame(), this, m_destination_node, txTime);
   if (result == false)
     {
       // result is always true anyway, so there should be no drop
       m_phyTxDropTrace (p);
-    }
-  else if (result_p2p == false) 
-    {
-      // if the packet was sent, but not the control information
-      NS_LOG_DEBUG("L2 Frame Dropped from " << m_node->GetId());
     }
   else 
     { 
@@ -289,8 +279,13 @@ DhpbPointToPointLaserNetDevice::TransmitStart (Ptr<Packet> p)
         NS_LOG_DEBUG (
             "From " << m_node->GetId() << " -- To " << m_destination_node->GetId() << 
             " -- UID is " << puid << " -- Delay is " << txCompleteTime.GetSeconds());
-        if (protocol == 0x0800) { 
+        if (protocol == 0x0800) {
+            uint32_t dest_id = m_node->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4DynamicArbiterRouting>()->ResolveNodeIdFromPacket(p); 
+            bool result_p2p = m_channel->TransmitStart (CreateL2Frame(dest_id), this, m_destination_node, txTime);
 	    m_node->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4DynamicArbiterRouting>()->ReduceArbiterDistance(p);
+            if (result_p2p == false) {
+                NS_LOG_LOGIC("control plane packet dropped");
+            }
         }
       }
       // then pass the copy of that packet to the arbiter, which can determine its destination by reading its ipv4 header
@@ -575,11 +570,11 @@ DhpbPointToPointLaserNetDevice::ProcessL2Frame (DHPBLaserNetDeviceHeader* p)
     GetObject<Ipv4>()->
     GetRoutingProtocol()->
     GetObject<Ipv4DynamicArbiterRouting>()->
-    GetArbiter()->SetNeighborQueueDistance(m_destination_node->GetId(), GetIfIndex()-1, GetRemoteIf()-1, p->GetQueueDistances());
+    GetArbiter()->SetNeighborQueueDistance(m_destination_node->GetId(), GetIfIndex()-1, GetRemoteIf()-1, p->GetQueueDistance(), p->GetFlow());
 }
 
 Ptr<Packet>
-DhpbPointToPointLaserNetDevice::CreateL2Frame ()
+DhpbPointToPointLaserNetDevice::CreateL2Frame (uint32_t dest_id)
 {
   NS_LOG_FUNCTION (this);
   
@@ -593,12 +588,14 @@ DhpbPointToPointLaserNetDevice::CreateL2Frame ()
   // m_queue into a double-ended queue
 
   DHPBLaserNetDeviceHeader p2ph;
-  std::pair<std::array<uint64_t, 100>*, std::array<uint32_t, 100>*> arbiter_distances = m_node->
-                                                GetObject<Ipv4>()->
-                                                GetRoutingProtocol()->
-                                                GetObject<Ipv4DynamicArbiterRouting>()->
-                                                GetArbiter()->GetQueueDistances();
-  p2ph.SetQueueDistances(std::get<0>(arbiter_distances), std::get<1>(arbiter_distances));
+  std::pair<uint64_t, uint32_t>  arbiter_distance = m_node->
+                                     GetObject<Ipv4>()->
+                                     GetRoutingProtocol()->
+                                     GetObject<Ipv4DynamicArbiterRouting>()->
+                                     GetArbiter()->GetQueueDistances(dest_id);
+
+  p2ph.SetQueueDistance(std::get<0>(arbiter_distance), std::get<1>(arbiter_distance));
+  p2ph.SetFlow(dest_id);
   p->AddHeader(p2ph);
   AddHeader(p, 0x0001);
 
@@ -636,6 +633,7 @@ DhpbPointToPointLaserNetDevice::Send (
   //
   // We should enqueue and dequeue the packet to hit the tracing hooks.
   //
+  NS_LOG_DEBUG ("From " << m_node->GetId() << " -- To " << m_destination_node->GetId() << " -- Queue Length is " << m_queue->GetNPackets());
   if (m_queue->Enqueue (packet))
     {  
       // If the channel is ready for transition we send the packet right now

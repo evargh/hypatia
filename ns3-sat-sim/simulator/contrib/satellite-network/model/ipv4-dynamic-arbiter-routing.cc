@@ -297,21 +297,22 @@ namespace ns3 {
 
     void
     Ipv4DynamicArbiterRouting::IncreaseArbiterDistance(Ptr<Packet> p) { 
-        Ipv4Header ipHeader;
-        p->RemoveHeader(ipHeader);
-        // adjust by number of nodes in the network, as determined by the arbiter
-        NS_ASSERT(ipHeader.GetDestination().Get() != 1717986918);
-        m_arbiter->AddQueueDistance(m_arbiter->ResolveNodeIdFromIp(ipHeader.GetDestination().Get()));
+        m_arbiter->AddQueueDistance(ResolveNodeIdFromPacket(p));
         NS_LOG_DEBUG("added packet to arbiter array");
     }
 
     void
     Ipv4DynamicArbiterRouting::ReduceArbiterDistance(Ptr<Packet> p) { 
-        Ipv4Header ipHeader;
-        p->RemoveHeader(ipHeader);
-        // adjust by number of nodes in the network, as determined by the arbiter
-        NS_ASSERT(ipHeader.GetDestination().Get() != 1717986918);
-        m_arbiter->ReduceQueueDistance(m_arbiter->ResolveNodeIdFromIp(ipHeader.GetDestination().Get()));
+        m_arbiter->ReduceQueueDistance(ResolveNodeIdFromPacket(p));
         NS_LOG_DEBUG("removed packet from arbiter array");
+    }
+
+    uint32_t
+    Ipv4DynamicArbiterRouting::ResolveNodeIdFromPacket(Ptr<Packet> p) {
+        Ipv4Header ipHeader;
+        p->PeekHeader(ipHeader);
+        
+        NS_ASSERT(ipHeader.GetDestination().Get() != 1717986918);
+        return m_arbiter->ResolveNodeIdFromIp(ipHeader.GetDestination().Get());
     }
 } // namespace ns3

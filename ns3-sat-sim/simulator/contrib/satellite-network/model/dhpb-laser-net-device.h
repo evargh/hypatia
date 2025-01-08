@@ -236,7 +236,7 @@ private:
    * This function is called to add the frame relevant for L2 communication
    * into the queue
    */ 
-  Ptr<Packet> CreateL2Frame (void);
+  Ptr<Packet> CreateL2Frame (uint32_t dest_id);
 
   void ProcessL2Frame (DHPBLaserNetDeviceHeader* p);
 

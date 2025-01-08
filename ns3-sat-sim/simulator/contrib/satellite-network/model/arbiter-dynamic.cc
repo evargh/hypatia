@@ -266,19 +266,20 @@ void ArbiterDynamic::ReduceQueueDistance(int32_t target_node_id) {
       NS_LOG_DEBUG("attempted to reduce 0-length distance queue");
     }
 }
-std::pair<std::array<uint64_t, ArbiterDynamic::NUM_GROUND_STATIONS>*, std::array<uint32_t, ArbiterDynamic::NUM_GROUND_STATIONS>*>
-ArbiterDynamic::GetQueueDistances() {
-    return std::make_pair(&m_queueing_distances, &m_distance_lookup_array);
+std::pair<uint64_t, uint32_t>
+ArbiterDynamic::GetQueueDistances(uint32_t gid) {
+    return std::make_pair(m_queueing_distances.at(GSLNodeIdToGSLIndex(gid)), m_distance_lookup_array.at(GSLNodeIdToGSLIndex(gid)));
 }
 
 void ArbiterDynamic::SetNeighborQueueDistance(
     int32_t neighbor_node_id, 
     uint32_t my_interface_id,
     uint32_t remote_interface_id,
-    std::array<uint64_t, NUM_GROUND_STATIONS> *neighbor_queueing_distance
+    uint64_t neighbor_queueing_distance,
+    uint32_t flow_id
 ) {
-    NS_LOG_DEBUG(m_node_id << " interface: " << my_interface_id);
-    m_neighbor_queueing_distances.at(my_interface_id) = *neighbor_queueing_distance; 
+    NS_LOG_DEBUG(m_node_id << " interface: " << my_interface_id << " for destination ground station: " << flow_id);
+    m_neighbor_queueing_distances.at(my_interface_id).at(GSLNodeIdToGSLIndex(flow_id)) = neighbor_queueing_distance; 
     m_neighbor_ids.at(my_interface_id) = neighbor_node_id;
     m_neighbor_interfaces.at(my_interface_id) = remote_interface_id;
 }

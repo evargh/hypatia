@@ -13,17 +13,27 @@ DHPBLaserNetDeviceHeader::~DHPBLaserNetDeviceHeader ()
 }
 
 void 
-DHPBLaserNetDeviceHeader::SetQueueDistances (std::array<uint64_t, 100>* qlens, std::array<uint32_t, 100>* distances)
+DHPBLaserNetDeviceHeader::SetFlow (uint32_t gid)
 {
-    for(size_t i = 0; i < 100; i++) {
-        m_queue_distances.at(i) = qlens->at(i) * uint64_t(distances->at(i));
-    }
+    m_gid = gid;
 }
 
-std::array<uint64_t, 100>* 
-DHPBLaserNetDeviceHeader::GetQueueDistances ()
+uint32_t 
+DHPBLaserNetDeviceHeader::GetFlow ()
 {
-    return &m_queue_distances;
+    return m_gid;
+}
+
+void 
+DHPBLaserNetDeviceHeader::SetQueueDistance (uint64_t qlen, uint32_t distance)
+{
+    m_queue_distance = qlen * uint64_t(distance);
+}
+
+uint64_t
+DHPBLaserNetDeviceHeader::GetQueueDistance ()
+{
+    return m_queue_distance;
 }
 
 TypeId
@@ -52,28 +62,24 @@ DHPBLaserNetDeviceHeader::Print (std::ostream &os) const
 uint32_t
 DHPBLaserNetDeviceHeader::GetSerializedSize (void) const
 {
-    // 100 u64s
-    return 100*8;
+    // 2 u64s
+    return 2*8;
 }
 
 void
 DHPBLaserNetDeviceHeader::Serialize (Buffer::Iterator start) const
 {
     Buffer::Iterator i = start;
-    for(auto item : m_queue_distances) {
-        i.WriteHtonU64(item);
-    }
+    i.WriteHtonU64(m_queue_distance);
+    i.WriteHtonU64(m_gid);
 }
     
 uint32_t
 DHPBLaserNetDeviceHeader::Deserialize (Buffer::Iterator start)
 {
     Buffer::Iterator i = start;
-    // fixed size transmission, so we don't need to send any preparatory information
-    
-    for(size_t j = 0; j < 100; j++) {
-        m_queue_distances.at(j) = i.ReadNtohU64();
-    }
+    m_queue_distance = i.ReadNtohU64();
+    m_gid = i.ReadNtohU64();
 
     return GetSerializedSize();
 }

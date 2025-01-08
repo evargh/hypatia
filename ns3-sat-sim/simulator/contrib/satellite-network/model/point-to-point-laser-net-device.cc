@@ -557,6 +557,7 @@ PointToPointLaserNetDevice::Send (
   //
   // We should enqueue and dequeue the packet to hit the tracing hooks.
   //
+  NS_LOG_DEBUG ("From " << m_node->GetId() << " -- To " << m_destination_node->GetId() << " -- Queue Length is " << m_queue->GetNPackets());
   if (m_queue->Enqueue (packet))
     {  
       // If the channel is ready for transition we send the packet right now

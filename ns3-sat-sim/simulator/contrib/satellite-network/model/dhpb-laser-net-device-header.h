@@ -32,8 +32,11 @@ public:
     DHPBLaserNetDeviceHeader ();
     ~DHPBLaserNetDeviceHeader ();
 
-    void SetQueueDistances (std::array<uint64_t, 100>* qlens, std::array<uint32_t, 100>* distances);
-    std::array<uint64_t, 100>* GetQueueDistances ();
+    void SetQueueDistance (uint64_t qlen, uint32_t distance);
+    uint64_t GetQueueDistance ();
+    void SetFlow (uint32_t gid);
+    uint32_t GetFlow ();
+
     static TypeId GetTypeId ();
 
     virtual TypeId GetInstanceTypeId (void) const;
@@ -43,7 +46,8 @@ public:
     virtual uint32_t Deserialize (Buffer::Iterator start);
         
 private:
-    std::array<uint64_t, 100> m_queue_distances;
+    uint64_t m_queue_distance;
+    uint64_t m_gid;
 };
 }
 
