@@ -16,26 +16,31 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "ipv4-dynamic-arbiter-routing-helper.h"
+#include "ipv4-dhpb-arbiter-routing-helper.h"
 
-namespace ns3 {
+namespace ns3
+{
 
-NS_LOG_COMPONENT_DEFINE ("Ipv4DynamicArbiterRoutingHelper");
+NS_LOG_COMPONENT_DEFINE("Ipv4DhpbArbiterRoutingHelper");
 
-Ipv4DynamicArbiterRoutingHelper::Ipv4DynamicArbiterRoutingHelper() {
-    // Left empty intentionally
+Ipv4DhpbArbiterRoutingHelper::Ipv4DhpbArbiterRoutingHelper()
+{
+	// Left empty intentionally
 }
 
-Ipv4DynamicArbiterRoutingHelper::Ipv4DynamicArbiterRoutingHelper (const Ipv4DynamicArbiterRoutingHelper &o) {
-    // Left empty intentionally
+Ipv4DhpbArbiterRoutingHelper::Ipv4DhpbArbiterRoutingHelper(const Ipv4DhpbArbiterRoutingHelper &o)
+{
+	// Left empty intentionally
 }
 
-Ipv4DynamicArbiterRoutingHelper* Ipv4DynamicArbiterRoutingHelper::Copy (void) const {
-  return new Ipv4DynamicArbiterRoutingHelper (*this);
+Ipv4DhpbArbiterRoutingHelper *Ipv4DhpbArbiterRoutingHelper::Copy(void) const
+{
+	return new Ipv4DhpbArbiterRoutingHelper(*this);
 }
 
-Ptr<Ipv4RoutingProtocol> Ipv4DynamicArbiterRoutingHelper::Create (Ptr<Node> node) const {
-  return CreateObject<Ipv4DynamicArbiterRouting> ();
+Ptr<Ipv4RoutingProtocol> Ipv4DhpbArbiterRoutingHelper::Create(Ptr<Node> node) const
+{
+	return CreateObject<Ipv4DhpbArbiterRouting>();
 }
 
 } // namespace ns3

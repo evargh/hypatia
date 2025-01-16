@@ -10,21 +10,22 @@ def build(bld):
         'model/gsl-net-device.cc',
         'model/gsl-channel.cc',
         'model/ground-station.cc',
-        'helper/gsl-helper.cc',
-        'helper/point-to-point-laser-helper.cc',
         'model/topology-satellite-network.cc',
         'model/arbiter-satnet.cc',
         'model/arbiter-single-forward.cc',
-	'model/arbiter-dynamic.cc',
-	'model/ipv4-dynamic-arbiter-routing.cc',
+	      'model/arbiter-dhpb.cc',
+	      'model/ipv4-dhpb-arbiter-routing.cc',
         'model/dhpb-laser-net-device.cc',
-	'model/dhpb-gsl-net-device.cc',
+	      'model/dhpb-gsl-net-device.cc',
+
+        'helper/gsl-helper.cc',
+        'helper/point-to-point-laser-helper.cc',
         'helper/arbiter-single-forward-helper.cc',
-	'helper/arbiter-dynamic-helper.cc',
-	'helper/ipv4-dynamic-arbiter-routing-helper.cc',
+	      'helper/arbiter-dhpb-helper.cc',
+	      'helper/ipv4-dhpb-arbiter-routing-helper.cc',
         'helper/gsl-if-bandwidth-helper.cc',
-	'helper/dhpb-gsl-helper.cc',
-	'helper/dhpb-laser-helper.cc'
+	      'helper/dhpb-gsl-helper.cc',
+	      'helper/dhpb-laser-helper.cc'
         ]
 
     module_test = bld.create_ns3_module_test_library('satellite-network')
@@ -42,21 +43,23 @@ def build(bld):
         'model/gsl-net-device.h',
         'model/gsl-channel.h',
         'model/ground-station.h',
-        'helper/gsl-helper.h',
-        'helper/point-to-point-laser-helper.h',
         'model/topology-satellite-network.h',
         'model/arbiter-satnet.h',
         'model/arbiter-single-forward.h',
-	'model/arbiter-dynamic.h',
-	'model/ipv4-dynamic-arbiter-routing.h',
+	      'model/arbiter-dhpb.h',
+        'model/arbiter-short.h',
+	      'model/ipv4-dhpb-arbiter-routing.h',
         'model/dhpb-laser-net-device.h',
-	'model/dhpb-gsl-net-device.h',
+	      'model/dhpb-gsl-net-device.h',
+
+        'helper/gsl-helper.h',
+        'helper/point-to-point-laser-helper.h',
         'helper/arbiter-single-forward-helper.h',
-	'helper/arbiter-dynamic-helper.h',
-	'helper/ipv4-dynamic-arbiter-routing-helper.h',
+	      'helper/arbiter-dhpb-helper.h',
+	      'helper/ipv4-dhpb-arbiter-routing-helper.h',
         'helper/gsl-if-bandwidth-helper.h',
-	'helper/dhpb-gsl-helper.h',
-	'helper/dhpb-laser-helper.h'
+	      'helper/dhpb-gsl-helper.h',
+	      'helper/dhpb-laser-helper.h'
         ]
 
     if bld.env.ENABLE_EXAMPLES:
