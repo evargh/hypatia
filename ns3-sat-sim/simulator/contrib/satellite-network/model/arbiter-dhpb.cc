@@ -31,8 +31,8 @@ TypeId ArbiterDhpb::GetTypeId(void)
 }
 
 ArbiterDhpb::ArbiterDhpb(Ptr<Node> this_node, NodeContainer nodes,
-												 std::vector<std::tuple<int32_t, int32_t, int32_t>> next_hop_list)
-		: ArbiterSatnet(this_node, nodes)
+						 std::vector<std::tuple<int32_t, int32_t, int32_t>> next_hop_list)
+	: ArbiterSatnet(this_node, nodes)
 {
 	m_next_hop_list = next_hop_list;
 	m_queueing_distances.fill(0);
@@ -46,7 +46,7 @@ ArbiterDhpb::ArbiterDhpb(Ptr<Node> this_node, NodeContainer nodes,
 Vector3D ArbiterDhpb::CartesianToGeodetic(Vector3D cartesian)
 {
 	return Vector3D(std::asin(cartesian.z / ArbiterDhpb::APPROXIMATE_EARTH_RADIUS_M) * 180.0 / pi,
-									std::atan2(cartesian.y, cartesian.x) * 180.0 / pi, 0);
+					std::atan2(cartesian.y, cartesian.x) * 180.0 / pi, 0);
 }
 
 Ptr<Satellite> ArbiterDhpb::ExtractSatellite(int32_t node_id)
@@ -58,8 +58,9 @@ Ptr<Satellite> ArbiterDhpb::ExtractSatellite(int32_t node_id)
 
 bool ArbiterDhpb::CheckIfInRectangle(Vector3D forwardpos, Vector3D srcpos, Vector3D destpos)
 {
-	// if the two longitudes have the same sign, it's easier to check validity (their rectangle must span exclusively the
-	// same hemisphere) this works for 0 but may have issues at exactly 180, need to test
+	// if the two longitudes have the same sign, it's easier to check validity
+	// (their rectangle must span exclusively the same hemisphere) this works
+	// for 0 but may have issues at exactly 180, need to test
 
 	if (srcpos.y * destpos.y >= 0)
 	{
@@ -73,10 +74,12 @@ bool ArbiterDhpb::CheckIfInRectangle(Vector3D forwardpos, Vector3D srcpos, Vecto
 	}
 	else
 	{
-		// if the two longitudes have different signs, more work needs to be done
-		// determine if the shortest path goes through the null longitude, or through the opposite longitude
+		// if the two longitudes have different signs, more work needs to
+		// be done determine if the shortest path goes through the null
+		// longitude, or through the opposite longitude
 		bool through_0 = (std::abs(destpos.y) + std::abs(destpos.y) <= 180);
-		// if the shortest path is through the null longitude, then we can repeat the same test
+		// if the shortest path is through the null longitude, then we can
+		// repeat the same test
 		if (through_0)
 		{
 			if (forwardpos.x >= std::min(srcpos.x, destpos.x) && forwardpos.x <= std::max(srcpos.x, destpos.x))
@@ -89,8 +92,9 @@ bool ArbiterDhpb::CheckIfInRectangle(Vector3D forwardpos, Vector3D srcpos, Vecto
 		}
 		else
 		{
-			// if the shortest path is through the 180 longitude, then we take the complement of the previous test
-			// (can see why by multiplying the coordinate system by negative 1)
+			// if the shortest path is through the 180 longitude, then
+			// we take the complement of the previous test (can see why
+			// by multiplying the coordinate system by negative 1)
 			if (forwardpos.y <= std::min(srcpos.y, destpos.y) || forwardpos.y >= std::max(srcpos.y, destpos.y))
 			{
 				if (forwardpos.x >= std::min(srcpos.x, destpos.x) && forwardpos.x <= std::max(srcpos.x, destpos.x))
@@ -170,8 +174,9 @@ double ArbiterDhpb::ValidateForwardHeuristic(int32_t source_node_id, int32_t tar
 	{
 		return false;
 	}
-	// create a rectangle using the source node's mobility information and the target node's mobility information
-	// then log if our next hop actually violates that "permitted region"
+	// create a rectangle using the source node's mobility information and the
+	// target node's mobility information then log if our next hop actually
+	// violates that "permitted region"
 
 	Ptr<MobilityModel> target_node_mm = m_nodes.Get(target_node_id)->GetObject<MobilityModel>();
 	Ptr<MobilityModel> forward_node_mm = m_nodes.Get(forward_node_id)->GetObject<MobilityModel>();
@@ -189,7 +194,7 @@ void ArbiterDhpb::GetNeighborInfo()
 	for (uint32_t i = 1; i < num_interfaces; i++)
 	{
 		Ptr<DhpbPointToPointLaserNetDevice> p2p =
-				m_nodes.Get(m_node_id)->GetObject<Ipv4>()->GetNetDevice(i)->GetObject<DhpbPointToPointLaserNetDevice>();
+			m_nodes.Get(m_node_id)->GetObject<Ipv4>()->GetNetDevice(i)->GetObject<DhpbPointToPointLaserNetDevice>();
 		if (p2p != 0)
 		{
 			m_neighbor_ids.at(i - 1) = p2p->GetDestinationNode()->GetId();
@@ -200,38 +205,41 @@ void ArbiterDhpb::GetNeighborInfo()
 }
 
 std::tuple<int32_t, int32_t, int32_t> ArbiterDhpb::GetForward(int32_t source_node_id, int32_t target_node_id,
-																															int32_t snapshot_forward_node_id)
+															  int32_t snapshot_forward_node_id)
 {
-	// each tuple stores distance, interface number, and whether or not the node is in the permitted region
+	// each tuple stores distance, interface number, and whether or not the
+	// node is in the permitted region
 	std::array<std::tuple<uint64_t, int8_t, double>, 4> satellite_forwarding_information;
 	for (int8_t i = 0; i < 4; i++)
 	{
 		double forward_distance = ValidateForwardHeuristic(source_node_id, target_node_id, m_neighbor_ids.at(i));
 		satellite_forwarding_information.at(i) = std::make_tuple(
-				m_neighbor_queueing_distances.at(i).at(GSLNodeIdToGSLIndex(target_node_id)), i, forward_distance);
+			m_neighbor_queueing_distances.at(i).at(GSLNodeIdToGSLIndex(target_node_id)), i, forward_distance);
 	}
 	std::sort(satellite_forwarding_information.begin(), satellite_forwarding_information.end(),
-						[](std::tuple<uint64_t, int8_t, double> a, std::tuple<uint64_t, int8_t, double> b) {
-							if (std::get<0>(a) != std::get<0>(b))
-							{
-								return std::get<0>(a) < std::get<0>(b);
-							}
-							return std::get<2>(a) < std::get<2>(b);
-						});
+			  [](std::tuple<uint64_t, int8_t, double> a, std::tuple<uint64_t, int8_t, double> b) {
+				  if (std::get<0>(a) != std::get<0>(b))
+				  {
+					  return std::get<0>(a) < std::get<0>(b);
+				  }
+				  return std::get<2>(a) < std::get<2>(b);
+			  });
 	int8_t optimal_outbound_interface = std::get<1>(satellite_forwarding_information.at(0));
 	return std::make_tuple(m_neighbor_ids.at(optimal_outbound_interface), optimal_outbound_interface + 1,
-												 m_neighbor_interfaces.at(optimal_outbound_interface));
+						   m_neighbor_interfaces.at(optimal_outbound_interface));
 }
 
 std::tuple<int32_t, int32_t, int32_t> ArbiterDhpb::TopologySatelliteNetworkDecide(
-		int32_t source_node_id, int32_t target_node_id, Ptr<const Packet> pkt, Ipv4Header const &ipHeader,
-		bool is_request_for_source_ip_so_no_next_header)
+	int32_t source_node_id, int32_t target_node_id, Ptr<const Packet> pkt, Ipv4Header const &ipHeader,
+	bool is_request_for_source_ip_so_no_next_header)
 {
-	// each time this is run, get all net devices and determine nodes and interfaces. set the member arrays appropriately
+	// each time this is run, get all net devices and determine nodes and
+	// interfaces. set the member arrays appropriately
 	NS_ASSERT(m_nodes.GetN() > ArbiterDhpb::NUM_GROUND_STATIONS);
 	NS_LOG_DEBUG("destination: " << target_node_id << " source: " << source_node_id << " me: " << m_node_id);
 	// if this arbiter is runing on a ground station, we use snapshot routing
-	// the source can occasionally be a satellite in case of ICMP messages. if that's the case, use snapshot routing
+	// the source can occasionally be a satellite in case of ICMP messages. if
+	// that's the case, use snapshot routing
 	if (m_node_id < static_cast<int32_t>(m_nodes.GetN() - NUM_GROUND_STATIONS))
 	{
 		GetNeighborInfo();
@@ -240,7 +248,8 @@ std::tuple<int32_t, int32_t, int32_t> ArbiterDhpb::TopologySatelliteNetworkDecid
 		// also, there may be no possible route
 		if (snapshot_forward_node_id != target_node_id || snapshot_forward_node_id == -1)
 		{
-			// throw out packets that are destined for satellites, which can happen due to ICMP
+			// throw out packets that are destined for satellites,
+			// which can happen due to ICMP
 			if (target_node_id < static_cast<int32_t>(m_nodes.GetN() - NUM_GROUND_STATIONS))
 			{
 				return std::make_tuple(-1, 0, 0);
@@ -261,17 +270,20 @@ uint64_t ArbiterDhpb::GetQueueDistance(int32_t target_node_id)
 {
 	NS_ASSERT(GSLNodeIdToGSLIndex(target_node_id) < (int32_t)m_queueing_distances.size());
 	return m_queueing_distances.at(GSLNodeIdToGSLIndex(target_node_id)) *
-				 m_distance_lookup_array.at(GSLNodeIdToGSLIndex(target_node_id));
+		   m_distance_lookup_array.at(GSLNodeIdToGSLIndex(target_node_id));
 }
 
 void ArbiterDhpb::ReduceQueueDistance(int32_t target_node_id)
 {
 	NS_ASSERT(GSLNodeIdToGSLIndex(target_node_id) < (int32_t)m_queueing_distances.size());
 	// TODO: reintroduce this assertion
-	// very infrequently, this assertion is violated. some nodes do not have "addqueuedistance" called before this is
-	// called, even though they are receiving traffic just like every other node. namely traffic directed towards ground
-	// station 20 passing through node 2 I think this is due to how satellites generate ICMP messages
-	// NS_ASSERT(m_queueing_distances.at(GSLNodeIdToGSLIndex(target_node_id)) > 0);
+	// very infrequently, this assertion is violated. some nodes do not have
+	// "addqueuedistance" called before this is called, even though they are
+	// receiving traffic just like every other node. namely traffic directed
+	// towards ground station 20 passing through node 2 I think this is due to
+	// how satellites generate ICMP messages
+	// NS_ASSERT(m_queueing_distances.at(GSLNodeIdToGSLIndex(target_node_id)) >
+	// 0);
 	if (m_queueing_distances.at(GSLNodeIdToGSLIndex(target_node_id)) > 0)
 	{
 		m_queueing_distances.at(GSLNodeIdToGSLIndex(target_node_id)) -= 1;
@@ -284,12 +296,12 @@ void ArbiterDhpb::ReduceQueueDistance(int32_t target_node_id)
 std::pair<uint64_t, uint32_t> ArbiterDhpb::GetQueueDistances(uint32_t gid)
 {
 	return std::make_pair(m_queueing_distances.at(GSLNodeIdToGSLIndex(gid)),
-												m_distance_lookup_array.at(GSLNodeIdToGSLIndex(gid)));
+						  m_distance_lookup_array.at(GSLNodeIdToGSLIndex(gid)));
 }
 
 void ArbiterDhpb::SetNeighborQueueDistance(int32_t neighbor_node_id, uint32_t my_interface_id,
-																					 uint32_t remote_interface_id, uint64_t neighbor_queueing_distance,
-																					 uint32_t flow_id)
+										   uint32_t remote_interface_id, uint64_t neighbor_queueing_distance,
+										   uint32_t flow_id)
 {
 	NS_LOG_DEBUG(m_node_id << " interface: " << my_interface_id << " for destination ground station: " << flow_id);
 	m_neighbor_queueing_distances.at(my_interface_id).at(GSLNodeIdToGSLIndex(flow_id)) = neighbor_queueing_distance;
@@ -298,7 +310,7 @@ void ArbiterDhpb::SetNeighborQueueDistance(int32_t neighbor_node_id, uint32_t my
 }
 
 void ArbiterDhpb::SetSingleForwardState(int32_t target_node_id, int32_t next_node_id, int32_t own_if_id,
-																				int32_t next_if_id)
+										int32_t next_if_id)
 {
 	NS_ABORT_MSG_IF(next_node_id == -2 || own_if_id == -2 || next_if_id == -2, "Not permitted to set invalid (-2).");
 	m_next_hop_list[target_node_id] = std::make_tuple(next_node_id, own_if_id, next_if_id);
@@ -322,8 +334,8 @@ std::string ArbiterDhpb::StringReprOfForwardingState()
 	res << "Single-forward state of node " << m_node_id << std::endl;
 	for (size_t i = 0; i < m_nodes.GetN(); i++)
 	{
-		res << "  -> " << i << ": (" << std::get<0>(m_next_hop_list[i]) << ", " << std::get<1>(m_next_hop_list[i]) << ", "
-				<< std::get<2>(m_next_hop_list[i]) << ")" << std::endl;
+		res << "  -> " << i << ": (" << std::get<0>(m_next_hop_list[i]) << ", " << std::get<1>(m_next_hop_list[i])
+			<< ", " << std::get<2>(m_next_hop_list[i]) << ")" << std::endl;
 	}
 	return res.str();
 }

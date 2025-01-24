@@ -14,7 +14,9 @@ def build(bld):
         'model/arbiter-satnet.cc',
         'model/arbiter-single-forward.cc',
 	      'model/arbiter-dhpb.cc',
+        'model/arbiter-short.cc',
 	      'model/ipv4-dhpb-arbiter-routing.cc',
+        'model/ipv4-short-routing.cc',
         'model/dhpb-laser-net-device.cc',
 	      'model/dhpb-gsl-net-device.cc',
 
@@ -22,7 +24,9 @@ def build(bld):
         'helper/point-to-point-laser-helper.cc',
         'helper/arbiter-single-forward-helper.cc',
 	      'helper/arbiter-dhpb-helper.cc',
+        'helper/arbiter-short-helper.cc',
 	      'helper/ipv4-dhpb-arbiter-routing-helper.cc',
+        'helper/ipv4-short-routing-helper.cc',
         'helper/gsl-if-bandwidth-helper.cc',
 	      'helper/dhpb-gsl-helper.cc',
 	      'helper/dhpb-laser-helper.cc'
@@ -49,6 +53,7 @@ def build(bld):
 	      'model/arbiter-dhpb.h',
         'model/arbiter-short.h',
 	      'model/ipv4-dhpb-arbiter-routing.h',
+        'model/ipv4-short-routing.h',
         'model/dhpb-laser-net-device.h',
 	      'model/dhpb-gsl-net-device.h',
 
@@ -56,7 +61,9 @@ def build(bld):
         'helper/point-to-point-laser-helper.h',
         'helper/arbiter-single-forward-helper.h',
 	      'helper/arbiter-dhpb-helper.h',
+        'helper/arbiter-short-helper.h',
 	      'helper/ipv4-dhpb-arbiter-routing-helper.h',
+        'helper/ipv4-short-routing-helper.h',
         'helper/gsl-if-bandwidth-helper.h',
 	      'helper/dhpb-gsl-helper.h',
 	      'helper/dhpb-laser-helper.h'

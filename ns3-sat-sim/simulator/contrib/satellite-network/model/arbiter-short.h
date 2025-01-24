@@ -34,29 +34,39 @@ namespace ns3
 
 class ArbiterShort : public ArbiterSatnet
 {
-public:
+  public:
 	static TypeId GetTypeId(void);
 
 	// Constructor for single forward next-hop forwarding state
 	ArbiterShort(Ptr<Node> this_node, NodeContainer nodes,
-							 std::vector<std::tuple<int32_t, int32_t, int32_t>> next_hop_list);
+				 std::vector<std::tuple<int32_t, int32_t, int32_t>> next_hop_list);
 
 	// Single forward next-hop implementation
 	std::tuple<int32_t, int32_t, int32_t> TopologySatelliteNetworkDecide(int32_t source_node_id, int32_t target_node_id,
-																																			 ns3::Ptr<const ns3::Packet> pkt,
-																																			 ns3::Ipv4Header const &ipHeader,
-																																			 bool is_socket_request_for_source_ip);
+																		 ns3::Ptr<const ns3::Packet> pkt,
+																		 ns3::Ipv4Header const &ipHeader,
+																		 bool is_socket_request_for_source_ip);
 
 	// Updating of forward state
 	void SetSingleForwardState(int32_t target_node_id, int32_t next_node_id, int32_t own_if_id, int32_t next_if_id);
 
+	// These are useful for satellites and ground stations
+	void SetShortParams(double raan, double anomaly);
+
+	// This is useful for ground stations
+	void SetZoneHeader(int32_t row_num, int32_t col_num);
+
 	// Static routing table
 	std::string StringReprOfForwardingState();
 
-private:
+  private:
 	std::vector<std::tuple<int32_t, int32_t, int32_t>> m_next_hop_list;
-	double raan;
-	double ang_peri;
+
+	// These parameters are relevant for satellites and ground stations
+	double m_alpha;
+	double m_gamma;
+
+	// This parameter is relevant for ground stations
 };
 
 } // namespace ns3

@@ -30,24 +30,31 @@ TypeId ArbiterShort::GetTypeId(void)
 }
 
 ArbiterShort::ArbiterShort(Ptr<Node> this_node, NodeContainer nodes,
-													 std::vector<std::tuple<int32_t, int32_t, int32_t>> next_hop_list)
-		: ArbiterSatnet(this_node, nodes)
+						   std::vector<std::tuple<int32_t, int32_t, int32_t>> next_hop_list)
+	: ArbiterSatnet(this_node, nodes)
 {
 	m_next_hop_list = next_hop_list;
 }
 
 std::tuple<int32_t, int32_t, int32_t> ArbiterShort::TopologySatelliteNetworkDecide(
-		int32_t source_node_id, int32_t target_node_id, Ptr<const Packet> pkt, Ipv4Header const &ipHeader,
-		bool is_request_for_source_ip_so_no_next_header)
+	int32_t source_node_id, int32_t target_node_id, Ptr<const Packet> pkt, Ipv4Header const &ipHeader,
+	bool is_request_for_source_ip_so_no_next_header)
 {
 	return m_next_hop_list[target_node_id];
 }
 
 void ArbiterShort::SetSingleForwardState(int32_t target_node_id, int32_t next_node_id, int32_t own_if_id,
-																				 int32_t next_if_id)
+										 int32_t next_if_id)
 {
 	NS_ABORT_MSG_IF(next_node_id == -2 || own_if_id == -2 || next_if_id == -2, "Not permitted to set invalid (-2).");
 	m_next_hop_list[target_node_id] = std::make_tuple(next_node_id, own_if_id, next_if_id);
+}
+
+void ArbiterShort::SetShortParams(double alpha, double gamma)
+{
+	NS_LOG_DEBUG(m_node_id << ": alpha - " << alpha << " - gamma - " << gamma);
+	m_alpha = alpha;
+	m_gamma = gamma;
 }
 
 std::string ArbiterShort::StringReprOfForwardingState()
@@ -56,8 +63,8 @@ std::string ArbiterShort::StringReprOfForwardingState()
 	res << "Single-forward state of node " << m_node_id << std::endl;
 	for (size_t i = 0; i < m_nodes.GetN(); i++)
 	{
-		res << "  -> " << i << ": (" << std::get<0>(m_next_hop_list[i]) << ", " << std::get<1>(m_next_hop_list[i]) << ", "
-				<< std::get<2>(m_next_hop_list[i]) << ")" << std::endl;
+		res << "  -> " << i << ": (" << std::get<0>(m_next_hop_list[i]) << ", " << std::get<1>(m_next_hop_list[i])
+			<< ", " << std::get<2>(m_next_hop_list[i]) << ")" << std::endl;
 	}
 	return res.str();
 }

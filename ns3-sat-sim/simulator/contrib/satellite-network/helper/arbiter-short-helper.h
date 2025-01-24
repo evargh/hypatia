@@ -32,16 +32,28 @@ namespace ns3
 
 class ArbiterShortHelper
 {
-public:
+  public:
+	const int32_t NUM_GROUND_STATIONS = 100;
+	const double EARTH_ORBIT_TIME_NS = 86400000000000;
+	// TODO: it is better to just read the coordinates from the file for true accuracy, but this will do for now
+	const int32_t APPROXIMATE_EARTH_RADIUS_M = 6371000;
+
 	ArbiterShortHelper(Ptr<BasicSimulation> basicSimulation, NodeContainer nodes);
 
-private:
+  private:
+	void GenerateGSZones();
 	std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>> InitialEmptyForwardingState();
+	double m_satelliteInclination;
+	void UpdateOrbitalParams(int64_t t);
 	void UpdateForwardingState(int64_t t);
+	void SetGSParams();
+	void SetCoordinateSkew();
 
+	std::tuple<double, double, double, double> CartesianToShort(Vector3D cartesian);
 	// Parameters
 	Ptr<BasicSimulation> m_basicSimulation;
 	NodeContainer m_nodes;
+	double m_coordinateSkew_deg;
 	int64_t m_dynamicStateUpdateIntervalNs;
 	std::vector<Ptr<ArbiterShort>> m_arbiters;
 };
