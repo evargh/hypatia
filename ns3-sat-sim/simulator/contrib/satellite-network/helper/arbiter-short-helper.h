@@ -20,11 +20,13 @@
 #ifndef ARBITER_SHORT_HELPER
 #define ARBITER_SHORT_HELPER
 
+#include <mutex>
 #include "ns3/ipv4-routing-helper.h"
 #include "ns3/basic-simulation.h"
 #include "ns3/topology-satellite-network.h"
 #include "ns3/ipv4-short-routing.h"
-#include "ns3/arbiter-short.h"
+#include "ns3/arbiter-short-gs.h"
+#include "ns3/arbiter-short-sat.h"
 #include "ns3/abort.h"
 
 namespace ns3
@@ -33,15 +35,13 @@ namespace ns3
 class ArbiterShortHelper
 {
   public:
-	const int32_t NUM_GROUND_STATIONS = 100;
+	// APPROXIMATE WGS72 VALUES
 	const double EARTH_ORBIT_TIME_NS = 86400000000000;
-	// TODO: it is better to just read the coordinates from the file for true accuracy, but this will do for now
 	const int32_t APPROXIMATE_EARTH_RADIUS_M = 6371000;
 
 	ArbiterShortHelper(Ptr<BasicSimulation> basicSimulation, NodeContainer nodes);
 
   private:
-	void GenerateGSZones();
 	std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>> InitialEmptyForwardingState();
 	double m_satelliteInclination;
 	void UpdateOrbitalParams(int64_t t);
@@ -55,7 +55,14 @@ class ArbiterShortHelper
 	NodeContainer m_nodes;
 	double m_coordinateSkew_deg;
 	int64_t m_dynamicStateUpdateIntervalNs;
-	std::vector<Ptr<ArbiterShort>> m_arbiters;
+
+	int64_t m_num_orbits;
+	int64_t m_satellites_per_orbit;
+	std::vector<Ptr<ArbiterShortSat>> m_sat_arbiters;
+	std::vector<Ptr<ArbiterShortGS>> m_gs_arbiters;
+	// apparently shared_ptr can tolerate vector memory moves when resized. testing now
+	std::shared_ptr<std::vector<int64_t>> shared_data_for_satellites;
+	std::shared_ptr<std::mutex> shared_data_for_satellites_mutex;
 };
 
 } // namespace ns3

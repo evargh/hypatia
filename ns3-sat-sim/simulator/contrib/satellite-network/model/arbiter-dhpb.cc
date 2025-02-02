@@ -31,15 +31,18 @@ TypeId ArbiterDhpb::GetTypeId(void)
 }
 
 ArbiterDhpb::ArbiterDhpb(Ptr<Node> this_node, NodeContainer nodes,
-						 std::vector<std::tuple<int32_t, int32_t, int32_t>> next_hop_list)
+						 std::vector<std::tuple<int32_t, int32_t, int32_t>> next_hop_list, int64_t n_o, int64_t s_p_o)
 	: ArbiterSatnet(this_node, nodes)
 {
 	m_next_hop_list = next_hop_list;
-	m_queueing_distances.fill(0);
+	num_orbits = n_o;
+	satellites_per_orbit = s_p_o;
+	m_queueing_distances.resize(num_orbits * satellites_per_orbit, 0);
 	m_neighbor_ids.fill(0);
+	m_distance_lookup_array.resize(num_orbits * satellites_per_orbit, 0);
 	for (auto &item : m_neighbor_queueing_distances)
 	{
-		item.fill(0);
+		item.resize(num_orbits * satellites_per_orbit, 0);
 	}
 }
 
@@ -106,7 +109,7 @@ bool ArbiterDhpb::CheckIfInRectangle(Vector3D forwardpos, Vector3D srcpos, Vecto
 	}
 	return false;
 }
-// TODO: can make this into a function on iterators
+
 Ptr<Satellite> ArbiterDhpb::GetClosestSatellite(std::set<int32_t> *node_id_set)
 {
 	double min_distance = 100000000000;
@@ -159,12 +162,12 @@ Ptr<Satellite> ArbiterDhpb::GetFarthestSatellite(std::set<int32_t> *node_id_set)
 
 int32_t ArbiterDhpb::GSLNodeIdToGSLIndex(int32_t id)
 {
-	return id - m_nodes.GetN() + NUM_GROUND_STATIONS;
+	return id - num_orbits * satellites_per_orbit;
 }
 
 int32_t ArbiterDhpb::GSLIndexToGSLNodeId(int32_t id)
 {
-	return m_nodes.GetN() - NUM_GROUND_STATIONS + id;
+	return num_orbits * satellites_per_orbit + id;
 }
 
 double ArbiterDhpb::ValidateForwardHeuristic(int32_t source_node_id, int32_t target_node_id, int32_t forward_node_id)
@@ -235,12 +238,11 @@ std::tuple<int32_t, int32_t, int32_t> ArbiterDhpb::TopologySatelliteNetworkDecid
 {
 	// each time this is run, get all net devices and determine nodes and
 	// interfaces. set the member arrays appropriately
-	NS_ASSERT(m_nodes.GetN() > ArbiterDhpb::NUM_GROUND_STATIONS);
 	NS_LOG_DEBUG("destination: " << target_node_id << " source: " << source_node_id << " me: " << m_node_id);
 	// if this arbiter is runing on a ground station, we use snapshot routing
 	// the source can occasionally be a satellite in case of ICMP messages. if
 	// that's the case, use snapshot routing
-	if (m_node_id < static_cast<int32_t>(m_nodes.GetN() - NUM_GROUND_STATIONS))
+	if (m_node_id < num_orbits * satellites_per_orbit)
 	{
 		GetNeighborInfo();
 		int32_t snapshot_forward_node_id = std::get<0>(m_next_hop_list[target_node_id]);
@@ -250,7 +252,7 @@ std::tuple<int32_t, int32_t, int32_t> ArbiterDhpb::TopologySatelliteNetworkDecid
 		{
 			// throw out packets that are destined for satellites,
 			// which can happen due to ICMP
-			if (target_node_id < static_cast<int32_t>(m_nodes.GetN() - NUM_GROUND_STATIONS))
+			if (target_node_id < num_orbits * satellites_per_orbit)
 			{
 				return std::make_tuple(-1, 0, 0);
 			}
@@ -264,6 +266,11 @@ void ArbiterDhpb::AddQueueDistance(int32_t target_node_id)
 {
 	NS_ASSERT(GSLNodeIdToGSLIndex(target_node_id) < (int32_t)m_queueing_distances.size());
 	m_queueing_distances.at(GSLNodeIdToGSLIndex(target_node_id)) += 1;
+}
+
+int32_t ArbiterDhpb::GetNumSatellites()
+{
+	return num_orbits * satellites_per_orbit;
 }
 
 uint64_t ArbiterDhpb::GetQueueDistance(int32_t target_node_id)
@@ -323,7 +330,7 @@ void ArbiterDhpb::ModifyDistanceLookup(int32_t target_node_id, uint32_t distance
 	m_distance_lookup_array.at(GSLNodeIdToGSLIndex(target_node_id)) = distance;
 }
 
-void ArbiterDhpb::SetDestinationSatelliteList(std::array<std::set<int32_t>, ArbiterDhpb::NUM_GROUND_STATIONS> *dsl)
+void ArbiterDhpb::SetDestinationSatelliteList(std::vector<std::set<int32_t>> *dsl)
 {
 	m_destination_satellite_list = *dsl;
 }

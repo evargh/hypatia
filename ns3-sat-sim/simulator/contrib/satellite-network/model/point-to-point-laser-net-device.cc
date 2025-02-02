@@ -34,6 +34,11 @@
 #include "point-to-point-laser-net-device.h"
 #include "point-to-point-laser-channel.h"
 
+// stuff for debug, need to get rid of later
+#include "ns3/ipv4-header.h"
+#include "ns3/ipv4-arbiter-routing.h"
+#include "ns3/arbiter.h"
+
 namespace ns3
 {
 
@@ -347,9 +352,16 @@ void PointToPointLaserNetDevice::Receive(Ptr<Packet> packet)
 		// normal receive callback sees.
 		//
 		ProcessHeader(packet, protocol);
-
-		NS_LOG_DEBUG("From " << m_destination_node->GetId() << " -- To " << m_node->GetId() << " -- UID is "
-							 << packet->GetUid());
+		Ipv4Header ip;
+		packet->PeekHeader(ip);
+		auto ipv4 = m_node->GetObject<Ipv4>();
+		auto ipv4ar = ipv4->GetRoutingProtocol()->GetObject<Ipv4ArbiterRouting>();
+		auto arb = ipv4ar->GetArbiter();
+		uint32_t src = arb->ResolveNodeIdFromIp(ip.GetSource().Get());
+		uint32_t dest = arb->ResolveNodeIdFromIp(ip.GetDestination().Get());
+		NS_LOG_DEBUG("Source: " << src << " -- Destination: " << dest << " -- From " << m_destination_node->GetId()
+								<< " -- To " << m_node->GetId() << " -- UID is " << packet->GetUid() << " -- Size is "
+								<< packet->GetSize());
 
 		if (!m_promiscCallback.IsNull())
 		{
@@ -510,7 +522,7 @@ bool PointToPointLaserNetDevice::Send(Ptr<Packet> packet, const Address &dest, u
 	// We should enqueue and dequeue the packet to hit the tracing hooks.
 	//
 	NS_LOG_DEBUG("From " << m_node->GetId() << " -- To " << m_destination_node->GetId() << " -- Queue Length is "
-						 << m_queue->GetNPackets());
+						 << m_queue->GetNPackets() << " -- Interface " << m_ifIndex);
 	if (m_queue->Enqueue(packet))
 	{
 		// If the channel is ready for transition we send the packet right now

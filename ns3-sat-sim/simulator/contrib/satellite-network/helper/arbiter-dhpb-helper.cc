@@ -31,19 +31,42 @@ ArbiterDhpbHelper::ArbiterDhpbHelper(Ptr<BasicSimulation> basicSimulation, NodeC
 	// Read in initial forwarding state
 	std::cout << "  > Create initial single forwarding state" << std::endl;
 	std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>> initial_forwarding_state =
-			InitialEmptyForwardingState();
+		InitialEmptyForwardingState();
 	basicSimulation->RegisterTimestamp("Create initial single forwarding state");
 
-	// Set the routing arbiters
-	// double inclination_angle = parse_positive_double(m_basicSimulation->GetConfigParamOrFail("orbit_inclination"));
-	// int32_t num_orbits =
-	// static_cast<int32_t>(parse_positive_int64(m_basicSimulation->GetConfigParamOrFail("num_orbits")));
-	// the distance between satellites
+	std::cout << "  > Setting the routing arbiter on each node" << std::endl;
+	// reading this again to get a central count of the number of satellites in the network
+	std::ostringstream res;
+	res << m_basicSimulation->GetRunDir() << "/";
+	res << m_basicSimulation->GetConfigParamOrFail("satellite_network_dir") << "/tles.txt";
+	std::string tle_filename = res.str();
+
+	if (!file_exists(tle_filename))
+	{
+		throw std::runtime_error("File tles.txt does not exist.");
+	}
+
+	std::ifstream tle_file(tle_filename);
+	if (tle_file)
+	{
+		std::string orbits_and_n_sats_per_orbit;
+		std::getline(tle_file, orbits_and_n_sats_per_orbit);
+		std::vector<std::string> res = split_string(orbits_and_n_sats_per_orbit, " ", 2);
+		m_num_orbits = parse_positive_int64(res[0]);
+		m_satellites_per_orbit = parse_positive_int64(res[1]);
+	}
+	else
+	{
+		throw std::runtime_error("File tles.txt could not be read.");
+	}
+	m_destination_satellite_list.resize(m_num_orbits * m_satellites_per_orbit);
+
 	std::cout << "  > Setting the routing arbiter on each node" << std::endl;
 	for (size_t i = 0; i < m_nodes.GetN(); i++)
 	{
-		Ptr<ArbiterDhpb> arbiter = CreateObject<ArbiterDhpb>(
-				m_nodes.Get(i), m_nodes, initial_forwarding_state[i]); //, inclination_angle, num_orbits);
+		Ptr<ArbiterDhpb> arbiter =
+			CreateObject<ArbiterDhpb>(m_nodes.Get(i), m_nodes, initial_forwarding_state[i], m_num_orbits,
+									  m_satellites_per_orbit); //, inclination_angle, num_orbits);
 		m_arbiters.push_back(arbiter);
 		Ptr<Ipv4RoutingProtocol> ipv4route = m_nodes.Get(i)->GetObject<Ipv4>()->GetRoutingProtocol();
 		ipv4route->GetObject<Ipv4DhpbArbiterRouting>()->SetArbiter(arbiter);
@@ -52,12 +75,11 @@ ArbiterDhpbHelper::ArbiterDhpbHelper(Ptr<BasicSimulation> basicSimulation, NodeC
 
 	// Load first forwarding state
 	m_dynamicStateUpdateIntervalNs =
-			parse_positive_int64(m_basicSimulation->GetConfigParamOrFail("dynamic_state_update_interval_ns"));
+		parse_positive_int64(m_basicSimulation->GetConfigParamOrFail("dynamic_state_update_interval_ns"));
 	std::cout << "  > Forward state update interval: " << m_dynamicStateUpdateIntervalNs << "ns" << std::endl;
 	std::cout << "  > Perform first forwarding state load for t=0" << std::endl;
 	UpdateForwardingState(0);
 	basicSimulation->RegisterTimestamp("Create initial single forwarding state");
-
 	std::cout << std::endl;
 }
 
@@ -97,13 +119,10 @@ void ArbiterDhpbHelper::UpdateForwardingState(int64_t t)
 	if (fstate_file)
 	{
 		// Go over each line
-		size_t line_counter = 0;
 		while (getline(fstate_file, line))
 		{
-
 			// Split on ,
 			// not mentioned, but this is from exputil
-			// TODO: make this expect a split of 6 after the satellite network state is regenerated
 			std::vector<std::string> comma_split = split_string(line, ",", 6);
 
 			// Retrieve identifiers
@@ -121,18 +140,19 @@ void ArbiterDhpbHelper::UpdateForwardingState(int64_t t)
 
 			// Drops are only valid if all three values are -1
 			NS_ABORT_MSG_IF(!(next_hop_node_id == -1 && my_if_id == -1 && next_if_id == -1) &&
-													!(next_hop_node_id != -1 && my_if_id != -1 && next_if_id != -1),
-											"All three must be -1 for it to signify a drop.");
+								!(next_hop_node_id != -1 && my_if_id != -1 && next_if_id != -1),
+							"All three must be -1 for it to signify a drop.");
 
 			// Check the interfaces exist
 			NS_ABORT_MSG_UNLESS(
-					my_if_id == -1 ||
-							(my_if_id >= 0 && my_if_id + 1 < m_nodes.Get(current_node_id)->GetObject<Ipv4>()->GetNInterfaces()),
-					"Invalid current interface");
+				my_if_id == -1 ||
+					(my_if_id >= 0 && my_if_id + 1 < m_nodes.Get(current_node_id)->GetObject<Ipv4>()->GetNInterfaces()),
+				"Invalid current interface");
 			NS_ABORT_MSG_UNLESS(
-					next_if_id == -1 ||
-							(next_if_id >= 0 && next_if_id + 1 < m_nodes.Get(next_hop_node_id)->GetObject<Ipv4>()->GetNInterfaces()),
-					"Invalid next hop interface");
+				next_if_id == -1 ||
+					(next_if_id >= 0 &&
+					 next_if_id + 1 < m_nodes.Get(next_hop_node_id)->GetObject<Ipv4>()->GetNInterfaces()),
+				"Invalid next hop interface");
 
 			// Node id and interface id checks are only necessary for non-drops
 			if (next_hop_node_id != -1 && my_if_id != -1 && next_if_id != -1)
@@ -140,55 +160,56 @@ void ArbiterDhpbHelper::UpdateForwardingState(int64_t t)
 
 				// It must be either GSL or ISL
 				bool source_is_gsl = m_nodes.Get(current_node_id)
-																 ->GetObject<Ipv4>()
-																 ->GetNetDevice(1 + my_if_id)
-																 ->GetObject<DhpbGSLNetDevice>() != 0;
+										 ->GetObject<Ipv4>()
+										 ->GetNetDevice(1 + my_if_id)
+										 ->GetObject<DhpbGSLNetDevice>() != 0;
 				bool source_is_isl = m_nodes.Get(current_node_id)
-																 ->GetObject<Ipv4>()
-																 ->GetNetDevice(1 + my_if_id)
-																 ->GetObject<DhpbPointToPointLaserNetDevice>() != 0;
+										 ->GetObject<Ipv4>()
+										 ->GetNetDevice(1 + my_if_id)
+										 ->GetObject<DhpbPointToPointLaserNetDevice>() != 0;
 				NS_ABORT_MSG_IF((!source_is_gsl) && (!source_is_isl), "Only GSL and ISL network devices are supported");
 
 				// If current is a GSL interface, the destination must also be a GSL interface
 				NS_ABORT_MSG_IF(source_is_gsl && m_nodes.Get(next_hop_node_id)
-																								 ->GetObject<Ipv4>()
-																								 ->GetNetDevice(1 + next_if_id)
-																								 ->GetObject<DhpbGSLNetDevice>() == 0,
-												"Destination interface must be attached to a GSL network device");
+														 ->GetObject<Ipv4>()
+														 ->GetNetDevice(1 + next_if_id)
+														 ->GetObject<DhpbGSLNetDevice>() == 0,
+								"Destination interface must be attached to a GSL network device");
 
 				// If current is a p2p laser interface, the destination must match exactly its counter-part
 				NS_ABORT_MSG_IF(source_is_isl && m_nodes.Get(next_hop_node_id)
-																								 ->GetObject<Ipv4>()
-																								 ->GetNetDevice(1 + next_if_id)
-																								 ->GetObject<DhpbPointToPointLaserNetDevice>() == 0,
-												"Destination interface must be an ISL network device");
+														 ->GetObject<Ipv4>()
+														 ->GetNetDevice(1 + next_if_id)
+														 ->GetObject<DhpbPointToPointLaserNetDevice>() == 0,
+								"Destination interface must be an ISL network device");
 				if (source_is_isl)
 				{
 					Ptr<NetDevice> device0 = m_nodes.Get(current_node_id)
-																			 ->GetObject<Ipv4>()
-																			 ->GetNetDevice(1 + my_if_id)
-																			 ->GetObject<DhpbPointToPointLaserNetDevice>()
-																			 ->GetChannel()
-																			 ->GetDevice(0);
+												 ->GetObject<Ipv4>()
+												 ->GetNetDevice(1 + my_if_id)
+												 ->GetObject<DhpbPointToPointLaserNetDevice>()
+												 ->GetChannel()
+												 ->GetDevice(0);
 					Ptr<NetDevice> device1 = m_nodes.Get(current_node_id)
-																			 ->GetObject<Ipv4>()
-																			 ->GetNetDevice(1 + my_if_id)
-																			 ->GetObject<DhpbPointToPointLaserNetDevice>()
-																			 ->GetChannel()
-																			 ->GetDevice(1);
+												 ->GetObject<Ipv4>()
+												 ->GetNetDevice(1 + my_if_id)
+												 ->GetObject<DhpbPointToPointLaserNetDevice>()
+												 ->GetChannel()
+												 ->GetDevice(1);
 					Ptr<NetDevice> other_device = device0->GetNode()->GetId() == current_node_id ? device1 : device0;
 					NS_ABORT_MSG_IF(other_device->GetNode()->GetId() != next_hop_node_id,
-													"Next hop node id across does not match");
-					NS_ABORT_MSG_IF(other_device->GetIfIndex() != 1 + next_if_id, "Next hop interface id across does not match");
+									"Next hop node id across does not match");
+					NS_ABORT_MSG_IF(other_device->GetIfIndex() != 1 + next_if_id,
+									"Next hop interface id across does not match");
 				}
 			}
 
 			// Add to forwarding state
 			m_arbiters.at(current_node_id)
-					->SetSingleForwardState(target_node_id, next_hop_node_id,
-																	1 + my_if_id,	 // Skip the loop-back interface
-																	1 + next_if_id // Skip the loop-back interface
-					);
+				->SetSingleForwardState(target_node_id, next_hop_node_id,
+										1 + my_if_id,  // Skip the loop-back interface
+										1 + next_if_id // Skip the loop-back interface
+				);
 
 			m_arbiters.at(current_node_id)->ModifyDistanceLookup(target_node_id, static_cast<uint32_t>(distance));
 
@@ -200,7 +221,7 @@ void ArbiterDhpbHelper::UpdateForwardingState(int64_t t)
 			// each time step, the helper needs to keep track of which nodes are considered destinations to which ground
 			// stations if it encounters a line where that node is no longer a destination satellite to a certain ground
 			// station, it needs to be removed from all lists
-			int32_t gsl_id = target_node_id - m_nodes.GetN() + ArbiterDhpb::NUM_GROUND_STATIONS;
+			int32_t gsl_id = target_node_id - m_num_orbits * m_satellites_per_orbit;
 			if (target_node_id == next_hop_node_id)
 			{
 				m_destination_satellite_list.at(gsl_id).insert(current_node_id);
@@ -209,9 +230,6 @@ void ArbiterDhpbHelper::UpdateForwardingState(int64_t t)
 			{
 				m_destination_satellite_list.at(gsl_id).erase(current_node_id);
 			}
-
-			// Next line
-			line_counter++;
 		}
 
 		// Close file
@@ -235,8 +253,8 @@ void ArbiterDhpbHelper::UpdateForwardingState(int64_t t)
 		int64_t next_update_ns = t + m_dynamicStateUpdateIntervalNs;
 		if (next_update_ns < m_basicSimulation->GetSimulationEndTimeNs())
 		{
-			Simulator::Schedule(NanoSeconds(m_dynamicStateUpdateIntervalNs), &ArbiterDhpbHelper::UpdateForwardingState, this,
-													next_update_ns);
+			Simulator::Schedule(NanoSeconds(m_dynamicStateUpdateIntervalNs), &ArbiterDhpbHelper::UpdateForwardingState,
+								this, next_update_ns);
 		}
 	}
 }

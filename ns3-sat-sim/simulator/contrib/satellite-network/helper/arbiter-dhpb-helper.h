@@ -32,10 +32,10 @@ namespace ns3
 
 class ArbiterDhpbHelper
 {
-public:
+  public:
 	ArbiterDhpbHelper(Ptr<BasicSimulation> basicSimulation, NodeContainer nodes);
 
-private:
+  private:
 	std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>> InitialEmptyForwardingState();
 	void UpdateForwardingState(int64_t t);
 
@@ -44,7 +44,10 @@ private:
 	NodeContainer m_nodes;
 	int64_t m_dynamicStateUpdateIntervalNs;
 	std::vector<Ptr<ArbiterDhpb>> m_arbiters;
-	std::array<std::set<int32_t>, ArbiterDhpb::NUM_GROUND_STATIONS> m_destination_satellite_list;
+	std::vector<std::set<int32_t>> m_destination_satellite_list;
+
+	int64_t m_num_orbits;
+	int64_t m_satellites_per_orbit;
 };
 
 } // namespace ns3

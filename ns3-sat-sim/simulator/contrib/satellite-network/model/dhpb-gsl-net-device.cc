@@ -45,57 +45,57 @@ NS_OBJECT_ENSURE_REGISTERED(DhpbGSLNetDevice);
 TypeId DhpbGSLNetDevice::GetTypeId(void)
 {
 	static TypeId tid =
-			TypeId("ns3::DhpbGSLNetDevice")
-					.SetParent<NetDevice>()
-					.SetGroupName("PointToPoint")
-					.AddConstructor<DhpbGSLNetDevice>()
-					.AddAttribute("Mtu", "The MAC-level Maximum Transmission Unit", UintegerValue(DEFAULT_MTU),
-												MakeUintegerAccessor(&DhpbGSLNetDevice::SetMtu, &DhpbGSLNetDevice::GetMtu),
-												MakeUintegerChecker<uint16_t>())
-					.AddAttribute("Address", "The MAC address of this device.",
-												Mac48AddressValue(Mac48Address("ff:ff:ff:ff:ff:ff")),
-												MakeMac48AddressAccessor(&DhpbGSLNetDevice::m_address), MakeMac48AddressChecker())
-					.AddAttribute("DataRate", "The default data rate for point to point links",
-												DataRateValue(DataRate("32768b/s")), MakeDataRateAccessor(&DhpbGSLNetDevice::m_bps),
-												MakeDataRateChecker())
-					.AddAttribute("ReceiveErrorModel", "The receiver error model used to simulate packet loss", PointerValue(),
-												MakePointerAccessor(&DhpbGSLNetDevice::m_receiveErrorModel), MakePointerChecker<ErrorModel>())
-					.AddAttribute("InterframeGap", "The time to wait between packet (frame) transmissions",
-												TimeValue(Seconds(0.0)), MakeTimeAccessor(&DhpbGSLNetDevice::m_tInterframeGap),
-												MakeTimeChecker())
+		TypeId("ns3::DhpbGSLNetDevice")
+			.SetParent<NetDevice>()
+			.SetGroupName("PointToPoint")
+			.AddConstructor<DhpbGSLNetDevice>()
+			.AddAttribute("Mtu", "The MAC-level Maximum Transmission Unit", UintegerValue(DEFAULT_MTU),
+						  MakeUintegerAccessor(&DhpbGSLNetDevice::SetMtu, &DhpbGSLNetDevice::GetMtu),
+						  MakeUintegerChecker<uint16_t>())
+			.AddAttribute("Address", "The MAC address of this device.",
+						  Mac48AddressValue(Mac48Address("ff:ff:ff:ff:ff:ff")),
+						  MakeMac48AddressAccessor(&DhpbGSLNetDevice::m_address), MakeMac48AddressChecker())
+			.AddAttribute("DataRate", "The default data rate for point to point links",
+						  DataRateValue(DataRate("32768b/s")), MakeDataRateAccessor(&DhpbGSLNetDevice::m_bps),
+						  MakeDataRateChecker())
+			.AddAttribute("ReceiveErrorModel", "The receiver error model used to simulate packet loss", PointerValue(),
+						  MakePointerAccessor(&DhpbGSLNetDevice::m_receiveErrorModel), MakePointerChecker<ErrorModel>())
+			.AddAttribute("InterframeGap", "The time to wait between packet (frame) transmissions",
+						  TimeValue(Seconds(0.0)), MakeTimeAccessor(&DhpbGSLNetDevice::m_tInterframeGap),
+						  MakeTimeChecker())
 
-					//
-					// Transmit queueing discipline for the device which includes its own set
-					// of trace hooks.
-					//
-					.AddAttribute("TxQueue", "A queue to use as the transmit queue in the device.", PointerValue(),
-												MakePointerAccessor(&DhpbGSLNetDevice::m_queue), MakePointerChecker<Queue<Packet>>())
+			//
+			// Transmit queueing discipline for the device which includes its own set
+			// of trace hooks.
+			//
+			.AddAttribute("TxQueue", "A queue to use as the transmit queue in the device.", PointerValue(),
+						  MakePointerAccessor(&DhpbGSLNetDevice::m_queue), MakePointerChecker<Queue<Packet>>())
 
-					//
-					// Trace sources at the "top" of the net device, where packets transition
-					// to/from higher layers.
-					//
-					.AddTraceSource("MacTx",
-													"Trace source indicating a packet has arrived "
-													"for transmission by this device",
-													MakeTraceSourceAccessor(&DhpbGSLNetDevice::m_macTxTrace), "ns3::Packet::TracedCallback")
-					.AddTraceSource("MacTxDrop",
-													"Trace source indicating a packet has been dropped "
-													"by the device before transmission",
-													MakeTraceSourceAccessor(&DhpbGSLNetDevice::m_macTxDropTrace), "ns3::Packet::TracedCallback")
-					.AddTraceSource("MacPromiscRx",
-													"A packet has been received by this device, "
-													"has been passed up from the physical layer "
-													"and is being forwarded up the local protocol stack.  "
-													"This is a promiscuous trace,",
-													MakeTraceSourceAccessor(&DhpbGSLNetDevice::m_macPromiscRxTrace),
-													"ns3::Packet::TracedCallback")
-					.AddTraceSource("MacRx",
-													"A packet has been received by this device, "
-													"has been passed up from the physical layer "
-													"and is being forwarded up the local protocol stack.  "
-													"This is a non-promiscuous trace,",
-													MakeTraceSourceAccessor(&DhpbGSLNetDevice::m_macRxTrace), "ns3::Packet::TracedCallback")
+			//
+			// Trace sources at the "top" of the net device, where packets transition
+			// to/from higher layers.
+			//
+			.AddTraceSource("MacTx",
+							"Trace source indicating a packet has arrived "
+							"for transmission by this device",
+							MakeTraceSourceAccessor(&DhpbGSLNetDevice::m_macTxTrace), "ns3::Packet::TracedCallback")
+			.AddTraceSource("MacTxDrop",
+							"Trace source indicating a packet has been dropped "
+							"by the device before transmission",
+							MakeTraceSourceAccessor(&DhpbGSLNetDevice::m_macTxDropTrace), "ns3::Packet::TracedCallback")
+			.AddTraceSource("MacPromiscRx",
+							"A packet has been received by this device, "
+							"has been passed up from the physical layer "
+							"and is being forwarded up the local protocol stack.  "
+							"This is a promiscuous trace,",
+							MakeTraceSourceAccessor(&DhpbGSLNetDevice::m_macPromiscRxTrace),
+							"ns3::Packet::TracedCallback")
+			.AddTraceSource("MacRx",
+							"A packet has been received by this device, "
+							"has been passed up from the physical layer "
+							"and is being forwarded up the local protocol stack.  "
+							"This is a non-promiscuous trace,",
+							MakeTraceSourceAccessor(&DhpbGSLNetDevice::m_macRxTrace), "ns3::Packet::TracedCallback")
 #if 0
     // Not currently implemented for this device
     .AddTraceSource ("MacRxDrop", 
@@ -104,22 +104,23 @@ TypeId DhpbGSLNetDevice::GetTypeId(void)
                      MakeTraceSourceAccessor (&GSLNetDevice::m_macRxDropTrace),
                      "ns3::Packet::TracedCallback")
 #endif
-					//
-					// Trace sources at the "bottom" of the net device, where packets transition
-					// to/from the channel.
-					//
-					.AddTraceSource("PhyTxBegin",
-													"Trace source indicating a packet has begun "
-													"transmitting over the channel",
-													MakeTraceSourceAccessor(&DhpbGSLNetDevice::m_phyTxBeginTrace), "ns3::Packet::TracedCallback")
-					.AddTraceSource("PhyTxEnd",
-													"Trace source indicating a packet has been "
-													"completely transmitted over the channel",
-													MakeTraceSourceAccessor(&DhpbGSLNetDevice::m_phyTxEndTrace), "ns3::Packet::TracedCallback")
-					.AddTraceSource("PhyTxDrop",
-													"Trace source indicating a packet has been "
-													"dropped by the device during transmission",
-													MakeTraceSourceAccessor(&DhpbGSLNetDevice::m_phyTxDropTrace), "ns3::Packet::TracedCallback")
+			//
+			// Trace sources at the "bottom" of the net device, where packets transition
+			// to/from the channel.
+			//
+			.AddTraceSource("PhyTxBegin",
+							"Trace source indicating a packet has begun "
+							"transmitting over the channel",
+							MakeTraceSourceAccessor(&DhpbGSLNetDevice::m_phyTxBeginTrace),
+							"ns3::Packet::TracedCallback")
+			.AddTraceSource("PhyTxEnd",
+							"Trace source indicating a packet has been "
+							"completely transmitted over the channel",
+							MakeTraceSourceAccessor(&DhpbGSLNetDevice::m_phyTxEndTrace), "ns3::Packet::TracedCallback")
+			.AddTraceSource("PhyTxDrop",
+							"Trace source indicating a packet has been "
+							"dropped by the device during transmission",
+							MakeTraceSourceAccessor(&DhpbGSLNetDevice::m_phyTxDropTrace), "ns3::Packet::TracedCallback")
 #if 0
     // Not currently implemented for this device
     .AddTraceSource ("PhyRxBegin", 
@@ -128,29 +129,29 @@ TypeId DhpbGSLNetDevice::GetTypeId(void)
                      MakeTraceSourceAccessor (&GSLNetDevice::m_phyRxBeginTrace),
                      "ns3::Packet::TracedCallback")
 #endif
-					.AddTraceSource("PhyRxEnd",
-													"Trace source indicating a packet has been "
-													"completely received by the device",
-													MakeTraceSourceAccessor(&DhpbGSLNetDevice::m_phyRxEndTrace), "ns3::Packet::TracedCallback")
-					.AddTraceSource("PhyRxDrop",
-													"Trace source indicating a packet has been "
-													"dropped by the device during reception",
-													MakeTraceSourceAccessor(&DhpbGSLNetDevice::m_phyRxDropTrace), "ns3::Packet::TracedCallback")
+			.AddTraceSource("PhyRxEnd",
+							"Trace source indicating a packet has been "
+							"completely received by the device",
+							MakeTraceSourceAccessor(&DhpbGSLNetDevice::m_phyRxEndTrace), "ns3::Packet::TracedCallback")
+			.AddTraceSource("PhyRxDrop",
+							"Trace source indicating a packet has been "
+							"dropped by the device during reception",
+							MakeTraceSourceAccessor(&DhpbGSLNetDevice::m_phyRxDropTrace), "ns3::Packet::TracedCallback")
 
-					//
-					// Trace sources designed to simulate a packet sniffer facility (tcpdump).
-					// Note that there is really no difference between promiscuous and
-					// non-promiscuous traces in a point-to-point link.
-					//
-					.AddTraceSource("Sniffer",
-													"Trace source simulating a non-promiscuous packet sniffer "
-													"attached to the device",
-													MakeTraceSourceAccessor(&DhpbGSLNetDevice::m_snifferTrace), "ns3::Packet::TracedCallback")
-					.AddTraceSource("PromiscSniffer",
-													"Trace source simulating a promiscuous packet sniffer "
-													"attached to the device",
-													MakeTraceSourceAccessor(&DhpbGSLNetDevice::m_promiscSnifferTrace),
-													"ns3::Packet::TracedCallback");
+			//
+			// Trace sources designed to simulate a packet sniffer facility (tcpdump).
+			// Note that there is really no difference between promiscuous and
+			// non-promiscuous traces in a point-to-point link.
+			//
+			.AddTraceSource("Sniffer",
+							"Trace source simulating a non-promiscuous packet sniffer "
+							"attached to the device",
+							MakeTraceSourceAccessor(&DhpbGSLNetDevice::m_snifferTrace), "ns3::Packet::TracedCallback")
+			.AddTraceSource("PromiscSniffer",
+							"Trace source simulating a promiscuous packet sniffer "
+							"attached to the device",
+							MakeTraceSourceAccessor(&DhpbGSLNetDevice::m_promiscSnifferTrace),
+							"ns3::Packet::TracedCallback");
 	return tid;
 }
 
@@ -244,16 +245,19 @@ bool DhpbGSLNetDevice::TransmitStart(Ptr<Packet> p, const Address dest)
 		if (protocol != 0x0001)
 		{
 			NS_LOG_DEBUG("From " << m_node->GetId() << " -- UID is " << puid << " -- Delay is "
-													 << txCompleteTime.GetSeconds());
+								 << txCompleteTime.GetSeconds());
 			// if the transmitting node is a satellite, and the ipv4 protocol is used, reduce the arbiter distance
-			if (protocol == 0x0800 && m_node->GetId() < m_node->GetObject<Ipv4>()
-																													->GetRoutingProtocol()
-																													->GetObject<Ipv4DhpbArbiterRouting>()
-																													->GetArbiter()
-																													->GetNumNodes() -
-																											100)
+			if (protocol == 0x0800 &&
+				m_node->GetId() < DynamicCast<ArbiterDhpb>(m_node->GetObject<Ipv4>()
+															   ->GetRoutingProtocol()
+															   ->GetObject<Ipv4DhpbArbiterRouting>()
+															   ->GetArbiter())
+									  ->GetNumSatellites())
 			{
-				m_node->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4DhpbArbiterRouting>()->ReduceArbiterDistance(p);
+				m_node->GetObject<Ipv4>()
+					->GetRoutingProtocol()
+					->GetObject<Ipv4DhpbArbiterRouting>()
+					->ReduceArbiterDistance(p);
 			}
 		}
 	}
@@ -370,15 +374,17 @@ void DhpbGSLNetDevice::Receive(Ptr<Packet> packet)
 
 		NS_LOG_DEBUG("To " << m_node->GetId() << " -- UID is " << packet->GetUid());
 		// if the receiving node is a satellite, and the ipv4 protocol is used, increase the arbiter distance
-		if (protocol == 0x0800 && m_node->GetId() < m_node->GetObject<Ipv4>()
-																												->GetRoutingProtocol()
-																												->GetObject<Ipv4DhpbArbiterRouting>()
-																												->GetArbiter()
-																												->GetNumNodes() -
-																										100)
+
+		if (protocol == 0x0800 &&
+			m_node->GetId() <
+				DynamicCast<ArbiterDhpb>(
+					m_node->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4DhpbArbiterRouting>()->GetArbiter())
+					->GetNumSatellites())
 		{
-			m_node->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4DhpbArbiterRouting>()->IncreaseArbiterDistance(
-					ipv4Packet);
+			m_node->GetObject<Ipv4>()
+				->GetRoutingProtocol()
+				->GetObject<Ipv4DhpbArbiterRouting>()
+				->IncreaseArbiterDistance(ipv4Packet);
 		}
 		if (!m_promiscCallback.IsNull())
 		{
@@ -456,7 +462,7 @@ Address DhpbGSLNetDevice::GetBroadcast(void) const
 {
 	NS_LOG_FUNCTION(this);
 	throw std::runtime_error(
-			"Broadcast not supported (only ARP would use broadcast, whose cache should have already been filled).");
+		"Broadcast not supported (only ARP would use broadcast, whose cache should have already been filled).");
 }
 
 bool DhpbGSLNetDevice::IsMulticast(void) const

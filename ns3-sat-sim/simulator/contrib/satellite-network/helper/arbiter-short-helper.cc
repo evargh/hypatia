@@ -37,12 +37,52 @@ ArbiterShortHelper::ArbiterShortHelper(Ptr<BasicSimulation> basicSimulation, Nod
 
 	// Set the routing arbiters
 	std::cout << "  > Setting the routing arbiter on each node" << std::endl;
-	for (size_t i = 0; i < m_nodes.GetN(); i++)
+	// reading this again to get a central count of the number of satellites in the network
+	std::ostringstream res;
+	res << m_basicSimulation->GetRunDir() << "/";
+	res << m_basicSimulation->GetConfigParamOrFail("satellite_network_dir") << "/tles.txt";
+	std::string tle_filename = res.str();
+
+	if (!file_exists(tle_filename))
 	{
-		Ptr<ArbiterShort> arbiter = CreateObject<ArbiterShort>(m_nodes.Get(i), m_nodes, initial_forwarding_state[i]);
-		m_arbiters.push_back(arbiter);
-		m_nodes.Get(i)->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4ShortRouting>()->SetArbiter(arbiter);
+		throw std::runtime_error("File tles.txt does not exist.");
 	}
+
+	std::ifstream tle_file(tle_filename);
+	if (tle_file)
+	{
+		std::string orbits_and_n_sats_per_orbit;
+		std::getline(tle_file, orbits_and_n_sats_per_orbit);
+		std::vector<std::string> res = split_string(orbits_and_n_sats_per_orbit, " ", 2);
+		m_num_orbits = parse_positive_int64(res[0]);
+		m_satellites_per_orbit = parse_positive_int64(res[1]);
+		int64_t num_satellites = m_num_orbits * m_satellites_per_orbit;
+
+		std::vector<int64_t> s = {-1};
+		s.resize(num_satellites, -1);
+		shared_data_for_satellites = std::shared_ptr<std::vector<int64_t>>(new std::vector<int64_t>(s));
+		shared_data_for_satellites_mutex = std::shared_ptr<std::mutex>(new std::mutex());
+		for (size_t i = 0; i < num_satellites; i++)
+		{
+			Ptr<ArbiterShortSat> arbiter = CreateObject<ArbiterShortSat>(
+				m_nodes.Get(i), m_nodes, initial_forwarding_state[i], m_num_orbits, m_satellites_per_orbit,
+				shared_data_for_satellites, shared_data_for_satellites_mutex);
+			m_sat_arbiters.push_back(arbiter);
+			m_nodes.Get(i)->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4ShortRouting>()->SetArbiter(arbiter);
+		}
+		for (size_t i = num_satellites; i < nodes.GetN(); i++)
+		{
+			Ptr<ArbiterShortGS> arbiter = CreateObject<ArbiterShortGS>(
+				m_nodes.Get(i), m_nodes, initial_forwarding_state[i], m_num_orbits, m_satellites_per_orbit);
+			m_gs_arbiters.push_back(arbiter);
+			m_nodes.Get(i)->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4ShortRouting>()->SetArbiter(arbiter);
+		}
+	}
+	else
+	{
+		throw std::runtime_error("File tles.txt could not be read.");
+	}
+
 	basicSimulation->RegisterTimestamp("Setup routing arbiter on each node");
 
 	// Load first forwarding state
@@ -51,16 +91,16 @@ ArbiterShortHelper::ArbiterShortHelper(Ptr<BasicSimulation> basicSimulation, Nod
 	std::cout << "  > Forward state update interval: " << m_dynamicStateUpdateIntervalNs << "ns" << std::endl;
 	std::cout << "  > Perform first forwarding state load for t=0" << std::endl;
 	UpdateForwardingState(0);
-	basicSimulation->RegisterTimestamp("Create initial single forwarding state");
+	basicSimulation->RegisterTimestamp("Created initial single forwarding state");
 
 	SetCoordinateSkew();
-	basicSimulation->RegisterTimestamp("Extract the geographic position of the first satellite");
+	basicSimulation->RegisterTimestamp("Extracted the geographic position of the first satellite");
 
 	UpdateOrbitalParams(0);
-	basicSimulation->RegisterTimestamp("Load RAAN and anomaly into routing algorithms");
+	basicSimulation->RegisterTimestamp("Loaded RAAN and anomaly into satellite routing algorithms");
 
 	SetGSParams();
-	basicSimulation->RegisterTimestamp("Assign ground stations to zones");
+	basicSimulation->RegisterTimestamp("Determined coordinates for Ground Stations");
 
 	std::cout << std::endl;
 }
@@ -77,41 +117,52 @@ std::tuple<double, double, double, double> ArbiterShortHelper::CartesianToShort(
 	// in order to generate gamma, you perform -asin(sin(lat)/sin(inclination))
 	double first_gamma_term = std::sin(latlon.x * pi / 180);
 	double second_gamma_term = std::sin(m_satelliteInclination * pi / 180);
-	// some ground stations can be north/south of the highest/lowest orbit, meaning that they dont have an index.
-	// Instead, they are given a gamma of 90 if in the nortern hemisphere, and a gamma of 270 if in the southern
+	// some ground stations can be north/south of the highest/lowest orbit, meaning that they dont have a feasible
+	// gamma. Instead, they are given a gamma of 90 if in the nortern hemisphere, and a gamma of 270 if in the southern
 	// hemisphere
 	double gamma;
 	if (first_gamma_term > second_gamma_term)
 	{
-		gamma = 0;
+		if (latlon.x > 0)
+		{
+			gamma = 90;
+			double first_alpha_term = latlon.y - m_coordinateSkew_deg;
+			double alpha = std::fmod(360 + first_alpha_term + gamma, 360);
+
+			return std::make_tuple(alpha, gamma, alpha, gamma);
+		}
+		else
+		{
+			gamma = 270;
+			double first_alpha_term = latlon.y - m_coordinateSkew_deg;
+			double alpha = std::fmod(360 + first_alpha_term + gamma, 360);
+
+			return std::make_tuple(alpha, gamma, alpha, gamma);
+		}
 	}
 	else
 	{
 		gamma = -std::asin(first_gamma_term / second_gamma_term) * 180 / pi;
+		// alpha can use the formula provided in the paper, but it requires recentering the geographic coordinate system
+		// to align with the TLE's use of the first point of aries at the epoch time. this can be extracted directly
+		// from some of the satellite class's built-in sgp4 methods
+		double first_alpha_term = latlon.y - m_coordinateSkew_deg;
+		double second_alpha_term = std::cos(m_satelliteInclination * pi / 180);
+		double third_alpha_term = std::tan(-gamma * pi / 180);
+		double alpha_asc =
+			std::fmod(360 + (first_alpha_term - std::atan(second_alpha_term * third_alpha_term) * 180 / pi), 360);
+		double alpha_desc =
+			std::fmod(180 + (first_alpha_term + std::atan(second_alpha_term * third_alpha_term) * 180 / pi), 360);
+
+		return std::make_tuple(alpha_asc, std::fmod(360 - gamma, 360), alpha_desc, std::fmod(180 + gamma, 360));
 	}
-
-	// alpha can use the formula provided in the paper, but it requires recentering the geographic coordinate system to
-	// align with the TLE's use of the first point of aries at the epoch time this can be extracted directly from some
-	// of the satellite class's built-in sgp4 methods
-	//
-	// these numbers are generally right, but there needs to be more refinement regarding which numbers are used. right
-	// now, all of them are generated and i need a quadrant-based way to determine which pairs are correct for the
-	// downward and upwards patterns
-	double first_alpha_term = latlon.y - m_coordinateSkew_deg;
-	double second_alpha_term = std::cos(m_satelliteInclination * pi / 180);
-	double third_alpha_term = std::tan(-gamma * pi / 180);
-	double alpha_asc =
-		std::fmod(180 + (first_alpha_term + std::atan(second_alpha_term * third_alpha_term) * 180 / pi), 360);
-	double alpha_desc = (first_alpha_term - std::atan(second_alpha_term * third_alpha_term) * 180 / pi);
-
-	return std::make_tuple(alpha_asc, alpha_desc, std::fmod(180 + gamma, 360), std::fmod(360 - gamma, 360));
 }
 
 void ArbiterShortHelper::SetCoordinateSkew()
 {
 	// because satgenpy generates tles such that the RAAN is always 0 and the inclination is always 0 for hte first
-	// satellite, we can use that here to if the method of TLE generation changes, this will have to change. we could
-	// generate a "null" TLE and use SGP4 to read the latitude and longitude of that
+	// satellite, we can use that here to if the method of TLE generation changes, this will have to change. we
+	// could generate a "null" TLE and use SGP4 to read the latitude and longitude of that
 	Ptr<SatellitePositionMobilityModel> first_mm = m_nodes.Get(0)->GetObject<SatellitePositionMobilityModel>();
 	if (first_mm == nullptr)
 	{
@@ -122,16 +173,28 @@ void ArbiterShortHelper::SetCoordinateSkew()
 
 void ArbiterShortHelper::SetGSParams()
 {
-	for (uint32_t current_node_id = m_nodes.GetN() - NUM_GROUND_STATIONS; current_node_id < m_nodes.GetN();
+
+	std::vector<std::tuple<double, double, double, double>> short_table;
+
+	for (uint32_t current_node_id = 0; current_node_id < m_nodes.GetN() - m_num_orbits * m_satellites_per_orbit;
 		 current_node_id++)
 	{
-		Ptr<MobilityModel> mm = m_nodes.Get(current_node_id)->GetObject<MobilityModel>();
+		Ptr<MobilityModel> mm =
+			m_nodes.Get(current_node_id + m_num_orbits * m_satellites_per_orbit)->GetObject<MobilityModel>();
 		if (mm != nullptr)
 		{
 			std::tuple<double, double, double, double> pos = CartesianToShort(mm->GetPosition());
+			m_gs_arbiters.at(current_node_id)->SetGSShortParams(pos);
 			NS_LOG_DEBUG(current_node_id << ": " << std::get<0>(pos) << " " << std::get<1>(pos) << " "
 										 << std::get<2>(pos) << " " << std::get<3>(pos));
+
+			short_table.push_back(pos);
 		}
+	}
+	for (uint32_t current_node_id = 0; current_node_id < m_nodes.GetN() - m_num_orbits * m_satellites_per_orbit;
+		 current_node_id++)
+	{
+		m_gs_arbiters.at(current_node_id)->SetGSShortTable(short_table);
 	}
 }
 
@@ -166,12 +229,14 @@ void ArbiterShortHelper::UpdateOrbitalParams(int64_t t)
 			// line 2 has RAAN and mean anomaly, which are columns 18-26 and 44-52
 			// it also has inclination, which are columns 9-16
 			// TODO: determine why I need to shift the substring indices here
-			double satellite_alpha = std::stod(line2.substr(17, 8)) - 2 * pi * t / EARTH_ORBIT_TIME_NS;
+			double satellite_alpha =
+				std::fmod(360 + std::stod(line2.substr(17, 8)) - 2 * pi * t / EARTH_ORBIT_TIME_NS, 360);
 			double satellite_orbital_period = (1 / std::stod(line2.substr(52, 12))) * 60 * 60 * 1000000000;
-			double satellite_gamma = std::stod(line2.substr(43, 8)) + 2 * pi * t / satellite_orbital_period;
+			double satellite_gamma =
+				std::fmod(360 + std::stod(line2.substr(43, 8)) + 2 * pi * t / satellite_orbital_period, 360);
 			m_satelliteInclination = std::stod(line2.substr(8, 8));
 
-			m_arbiters.at(current_node_id)->SetShortParams(satellite_alpha, satellite_gamma);
+			m_sat_arbiters.at(current_node_id)->SetShortParams(satellite_alpha, satellite_gamma);
 		}
 	}
 	else
@@ -229,7 +294,6 @@ void ArbiterShortHelper::UpdateForwardingState(int64_t t)
 	{
 
 		// Go over each line
-		size_t line_counter = 0;
 		while (getline(fstate_file, line))
 		{
 
@@ -313,16 +377,23 @@ void ArbiterShortHelper::UpdateForwardingState(int64_t t)
 									"Next hop interface id across does not match");
 				}
 			}
-
-			// Add to forwarding state
-			m_arbiters.at(current_node_id)
-				->SetSingleForwardState(target_node_id, next_hop_node_id,
-										1 + my_if_id,  // Skip the loop-back interface
-										1 + next_if_id // Skip the loop-back interface
-				);
-
-			// Next line
-			line_counter++;
+			if (current_node_id < m_num_orbits * m_satellites_per_orbit)
+			{
+				// Add to forwarding state
+				m_sat_arbiters.at(current_node_id)
+					->SetSingleForwardState(target_node_id, next_hop_node_id,
+											1 + my_if_id,  // Skip the loop-back interface
+											1 + next_if_id // Skip the loop-back interface
+					);
+			}
+			else
+			{
+				m_gs_arbiters.at(current_node_id - m_num_orbits * m_satellites_per_orbit)
+					->SetSingleForwardState(target_node_id, next_hop_node_id,
+											1 + my_if_id,  // Skip the loop-back interface
+											1 + next_if_id // Skip the loop-back interface
+					);
+			}
 		}
 
 		// Close file

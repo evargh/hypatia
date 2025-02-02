@@ -30,6 +30,9 @@
 #include "ns3/point-to-point-net-device.h"
 #include "ns3/ptr.h"
 #include "ns3/socket.h"
+#include "ns3/short-header.h"
+#include "ns3/arbiter-short-gs.h"
+#include "ns3/arbiter-short-sat.h"
 #include <list>
 #include <stdint.h>
 #include <utility>
@@ -46,7 +49,7 @@ class Node;
 
 class Ipv4ShortRouting : public Ipv4RoutingProtocol
 {
-public:
+  public:
 	static TypeId GetTypeId(void);
 
 	Ipv4ShortRouting();
@@ -63,7 +66,7 @@ public:
 	 * @return IPv4 route entry
 	 */
 	virtual Ptr<Ipv4Route> RouteOutput(Ptr<Packet> p, const Ipv4Header &header, Ptr<NetDevice> oif,
-																		 Socket::SocketErrno &sockerr);
+									   Socket::SocketErrno &sockerr);
 
 	/**
 	 * A packet arrived at an interface, where to deliver next.
@@ -79,8 +82,8 @@ public:
 	 * @return True if found an interface to forward to
 	 */
 	virtual bool RouteInput(Ptr<const Packet> p, const Ipv4Header &header, Ptr<const NetDevice> idev,
-													UnicastForwardCallback ucb, MulticastForwardCallback mcb, LocalDeliverCallback lcb,
-													ErrorCallback ecb);
+							UnicastForwardCallback ucb, MulticastForwardCallback mcb, LocalDeliverCallback lcb,
+							ErrorCallback ecb);
 
 	virtual void NotifyInterfaceUp(uint32_t interface);
 	virtual void NotifyInterfaceDown(uint32_t interface);
@@ -91,10 +94,10 @@ public:
 	void SetArbiter(Ptr<Arbiter> arbiter);
 	Ptr<Arbiter> GetArbiter();
 
-private:
+  private:
 	Ptr<Ipv4> m_ipv4;
 	Ptr<Ipv4Route> LookupArbiter(const Ipv4Address &dest, const Ipv4Header &header, Ptr<const Packet> p,
-															 Ptr<NetDevice> oif = 0);
+								 Ptr<NetDevice> oif = 0);
 	Ptr<Arbiter> m_arbiter = 0;
 	Ipv4Address m_nodeSingleIpAddress;
 	Ipv4Mask loopbackMask = Ipv4Mask("255.0.0.0");

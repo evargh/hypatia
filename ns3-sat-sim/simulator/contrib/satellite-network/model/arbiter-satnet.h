@@ -38,53 +38,45 @@
 #include "ns3/ipv4.h"
 #include "ns3/ipv4-header.h"
 #include "ns3/arbiter.h"
+#include "ns3/short-header.h"
 
-namespace ns3 {
+namespace ns3
+{
 
 class ArbiterSatnet : public Arbiter
 {
 
-public:
-    static TypeId GetTypeId (void);
-    ArbiterSatnet(Ptr<Node> this_node, NodeContainer nodes);
+  public:
+	static TypeId GetTypeId(void);
+	ArbiterSatnet(Ptr<Node> this_node, NodeContainer nodes);
 
-    // Topology implementation
-    ArbiterResult Decide(
-            int32_t source_node_id,
-            int32_t target_node_id,
-            ns3::Ptr<const ns3::Packet> pkt,
-            ns3::Ipv4Header const &ipHeader,
-            bool is_socket_request_for_source_ip
-    );
+	// Topology implementation
+	ArbiterResult Decide(int32_t source_node_id, int32_t target_node_id, ns3::Ptr<const ns3::Packet> pkt,
+						 ns3::Ipv4Header const &ipHeader, bool is_socket_request_for_source_ip);
 
-    /**
-     * Decide where the packet needs to be routed to.
-     *
-     * @param source_node_id                                Node where the packet originated from
-     * @param target_node_id                                Node where the packet has to go to
-     * @param neighbor_node_ids                             All neighboring nodes from which to choose
-     * @param pkt                                           Packet
-     * @param ipHeader                                      IP header instance
-     * @param is_socket_request_for_source_ip               True iff it is a request for a source IP address,
-     *                                                      as such the returning next hop is only used to get the
-     *                                                      interface IP address
-     *
-     * @return Tuple of (next node id, my own interface id, next interface id)
-     */
-    virtual std::tuple<int32_t, int32_t, int32_t> TopologySatelliteNetworkDecide(
-            int32_t source_node_id,
-            int32_t target_node_id,
-            ns3::Ptr<const ns3::Packet> pkt,
-            ns3::Ipv4Header const &ipHeader,
-            bool is_socket_request_for_source_ip
-    ) = 0;
+	/**
+	 * Decide where the packet needs to be routed to.
+	 *
+	 * @param source_node_id                                Node where the packet originated from
+	 * @param target_node_id                                Node where the packet has to go to
+	 * @param neighbor_node_ids                             All neighboring nodes from which to choose
+	 * @param pkt                                           Packet
+	 * @param ipHeader                                      IP header instance
+	 * @param is_socket_request_for_source_ip               True iff it is a request for a source IP address,
+	 *                                                      as such the returning next hop is only used to get the
+	 *                                                      interface IP address
+	 *
+	 * @return Tuple of (next node id, my own interface id, next interface id)
+	 */
+	virtual std::tuple<int32_t, int32_t, int32_t> TopologySatelliteNetworkDecide(
+		int32_t source_node_id, int32_t target_node_id, ns3::Ptr<const ns3::Packet> pkt,
+		ns3::Ipv4Header const &ipHeader, bool is_socket_request_for_source_ip) = 0;
 
-    virtual std::string StringReprOfForwardingState() = 0;
-    
-    uint32_t GetNumNodes();
+	virtual std::string StringReprOfForwardingState() = 0;
 
+	uint32_t GetNumNodes();
 };
 
-}
+} // namespace ns3
 
-#endif //ARBITER_SATNET_H
+#endif // ARBITER_SATNET_H

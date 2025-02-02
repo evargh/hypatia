@@ -391,7 +391,7 @@ void DhpbPointToPointLaserNetDevice::Receive(Ptr<Packet> packet)
 		{
 			// If it's a packet with higher-layer data, log it
 			NS_LOG_DEBUG("From " << m_destination_node->GetId() << " -- To " << m_node->GetId() << " -- UID is "
-								 << packet->GetUid());
+								 << packet->GetUid() << " -- Interface " << m_ifIndex);
 			if (protocol == 0x0800)
 			{
 				m_node->GetObject<Ipv4>()

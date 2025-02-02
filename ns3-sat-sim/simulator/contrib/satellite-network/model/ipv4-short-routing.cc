@@ -18,11 +18,11 @@
  * Author: Simon <isniska@gmail.com>
  */
 
-#define NS_LOG_APPEND_CONTEXT                                                                                          \
-	if (m_ipv4 && m_ipv4->GetObject<Node>())                                                                             \
-	{                                                                                                                    \
-		std::clog << Simulator::Now().GetSeconds() << " [node " << m_ipv4->GetObject<Node>()->GetId() << "] ";             \
-	}
+/* #define NS_LOG_APPEND_CONTEXT \
+	if (m_ipv4 && m_ipv4->GetObject<Node>())                                                                           \
+	{                                                                                                                  \
+		std::clog << Simulator::Now().GetSeconds() << " [node " << m_ipv4->GetObject<Node>()->GetId() << "] ";         \
+	}*/
 
 #include "ipv4-short-routing.h"
 #include "ns3/ipv4-route.h"
@@ -44,9 +44,9 @@ NS_OBJECT_ENSURE_REGISTERED(Ipv4ShortRouting);
 TypeId Ipv4ShortRouting::GetTypeId(void)
 {
 	static TypeId tid = TypeId("ns3::Ipv4ShortRouting")
-													.SetParent<Ipv4RoutingProtocol>()
-													.SetGroupName("Internet")
-													.AddConstructor<Ipv4ShortRouting>();
+							.SetParent<Ipv4RoutingProtocol>()
+							.SetGroupName("Internet")
+							.AddConstructor<Ipv4ShortRouting>();
 	return tid;
 }
 
@@ -67,7 +67,7 @@ Ipv4ShortRouting::Ipv4ShortRouting() : m_ipv4(0)
  * @return Valid Ipv4 route
  */
 Ptr<Ipv4Route> Ipv4ShortRouting::LookupArbiter(const Ipv4Address &dest, const Ipv4Header &header, Ptr<const Packet> p,
-																							 Ptr<NetDevice> oif)
+											   Ptr<NetDevice> oif)
 {
 
 	// Arbiter must be set
@@ -116,10 +116,10 @@ Ptr<Ipv4Route> Ipv4ShortRouting::LookupArbiter(const Ipv4Address &dest, const Ip
 	Ptr<Ipv4Route> rtentry = Create<Ipv4Route>();
 	rtentry->SetDestination(dest);
 	rtentry->SetSource(m_ipv4->SourceAddressSelection(if_idx, dest)); // This is basically the IP of the interface
-																																		// It is used by a transport layer to
-																																		// determine its source IP address
+																	  // It is used by a transport layer to
+																	  // determine its source IP address
 	rtentry->SetGateway(Ipv4Address(gateway_ip_address)); // If the network device does not care about ARP resolution,
-																												// this can be set to 0.0.0.0
+														  // this can be set to 0.0.0.0
 	rtentry->SetOutputDevice(m_ipv4->GetNetDevice(if_idx));
 	return rtentry;
 }
@@ -147,7 +147,7 @@ Ptr<Ipv4Route> Ipv4ShortRouting::LookupArbiter(const Ipv4Address &dest, const Ip
  * @return IPv4 route
  */
 Ptr<Ipv4Route> Ipv4ShortRouting::RouteOutput(Ptr<Packet> p, const Ipv4Header &header, Ptr<NetDevice> oif,
-																						 Socket::SocketErrno &sockerr)
+											 Socket::SocketErrno &sockerr)
 {
 	NS_LOG_FUNCTION(this << p << header << oif << sockerr);
 	Ipv4Address destination = header.GetDestination();
@@ -163,6 +163,32 @@ Ptr<Ipv4Route> Ipv4ShortRouting::RouteOutput(Ptr<Packet> p, const Ipv4Header &he
 	//       the TCP socket will conclude there is no route and not even send out SYNs (any real packet).
 	//       If source IP is set already, it just gets dropped and the TCP socket sees it as a normal loss somewhere in
 	//       the network.
+	// If this node is the first to route into the network, put a SHORT header on it
+	// the data for the short header can be extracted by resolving the destination node index from the address, and then
+	// accessing the getters as necessary
+	// first see if the packet is nonnull
+	// NS_LOG_DEBUG(m_nodeId);
+	if (p)
+	{
+		// then see if this node is a ground station or a satellite
+		Ptr<ArbiterShortSat> sat_arbiter = DynamicCast<ArbiterShortSat>(m_arbiter);
+		Ptr<ArbiterShortGS> gs_arbiter = DynamicCast<ArbiterShortGS>(m_arbiter);
+		if (sat_arbiter)
+		{
+		}
+		if (gs_arbiter)
+		{
+			ShortHeader sh;
+			auto target_node_coords =
+				gs_arbiter->GetOtherGSShortParamsAt(m_arbiter->ResolveNodeIdFromIp(destination.Get()));
+			NS_LOG_DEBUG(std::get<0>(target_node_coords)
+						 << " " << std::get<1>(target_node_coords) << " " << std::get<2>(target_node_coords) << " "
+						 << std::get<3>(target_node_coords));
+			sh.SetCoordinates(std::get<0>(target_node_coords), std::get<1>(target_node_coords),
+							  std::get<2>(target_node_coords), std::get<3>(target_node_coords), 72, 22);
+			p->AddHeader(sh);
+		}
+	}
 	Ptr<Ipv4Route> route = LookupArbiter(destination, header, p, oif);
 	if (route == 0)
 	{
@@ -176,8 +202,8 @@ Ptr<Ipv4Route> Ipv4ShortRouting::RouteOutput(Ptr<Packet> p, const Ipv4Header &he
 }
 
 bool Ipv4ShortRouting::RouteInput(Ptr<const Packet> p, const Ipv4Header &ipHeader, Ptr<const NetDevice> idev,
-																	UnicastForwardCallback ucb, MulticastForwardCallback mcb, LocalDeliverCallback lcb,
-																	ErrorCallback ecb)
+								  UnicastForwardCallback ucb, MulticastForwardCallback mcb, LocalDeliverCallback lcb,
+								  ErrorCallback ecb)
 {
 	NS_ASSERT(m_ipv4 != 0);
 
@@ -200,8 +226,10 @@ bool Ipv4ShortRouting::RouteInput(Ptr<const Packet> p, const Ipv4Header &ipHeade
 		{
 			throw std::runtime_error("Local callback cannot be null");
 		}
+		NS_LOG_DEBUG("Routed Packet TTL: " << unsigned(ipHeader.GetTtl()));
 		// Info: If you want to decide that a packet should not be delivered (dropped),
 		//       you can decide that here by not calling lcb(), but still returning true.
+
 		lcb(p, ipHeader, iif);
 		return true;
 	}

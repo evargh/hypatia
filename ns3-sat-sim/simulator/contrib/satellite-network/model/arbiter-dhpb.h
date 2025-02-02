@@ -33,21 +33,20 @@ namespace ns3
 
 class ArbiterDhpb : public ArbiterSatnet
 {
-public:
-	const static int32_t NUM_GROUND_STATIONS = 100;
+  public:
 	const static int32_t APPROXIMATE_EARTH_RADIUS_M = 6371000;
 	const static int32_t APPROXIMATE_EARTH_EQUATORIAL_CIRCUMFERENCE = 2 * pi * APPROXIMATE_EARTH_RADIUS_M;
 	static TypeId GetTypeId(void);
 
 	// Constructor for single forward next-hop forwarding state
 	ArbiterDhpb(Ptr<Node> this_node, NodeContainer nodes,
-							std::vector<std::tuple<int32_t, int32_t, int32_t>> next_hop_list);
+				std::vector<std::tuple<int32_t, int32_t, int32_t>> next_hop_list, int64_t n_o, int64_t s_p_o);
 
 	// Single forward next-hop implementation
 	std::tuple<int32_t, int32_t, int32_t> TopologySatelliteNetworkDecide(int32_t source_node_id, int32_t target_node_id,
-																																			 ns3::Ptr<const ns3::Packet> pkt,
-																																			 ns3::Ipv4Header const &ipHeader,
-																																			 bool is_socket_request_for_source_ip);
+																		 ns3::Ptr<const ns3::Packet> pkt,
+																		 ns3::Ipv4Header const &ipHeader,
+																		 bool is_socket_request_for_source_ip);
 
 	// Updating of forward state
 	void SetSingleForwardState(int32_t target_node_id, int32_t next_node_id, int32_t own_if_id, int32_t next_if_id);
@@ -55,11 +54,11 @@ public:
 	// Static routing table
 	std::string StringReprOfForwardingState();
 
-	// In refactored code, there could be an "ArbiterDynamic" superclass that requires inheritors to define how forwarding
-	// state should be mutated.
+	// In refactored code, there could be an "ArbiterDynamic" superclass that requires inheritors to define how
+	// forwarding state should be mutated.
 
 	// For handling DBPR things
-	void SetDestinationSatelliteList(std::array<std::set<int32_t>, NUM_GROUND_STATIONS> *dsl);
+	void SetDestinationSatelliteList(std::vector<std::set<int32_t>> *dsl);
 
 	void AddQueueDistance(int32_t target_node_id);
 	uint64_t GetQueueDistance(int32_t target_node_id);
@@ -69,9 +68,11 @@ public:
 	std::pair<uint64_t, uint32_t> GetQueueDistances(uint32_t gid);
 
 	void SetNeighborQueueDistance(int32_t neighbor_node_id, uint32_t my_interface_id, uint32_t remote_node_id,
-																uint64_t neighbor_queueing_distance, uint32_t flow_id);
+								  uint64_t neighbor_queueing_distance, uint32_t flow_id);
 
-private:
+	int32_t GetNumSatellites();
+
+  private:
 	// this function inverts the cartesian MobilityModule coordinates to generate latitude and longitude
 	// so that satellites and ground stations can have comparable coordinates
 	// thisisn't a precise inverse of the WGS72 standard, since it approximates the earth as a sphere
@@ -89,16 +90,19 @@ private:
 	int32_t GSLIndexToGSLNodeId(int32_t id);
 
 	std::tuple<int32_t, int32_t, int32_t> GetForward(int32_t source_node_id, int32_t target_node_id,
-																									 int32_t snapshot_forward_node_id);
+													 int32_t snapshot_forward_node_id);
 
 	std::vector<std::tuple<int32_t, int32_t, int32_t>> m_next_hop_list;
 
-	std::array<uint64_t, NUM_GROUND_STATIONS> m_queueing_distances;
-	std::array<std::array<uint64_t, NUM_GROUND_STATIONS>, 4> m_neighbor_queueing_distances;
+	int64_t num_orbits;
+	int64_t satellites_per_orbit;
+
+	std::vector<uint64_t> m_queueing_distances;
+	std::array<std::vector<uint64_t>, 4> m_neighbor_queueing_distances;
 	std::array<int32_t, 4> m_neighbor_ids;
 	std::array<uint32_t, 4> m_neighbor_interfaces;
-	std::array<uint32_t, NUM_GROUND_STATIONS> m_distance_lookup_array;
-	std::array<std::set<int32_t>, NUM_GROUND_STATIONS> m_destination_satellite_list;
+	std::vector<uint32_t> m_distance_lookup_array;
+	std::vector<std::set<int32_t>> m_destination_satellite_list;
 
 	Ptr<Satellite> ExtractSatellite(int32_t node_id);
 };

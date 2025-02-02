@@ -44,9 +44,9 @@ NS_OBJECT_ENSURE_REGISTERED(Ipv4DhpbArbiterRouting);
 TypeId Ipv4DhpbArbiterRouting::GetTypeId(void)
 {
 	static TypeId tid = TypeId("ns3::Ipv4DhpbArbiterRouting")
-													.SetParent<Ipv4RoutingProtocol>()
-													.SetGroupName("Internet")
-													.AddConstructor<Ipv4DhpbArbiterRouting>();
+							.SetParent<Ipv4RoutingProtocol>()
+							.SetGroupName("Internet")
+							.AddConstructor<Ipv4DhpbArbiterRouting>();
 	return tid;
 }
 
@@ -67,7 +67,7 @@ Ipv4DhpbArbiterRouting::Ipv4DhpbArbiterRouting() : m_ipv4(0)
  * @return Valid Ipv4 route
  */
 Ptr<Ipv4Route> Ipv4DhpbArbiterRouting::LookupArbiter(const Ipv4Address &dest, const Ipv4Header &header,
-																										 Ptr<const Packet> p, Ptr<NetDevice> oif)
+													 Ptr<const Packet> p, Ptr<NetDevice> oif)
 {
 
 	// Arbiter must be set
@@ -115,10 +115,10 @@ Ptr<Ipv4Route> Ipv4DhpbArbiterRouting::LookupArbiter(const Ipv4Address &dest, co
 	Ptr<Ipv4Route> rtentry = Create<Ipv4Route>();
 	rtentry->SetDestination(dest);
 	rtentry->SetSource(m_ipv4->SourceAddressSelection(if_idx, dest)); // This is basically the IP of the interface
-																																		// It is used by a transport layer to
-																																		// determine its source IP address
+																	  // It is used by a transport layer to
+																	  // determine its source IP address
 	rtentry->SetGateway(Ipv4Address(gateway_ip_address)); // If the network device does not care about ARP resolution,
-																												// this can be set to 0.0.0.0
+														  // this can be set to 0.0.0.0
 	rtentry->SetOutputDevice(m_ipv4->GetNetDevice(if_idx));
 	return rtentry;
 }
@@ -146,7 +146,7 @@ Ptr<Ipv4Route> Ipv4DhpbArbiterRouting::LookupArbiter(const Ipv4Address &dest, co
  * @return IPv4 route
  */
 Ptr<Ipv4Route> Ipv4DhpbArbiterRouting::RouteOutput(Ptr<Packet> p, const Ipv4Header &header, Ptr<NetDevice> oif,
-																									 Socket::SocketErrno &sockerr)
+												   Socket::SocketErrno &sockerr)
 {
 	NS_LOG_FUNCTION(this << p << header << oif << sockerr);
 	Ipv4Address destination = header.GetDestination();
@@ -175,8 +175,8 @@ Ptr<Ipv4Route> Ipv4DhpbArbiterRouting::RouteOutput(Ptr<Packet> p, const Ipv4Head
 }
 
 bool Ipv4DhpbArbiterRouting::RouteInput(Ptr<const Packet> p, const Ipv4Header &ipHeader, Ptr<const NetDevice> idev,
-																				UnicastForwardCallback ucb, MulticastForwardCallback mcb,
-																				LocalDeliverCallback lcb, ErrorCallback ecb)
+										UnicastForwardCallback ucb, MulticastForwardCallback mcb,
+										LocalDeliverCallback lcb, ErrorCallback ecb)
 {
 	NS_ASSERT(m_ipv4 != 0);
 
@@ -200,6 +200,7 @@ bool Ipv4DhpbArbiterRouting::RouteInput(Ptr<const Packet> p, const Ipv4Header &i
 			throw std::runtime_error("Local callback cannot be null");
 		}
 		// Info: If you want to decide that a packet should not be delivered (dropped),
+		NS_LOG_DEBUG("Routed Packet TTL: " << unsigned(ipHeader.GetTtl()));
 		//       you can decide that here by not calling lcb(), but still returning true.
 		lcb(p, ipHeader, iif);
 		return true;

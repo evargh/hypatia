@@ -52,7 +52,7 @@ using namespace ns3;
 
 int main(int argc, char *argv[])
 {
-	int routing_algorithm = 2;
+	int routing_algorithm = 0;
 
 	// No buffering of printf
 	setbuf(stdout, nullptr);
@@ -79,12 +79,14 @@ int main(int argc, char *argv[])
 	// Optimize TCP
 	TcpOptimizer::OptimizeBasic(basicSimulation);
 
+	// TODO: should probably downcast the arbiter pointer safely here, haven't tested
 	Ptr<TopologySatelliteNetwork> topology;
 	if (routing_algorithm == 0)
 	{
-		topology = CreateObject<TopologySatelliteNetwork>(basicSimulation, Ipv4ArbiterRoutingHelper(), PointToPointLaserHelper(), GSLHelper());
+		topology = CreateObject<TopologySatelliteNetwork>(basicSimulation, Ipv4ArbiterRoutingHelper(),
+														  PointToPointLaserHelper(), GSLHelper());
 		ArbiterSingleForwardHelper arbiterHelper(basicSimulation, topology->GetNodes());
-// weird scope thing, just move everything into here
+		// weird scope thing, just move everything into here
 		GslIfBandwidthHelper gslIfBandwidthHelper(basicSimulation, topology->GetNodes());
 
 		// Schedule flows
@@ -118,7 +120,8 @@ int main(int argc, char *argv[])
 	}
 	else if (routing_algorithm == 1)
 	{
-		topology = CreateObject<TopologySatelliteNetwork>(basicSimulation, Ipv4DhpbArbiterRoutingHelper(), DhpbPointToPointLaserHelper(), DhpbGSLHelper());
+		topology = CreateObject<TopologySatelliteNetwork>(basicSimulation, Ipv4DhpbArbiterRoutingHelper(),
+														  DhpbPointToPointLaserHelper(), DhpbGSLHelper());
 		ArbiterDhpbHelper arbiterHelper(basicSimulation, topology->GetNodes());
 		GslIfBandwidthHelper gslIfBandwidthHelper(basicSimulation, topology->GetNodes());
 
@@ -153,9 +156,10 @@ int main(int argc, char *argv[])
 	}
 	if (routing_algorithm == 2)
 	{
-		topology = CreateObject<TopologySatelliteNetwork>(basicSimulation, Ipv4ShortRoutingHelper(), PointToPointLaserHelper(), GSLHelper());
+		topology = CreateObject<TopologySatelliteNetwork>(basicSimulation, Ipv4ShortRoutingHelper(),
+														  PointToPointLaserHelper(), GSLHelper());
 		ArbiterShortHelper arbiterHelper(basicSimulation, topology->GetNodes());
-// weird scope thing, just move everything into here
+		// weird scope thing, just move everything into here
 		GslIfBandwidthHelper gslIfBandwidthHelper(basicSimulation, topology->GetNodes());
 
 		// Schedule flows

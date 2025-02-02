@@ -20,7 +20,6 @@
  *         Simon        2020
  */
 
-
 #include "ns3/log.h"
 #include "ns3/queue.h"
 #include "ns3/simulator.h"
@@ -35,83 +34,65 @@
 #include "gsl-net-device.h"
 #include "gsl-channel.h"
 
-namespace ns3 {
-
-NS_LOG_COMPONENT_DEFINE ("GSLNetDevice");
-
-NS_OBJECT_ENSURE_REGISTERED (GSLNetDevice);
-
-TypeId 
-GSLNetDevice::GetTypeId (void)
+namespace ns3
 {
-  static TypeId tid = TypeId ("ns3::GSLNetDevice")
-    .SetParent<NetDevice> ()
-    .SetGroupName ("PointToPoint")
-    .AddConstructor<GSLNetDevice> ()
-    .AddAttribute ("Mtu", "The MAC-level Maximum Transmission Unit",
-                   UintegerValue (DEFAULT_MTU),
-                   MakeUintegerAccessor (&GSLNetDevice::SetMtu,
-                                         &GSLNetDevice::GetMtu),
-                   MakeUintegerChecker<uint16_t> ())
-    .AddAttribute ("Address", 
-                   "The MAC address of this device.",
-                   Mac48AddressValue (Mac48Address ("ff:ff:ff:ff:ff:ff")),
-                   MakeMac48AddressAccessor (&GSLNetDevice::m_address),
-                   MakeMac48AddressChecker ())
-    .AddAttribute ("DataRate", 
-                   "The default data rate for point to point links",
-                   DataRateValue (DataRate ("32768b/s")),
-                   MakeDataRateAccessor (&GSLNetDevice::m_bps),
-                   MakeDataRateChecker ())
-    .AddAttribute ("ReceiveErrorModel", 
-                   "The receiver error model used to simulate packet loss",
-                   PointerValue (),
-                   MakePointerAccessor (&GSLNetDevice::m_receiveErrorModel),
-                   MakePointerChecker<ErrorModel> ())
-    .AddAttribute ("InterframeGap", 
-                   "The time to wait between packet (frame) transmissions",
-                   TimeValue (Seconds (0.0)),
-                   MakeTimeAccessor (&GSLNetDevice::m_tInterframeGap),
-                   MakeTimeChecker ())
 
-    //
-    // Transmit queueing discipline for the device which includes its own set
-    // of trace hooks.
-    //
-    .AddAttribute ("TxQueue", 
-                   "A queue to use as the transmit queue in the device.",
-                   PointerValue (),
-                   MakePointerAccessor (&GSLNetDevice::m_queue),
-                   MakePointerChecker<Queue<Packet> > ())
+NS_LOG_COMPONENT_DEFINE("GSLNetDevice");
 
-    //
-    // Trace sources at the "top" of the net device, where packets transition
-    // to/from higher layers.
-    //
-    .AddTraceSource ("MacTx", 
-                     "Trace source indicating a packet has arrived "
-                     "for transmission by this device",
-                     MakeTraceSourceAccessor (&GSLNetDevice::m_macTxTrace),
-                     "ns3::Packet::TracedCallback")
-    .AddTraceSource ("MacTxDrop", 
-                     "Trace source indicating a packet has been dropped "
-                     "by the device before transmission",
-                     MakeTraceSourceAccessor (&GSLNetDevice::m_macTxDropTrace),
-                     "ns3::Packet::TracedCallback")
-    .AddTraceSource ("MacPromiscRx", 
-                     "A packet has been received by this device, "
-                     "has been passed up from the physical layer "
-                     "and is being forwarded up the local protocol stack.  "
-                     "This is a promiscuous trace,",
-                     MakeTraceSourceAccessor (&GSLNetDevice::m_macPromiscRxTrace),
-                     "ns3::Packet::TracedCallback")
-    .AddTraceSource ("MacRx", 
-                     "A packet has been received by this device, "
-                     "has been passed up from the physical layer "
-                     "and is being forwarded up the local protocol stack.  "
-                     "This is a non-promiscuous trace,",
-                     MakeTraceSourceAccessor (&GSLNetDevice::m_macRxTrace),
-                     "ns3::Packet::TracedCallback")
+NS_OBJECT_ENSURE_REGISTERED(GSLNetDevice);
+
+TypeId GSLNetDevice::GetTypeId(void)
+{
+	static TypeId tid =
+		TypeId("ns3::GSLNetDevice")
+			.SetParent<NetDevice>()
+			.SetGroupName("PointToPoint")
+			.AddConstructor<GSLNetDevice>()
+			.AddAttribute("Mtu", "The MAC-level Maximum Transmission Unit", UintegerValue(DEFAULT_MTU),
+						  MakeUintegerAccessor(&GSLNetDevice::SetMtu, &GSLNetDevice::GetMtu),
+						  MakeUintegerChecker<uint16_t>())
+			.AddAttribute("Address", "The MAC address of this device.",
+						  Mac48AddressValue(Mac48Address("ff:ff:ff:ff:ff:ff")),
+						  MakeMac48AddressAccessor(&GSLNetDevice::m_address), MakeMac48AddressChecker())
+			.AddAttribute("DataRate", "The default data rate for point to point links",
+						  DataRateValue(DataRate("32768b/s")), MakeDataRateAccessor(&GSLNetDevice::m_bps),
+						  MakeDataRateChecker())
+			.AddAttribute("ReceiveErrorModel", "The receiver error model used to simulate packet loss", PointerValue(),
+						  MakePointerAccessor(&GSLNetDevice::m_receiveErrorModel), MakePointerChecker<ErrorModel>())
+			.AddAttribute("InterframeGap", "The time to wait between packet (frame) transmissions",
+						  TimeValue(Seconds(0.0)), MakeTimeAccessor(&GSLNetDevice::m_tInterframeGap), MakeTimeChecker())
+
+			//
+			// Transmit queueing discipline for the device which includes its own set
+			// of trace hooks.
+			//
+			.AddAttribute("TxQueue", "A queue to use as the transmit queue in the device.", PointerValue(),
+						  MakePointerAccessor(&GSLNetDevice::m_queue), MakePointerChecker<Queue<Packet>>())
+
+			//
+			// Trace sources at the "top" of the net device, where packets transition
+			// to/from higher layers.
+			//
+			.AddTraceSource("MacTx",
+							"Trace source indicating a packet has arrived "
+							"for transmission by this device",
+							MakeTraceSourceAccessor(&GSLNetDevice::m_macTxTrace), "ns3::Packet::TracedCallback")
+			.AddTraceSource("MacTxDrop",
+							"Trace source indicating a packet has been dropped "
+							"by the device before transmission",
+							MakeTraceSourceAccessor(&GSLNetDevice::m_macTxDropTrace), "ns3::Packet::TracedCallback")
+			.AddTraceSource("MacPromiscRx",
+							"A packet has been received by this device, "
+							"has been passed up from the physical layer "
+							"and is being forwarded up the local protocol stack.  "
+							"This is a promiscuous trace,",
+							MakeTraceSourceAccessor(&GSLNetDevice::m_macPromiscRxTrace), "ns3::Packet::TracedCallback")
+			.AddTraceSource("MacRx",
+							"A packet has been received by this device, "
+							"has been passed up from the physical layer "
+							"and is being forwarded up the local protocol stack.  "
+							"This is a non-promiscuous trace,",
+							MakeTraceSourceAccessor(&GSLNetDevice::m_macRxTrace), "ns3::Packet::TracedCallback")
 #if 0
     // Not currently implemented for this device
     .AddTraceSource ("MacRxDrop", 
@@ -120,25 +101,22 @@ GSLNetDevice::GetTypeId (void)
                      MakeTraceSourceAccessor (&GSLNetDevice::m_macRxDropTrace),
                      "ns3::Packet::TracedCallback")
 #endif
-    //
-    // Trace sources at the "bottom" of the net device, where packets transition
-    // to/from the channel.
-    //
-    .AddTraceSource ("PhyTxBegin", 
-                     "Trace source indicating a packet has begun "
-                     "transmitting over the channel",
-                     MakeTraceSourceAccessor (&GSLNetDevice::m_phyTxBeginTrace),
-                     "ns3::Packet::TracedCallback")
-    .AddTraceSource ("PhyTxEnd", 
-                     "Trace source indicating a packet has been "
-                     "completely transmitted over the channel",
-                     MakeTraceSourceAccessor (&GSLNetDevice::m_phyTxEndTrace),
-                     "ns3::Packet::TracedCallback")
-    .AddTraceSource ("PhyTxDrop", 
-                     "Trace source indicating a packet has been "
-                     "dropped by the device during transmission",
-                     MakeTraceSourceAccessor (&GSLNetDevice::m_phyTxDropTrace),
-                     "ns3::Packet::TracedCallback")
+			//
+			// Trace sources at the "bottom" of the net device, where packets transition
+			// to/from the channel.
+			//
+			.AddTraceSource("PhyTxBegin",
+							"Trace source indicating a packet has begun "
+							"transmitting over the channel",
+							MakeTraceSourceAccessor(&GSLNetDevice::m_phyTxBeginTrace), "ns3::Packet::TracedCallback")
+			.AddTraceSource("PhyTxEnd",
+							"Trace source indicating a packet has been "
+							"completely transmitted over the channel",
+							MakeTraceSourceAccessor(&GSLNetDevice::m_phyTxEndTrace), "ns3::Packet::TracedCallback")
+			.AddTraceSource("PhyTxDrop",
+							"Trace source indicating a packet has been "
+							"dropped by the device during transmission",
+							MakeTraceSourceAccessor(&GSLNetDevice::m_phyTxDropTrace), "ns3::Packet::TracedCallback")
 #if 0
     // Not currently implemented for this device
     .AddTraceSource ("PhyRxBegin", 
@@ -147,523 +125,471 @@ GSLNetDevice::GetTypeId (void)
                      MakeTraceSourceAccessor (&GSLNetDevice::m_phyRxBeginTrace),
                      "ns3::Packet::TracedCallback")
 #endif
-    .AddTraceSource ("PhyRxEnd", 
-                     "Trace source indicating a packet has been "
-                     "completely received by the device",
-                     MakeTraceSourceAccessor (&GSLNetDevice::m_phyRxEndTrace),
-                     "ns3::Packet::TracedCallback")
-    .AddTraceSource ("PhyRxDrop", 
-                     "Trace source indicating a packet has been "
-                     "dropped by the device during reception",
-                     MakeTraceSourceAccessor (&GSLNetDevice::m_phyRxDropTrace),
-                     "ns3::Packet::TracedCallback")
+			.AddTraceSource("PhyRxEnd",
+							"Trace source indicating a packet has been "
+							"completely received by the device",
+							MakeTraceSourceAccessor(&GSLNetDevice::m_phyRxEndTrace), "ns3::Packet::TracedCallback")
+			.AddTraceSource("PhyRxDrop",
+							"Trace source indicating a packet has been "
+							"dropped by the device during reception",
+							MakeTraceSourceAccessor(&GSLNetDevice::m_phyRxDropTrace), "ns3::Packet::TracedCallback")
 
-    //
-    // Trace sources designed to simulate a packet sniffer facility (tcpdump).
-    // Note that there is really no difference between promiscuous and 
-    // non-promiscuous traces in a point-to-point link.
-    //
-    .AddTraceSource ("Sniffer", 
-                    "Trace source simulating a non-promiscuous packet sniffer "
-                     "attached to the device",
-                     MakeTraceSourceAccessor (&GSLNetDevice::m_snifferTrace),
-                     "ns3::Packet::TracedCallback")
-    .AddTraceSource ("PromiscSniffer", 
-                     "Trace source simulating a promiscuous packet sniffer "
-                     "attached to the device",
-                     MakeTraceSourceAccessor (&GSLNetDevice::m_promiscSnifferTrace),
-                     "ns3::Packet::TracedCallback")
-  ;
-  return tid;
+			//
+			// Trace sources designed to simulate a packet sniffer facility (tcpdump).
+			// Note that there is really no difference between promiscuous and
+			// non-promiscuous traces in a point-to-point link.
+			//
+			.AddTraceSource("Sniffer",
+							"Trace source simulating a non-promiscuous packet sniffer "
+							"attached to the device",
+							MakeTraceSourceAccessor(&GSLNetDevice::m_snifferTrace), "ns3::Packet::TracedCallback")
+			.AddTraceSource("PromiscSniffer",
+							"Trace source simulating a promiscuous packet sniffer "
+							"attached to the device",
+							MakeTraceSourceAccessor(&GSLNetDevice::m_promiscSnifferTrace),
+							"ns3::Packet::TracedCallback");
+	return tid;
 }
 
-
-GSLNetDevice::GSLNetDevice () 
-  :
-    m_txMachineState (READY),
-    m_channel (0),
-    m_linkUp (false),
-    m_currentPkt (0)
+GSLNetDevice::GSLNetDevice() : m_txMachineState(READY), m_channel(0), m_linkUp(false), m_currentPkt(0)
 {
-  NS_LOG_FUNCTION (this);
+	NS_LOG_FUNCTION(this);
 }
 
-GSLNetDevice::~GSLNetDevice ()
+GSLNetDevice::~GSLNetDevice()
 {
-  NS_LOG_FUNCTION (this);
+	NS_LOG_FUNCTION(this);
 }
 
-void
-GSLNetDevice::AddHeader (Ptr<Packet> p, uint16_t protocolNumber)
+void GSLNetDevice::AddHeader(Ptr<Packet> p, uint16_t protocolNumber)
 {
-  NS_LOG_FUNCTION (this << p << protocolNumber);
-  PppHeader ppp;
-  ppp.SetProtocol (EtherToPpp (protocolNumber));
-  p->AddHeader (ppp);
+	NS_LOG_FUNCTION(this << p << protocolNumber);
+	PppHeader ppp;
+	ppp.SetProtocol(EtherToPpp(protocolNumber));
+	p->AddHeader(ppp);
 }
 
-bool
-GSLNetDevice::ProcessHeader (Ptr<Packet> p, uint16_t& param)
+bool GSLNetDevice::ProcessHeader(Ptr<Packet> p, uint16_t &param)
 {
-  NS_LOG_FUNCTION (this << p << param);
-  PppHeader ppp;
-  p->RemoveHeader (ppp);
-  param = PppToEther (ppp.GetProtocol ());
-  return true;
+	NS_LOG_FUNCTION(this << p << param);
+	PppHeader ppp;
+	p->RemoveHeader(ppp);
+	param = PppToEther(ppp.GetProtocol());
+	return true;
 }
 
-void
-GSLNetDevice::DoDispose ()
+void GSLNetDevice::DoDispose()
 {
-  NS_LOG_FUNCTION (this);
-  m_node = 0;
-  m_channel = 0;
-  m_receiveErrorModel = 0;
-  m_currentPkt = 0;
-  m_queue = 0;
-  while (!m_queueDests.empty()) {
-      m_queueDests.pop();
-  }
-  NetDevice::DoDispose ();
+	NS_LOG_FUNCTION(this);
+	m_node = 0;
+	m_channel = 0;
+	m_receiveErrorModel = 0;
+	m_currentPkt = 0;
+	m_queue = 0;
+	while (!m_queueDests.empty())
+	{
+		m_queueDests.pop();
+	}
+	NetDevice::DoDispose();
 }
 
-void
-GSLNetDevice::SetDataRate (DataRate bps)
+void GSLNetDevice::SetDataRate(DataRate bps)
 {
-  NS_LOG_FUNCTION (this);
-  m_bps = bps;
+	NS_LOG_FUNCTION(this);
+	m_bps = bps;
 }
 
-void
-GSLNetDevice::SetInterframeGap (Time t)
+void GSLNetDevice::SetInterframeGap(Time t)
 {
-  NS_LOG_FUNCTION (this << t.GetSeconds ());
-  m_tInterframeGap = t;
+	NS_LOG_FUNCTION(this << t.GetSeconds());
+	m_tInterframeGap = t;
 }
 
-bool
-GSLNetDevice::TransmitStart (Ptr<Packet> p, const Address dest)
+bool GSLNetDevice::TransmitStart(Ptr<Packet> p, const Address dest)
 {
-  NS_LOG_FUNCTION (this << p);
-  NS_LOG_LOGIC ("UID is " << p->GetUid () << ")");
+	NS_LOG_FUNCTION(this << p);
+	NS_LOG_LOGIC("UID is " << p->GetUid() << ")");
 
-  //
-  // This function is called to start the process of transmitting a packet.
-  // We need to tell the channel that we've started wiggling the wire and
-  // schedule an event that will be executed when the transmission is complete.
-  //
-  NS_ASSERT_MSG (m_txMachineState == READY, "Must be READY to transmit");
-  m_txMachineState = BUSY;
-  m_currentPkt = p;
-  m_phyTxBeginTrace (m_currentPkt);
+	//
+	// This function is called to start the process of transmitting a packet.
+	// We need to tell the channel that we've started wiggling the wire and
+	// schedule an event that will be executed when the transmission is complete.
+	//
+	NS_ASSERT_MSG(m_txMachineState == READY, "Must be READY to transmit");
+	m_txMachineState = BUSY;
+	m_currentPkt = p;
+	m_phyTxBeginTrace(m_currentPkt);
 
-  Time txTime = m_bps.CalculateBytesTxTime (p->GetSize ());
-  Time txCompleteTime = txTime + m_tInterframeGap;
+	Time txTime = m_bps.CalculateBytesTxTime(p->GetSize());
+	Time txCompleteTime = txTime + m_tInterframeGap;
 
-  NS_LOG_LOGIC ("Schedule TransmitCompleteEvent in " << txCompleteTime.GetSeconds () << "sec");
-  Simulator::Schedule (txCompleteTime, &GSLNetDevice::TransmitComplete, this, dest);
-  
-  // copied code from point to point net device. need to make a parent class that these can inherit from
-  bool result = m_channel->TransmitStart (p, this, dest, txTime);
-  if (result == false)
-    {
-      m_phyTxDropTrace (p);
-    }
-  NS_LOG_DEBUG(
-          "From " << m_node->GetId() << 
-          " -- UID is " << p->GetUid() << " -- Delay is " << txCompleteTime.GetSeconds()); 
+	NS_LOG_LOGIC("Schedule TransmitCompleteEvent in " << txCompleteTime.GetSeconds() << "sec");
+	Simulator::Schedule(txCompleteTime, &GSLNetDevice::TransmitComplete, this, dest);
 
-  NS_LOG_FUNCTION (this << " done");
-  return result;
+	// copied code from point to point net device. need to make a parent class that these can inherit from
+	bool result = m_channel->TransmitStart(p, this, dest, txTime);
+	if (result == false)
+	{
+		m_phyTxDropTrace(p);
+	}
+	NS_LOG_DEBUG("From " << m_node->GetId() << " -- UID is " << p->GetUid() << " -- Delay is "
+						 << txCompleteTime.GetSeconds());
+
+	NS_LOG_FUNCTION(this << " done");
+	return result;
 }
 
-void
-GSLNetDevice::TransmitComplete (const Address dest)
+void GSLNetDevice::TransmitComplete(const Address dest)
 {
-  NS_LOG_FUNCTION (this);
+	NS_LOG_FUNCTION(this);
 
-  //
-  // This function is called to when we're all done transmitting a packet.
-  // We try and pull another packet off of the transmit queue.  If the queue
-  // is empty, we are done, otherwise we need to start transmitting the
-  // next packet.
-  //
-  NS_ASSERT_MSG (m_txMachineState == BUSY, "Must be BUSY if transmitting");
-  m_txMachineState = READY;
+	//
+	// This function is called to when we're all done transmitting a packet.
+	// We try and pull another packet off of the transmit queue.  If the queue
+	// is empty, we are done, otherwise we need to start transmitting the
+	// next packet.
+	//
+	NS_ASSERT_MSG(m_txMachineState == BUSY, "Must be BUSY if transmitting");
+	m_txMachineState = READY;
 
-  NS_ASSERT_MSG (m_currentPkt != 0, "GSLNetDevice::TransmitComplete(): m_currentPkt zero");
+	NS_ASSERT_MSG(m_currentPkt != 0, "GSLNetDevice::TransmitComplete(): m_currentPkt zero");
 
-  m_phyTxEndTrace (m_currentPkt);
-  m_currentPkt = 0;
+	m_phyTxEndTrace(m_currentPkt);
+	m_currentPkt = 0;
 
-  Ptr<Packet> p = m_queue->Dequeue ();
-  if (p == 0)
-    {
-      NS_LOG_LOGIC ("No pending packets in device queue after tx complete");
-      return;
-    }
-    Address next_dest = m_queueDests.front ();
-    m_queueDests.pop ();
+	Ptr<Packet> p = m_queue->Dequeue();
+	if (p == 0)
+	{
+		NS_LOG_LOGIC("No pending packets in device queue after tx complete");
+		return;
+	}
+	Address next_dest = m_queueDests.front();
+	m_queueDests.pop();
 
-  //
-  // Got another packet off of the queue, so start the transmit process again.
-  //
-  m_snifferTrace (p);
-  m_promiscSnifferTrace (p);
-  TransmitStart (p, next_dest);
+	//
+	// Got another packet off of the queue, so start the transmit process again.
+	//
+	m_snifferTrace(p);
+	m_promiscSnifferTrace(p);
+	TransmitStart(p, next_dest);
 }
 
-bool
-GSLNetDevice::Attach (Ptr<GSLChannel> ch)
+bool GSLNetDevice::Attach(Ptr<GSLChannel> ch)
 {
-  NS_LOG_FUNCTION (this << &ch);
+	NS_LOG_FUNCTION(this << &ch);
 
-  m_channel = ch;
+	m_channel = ch;
 
-  m_channel->Attach (this);
+	m_channel->Attach(this);
 
-  //
-  // This device is up whenever it is attached to a channel.  A better plan
-  // would be to have the link come up when both devices are attached, but this
-  // is not done for now.
-  //
-  NotifyLinkUp ();
-  return true;
+	//
+	// This device is up whenever it is attached to a channel.  A better plan
+	// would be to have the link come up when both devices are attached, but this
+	// is not done for now.
+	//
+	NotifyLinkUp();
+	return true;
 }
 
-void
-GSLNetDevice::SetQueue (Ptr<Queue<Packet>> q)
+void GSLNetDevice::SetQueue(Ptr<Queue<Packet>> q)
 {
-  NS_LOG_FUNCTION (this << q);
-  m_queue = q;
+	NS_LOG_FUNCTION(this << q);
+	m_queue = q;
 }
 
-void
-GSLNetDevice::SetReceiveErrorModel (Ptr<ErrorModel> em)
+void GSLNetDevice::SetReceiveErrorModel(Ptr<ErrorModel> em)
 {
-  NS_LOG_FUNCTION (this << em);
-  m_receiveErrorModel = em;
+	NS_LOG_FUNCTION(this << em);
+	m_receiveErrorModel = em;
 }
 
-void
-GSLNetDevice::Receive (Ptr<Packet> packet)
+void GSLNetDevice::Receive(Ptr<Packet> packet)
 {
-  NS_LOG_FUNCTION (this << packet);
-  uint16_t protocol = 0;
+	NS_LOG_FUNCTION(this << packet);
+	uint16_t protocol = 0;
 
-  if (m_receiveErrorModel && m_receiveErrorModel->IsCorrupt (packet) ) 
-    {
-      // 
-      // If we have an error model and it indicates that it is time to lose a
-      // corrupted packet, don't forward this packet up, let it go.
-      //
-      m_phyRxDropTrace (packet);
-    }
-  else 
-    {
-      // 
-      // Hit the trace hooks.  All of these hooks are in the same place in this 
-      // device because it is so simple, but this is not usually the case in
-      // more complicated devices.
-      //
-      m_snifferTrace (packet);
-      m_promiscSnifferTrace (packet);
-      m_phyRxEndTrace (packet);
+	if (m_receiveErrorModel && m_receiveErrorModel->IsCorrupt(packet))
+	{
+		//
+		// If we have an error model and it indicates that it is time to lose a
+		// corrupted packet, don't forward this packet up, let it go.
+		//
+		m_phyRxDropTrace(packet);
+	}
+	else
+	{
+		//
+		// Hit the trace hooks.  All of these hooks are in the same place in this
+		// device because it is so simple, but this is not usually the case in
+		// more complicated devices.
+		//
+		m_snifferTrace(packet);
+		m_promiscSnifferTrace(packet);
+		m_phyRxEndTrace(packet);
 
-      //
-      // Trace sinks will expect complete packets, not packets without some of the
-      // headers.
-      //
-      Ptr<Packet> originalPacket = packet->Copy ();
+		//
+		// Trace sinks will expect complete packets, not packets without some of the
+		// headers.
+		//
+		Ptr<Packet> originalPacket = packet->Copy();
 
-      //
-      // Strip off the point-to-point protocol header and forward this packet
-      // up the protocol stack.  Since this is a simple point-to-point link,
-      // there is no difference in what the promisc callback sees and what the
-      // normal receive callback sees.
-      //
-      ProcessHeader (packet, protocol);
+		//
+		// Strip off the point-to-point protocol header and forward this packet
+		// up the protocol stack.  Since this is a simple point-to-point link,
+		// there is no difference in what the promisc callback sees and what the
+		// normal receive callback sees.
+		//
+		ProcessHeader(packet, protocol);
 
-      NS_LOG_DEBUG (
-        "To " << m_node->GetId() << " -- UID is " << packet->GetUid());
-      // if the receiving node is a satellite, and the ipv4 protocol is used, increase the arbiter distance
-      if (!m_promiscCallback.IsNull ())
-      {
-        m_macPromiscRxTrace (originalPacket);
-        //   the from address is incorrect (because it is unknown), but no effect is noticed on 
-        // traffic reception
-        //   a solution would require changes to NS3 core to support send and receive that receive a
-        // 'from' argument for distributed simulator
-        m_promiscCallback (this, packet, protocol, GetAddress(), GetAddress (), NetDevice::PACKET_HOST);
-      }
-      m_macRxTrace (originalPacket);
-      m_rxCallback (this, packet, protocol, GetAddress());
-    }
+		NS_LOG_DEBUG("To " << m_node->GetId() << " -- UID is " << packet->GetUid());
+		if (!m_promiscCallback.IsNull())
+		{
+			m_macPromiscRxTrace(originalPacket);
+			//   the from address is incorrect (because it is unknown), but no effect is noticed on
+			// traffic reception
+			//   a solution would require changes to NS3 core to support send and receive that receive a
+			// 'from' argument for distributed simulator
+			m_promiscCallback(this, packet, protocol, GetAddress(), GetAddress(), NetDevice::PACKET_HOST);
+		}
+		m_macRxTrace(originalPacket);
+		m_rxCallback(this, packet, protocol, GetAddress());
+	}
 }
 
-Ptr<Queue<Packet> >
-GSLNetDevice::GetQueue (void) const
-{ 
-  NS_LOG_FUNCTION (this);
-  return m_queue;
-}
-
-void
-GSLNetDevice::NotifyLinkUp (void)
+Ptr<Queue<Packet>> GSLNetDevice::GetQueue(void) const
 {
-  NS_LOG_FUNCTION (this);
-  m_linkUp = true;
-  m_linkChangeCallbacks ();
+	NS_LOG_FUNCTION(this);
+	return m_queue;
 }
 
-void
-GSLNetDevice::SetIfIndex (const uint32_t index)
+void GSLNetDevice::NotifyLinkUp(void)
 {
-  NS_LOG_FUNCTION (this);
-  m_ifIndex = index;
+	NS_LOG_FUNCTION(this);
+	m_linkUp = true;
+	m_linkChangeCallbacks();
 }
 
-uint32_t
-GSLNetDevice::GetIfIndex (void) const
+void GSLNetDevice::SetIfIndex(const uint32_t index)
 {
-  return m_ifIndex;
+	NS_LOG_FUNCTION(this);
+	m_ifIndex = index;
 }
 
-Ptr<Channel>
-GSLNetDevice::GetChannel (void) const
+uint32_t GSLNetDevice::GetIfIndex(void) const
 {
-  return m_channel;
+	return m_ifIndex;
 }
 
-void
-GSLNetDevice::SetAddress (Address address)
+Ptr<Channel> GSLNetDevice::GetChannel(void) const
 {
-  NS_LOG_FUNCTION (this << address);
-  m_address = Mac48Address::ConvertFrom (address);
+	return m_channel;
 }
 
-Address
-GSLNetDevice::GetAddress (void) const
+void GSLNetDevice::SetAddress(Address address)
 {
-  return m_address;
+	NS_LOG_FUNCTION(this << address);
+	m_address = Mac48Address::ConvertFrom(address);
 }
 
-bool
-GSLNetDevice::IsLinkUp (void) const
+Address GSLNetDevice::GetAddress(void) const
 {
-  NS_LOG_FUNCTION (this);
-  return m_linkUp;
+	return m_address;
 }
 
-void
-GSLNetDevice::AddLinkChangeCallback (Callback<void> callback)
+bool GSLNetDevice::IsLinkUp(void) const
 {
-  NS_LOG_FUNCTION (this);
-  m_linkChangeCallbacks.ConnectWithoutContext (callback);
+	NS_LOG_FUNCTION(this);
+	return m_linkUp;
 }
 
-bool
-GSLNetDevice::IsBroadcast (void) const
+void GSLNetDevice::AddLinkChangeCallback(Callback<void> callback)
 {
-  NS_LOG_FUNCTION (this);
-  return true; // We return true such that the normal Internet stack can be installed, because ARP needs true here
+	NS_LOG_FUNCTION(this);
+	m_linkChangeCallbacks.ConnectWithoutContext(callback);
 }
 
-Address
-GSLNetDevice::GetBroadcast (void) const
+bool GSLNetDevice::IsBroadcast(void) const
 {
-  NS_LOG_FUNCTION (this);
-  throw std::runtime_error("Broadcast not supported (only ARP would use broadcast, whose cache should have already been filled).");
+	NS_LOG_FUNCTION(this);
+	return true; // We return true such that the normal Internet stack can be installed, because ARP needs true here
 }
 
-bool
-GSLNetDevice::IsMulticast (void) const
+Address GSLNetDevice::GetBroadcast(void) const
 {
-  NS_LOG_FUNCTION (this);
-  return false;
+	NS_LOG_FUNCTION(this);
+	throw std::runtime_error(
+		"Broadcast not supported (only ARP would use broadcast, whose cache should have already been filled).");
 }
 
-Address
-GSLNetDevice::GetMulticast (Ipv4Address multicastGroup) const
+bool GSLNetDevice::IsMulticast(void) const
 {
-  NS_LOG_FUNCTION (this);
-  throw std::runtime_error("Multicast not supported.");
+	NS_LOG_FUNCTION(this);
+	return false;
 }
 
-Address
-GSLNetDevice::GetMulticast (Ipv6Address addr) const
+Address GSLNetDevice::GetMulticast(Ipv4Address multicastGroup) const
 {
-  NS_LOG_FUNCTION (this << addr);
-  throw std::runtime_error("Multicast not supported.");
+	NS_LOG_FUNCTION(this);
+	throw std::runtime_error("Multicast not supported.");
 }
 
-bool
-GSLNetDevice::IsPointToPoint (void) const
+Address GSLNetDevice::GetMulticast(Ipv6Address addr) const
 {
-  NS_LOG_FUNCTION (this);
-  return false;
+	NS_LOG_FUNCTION(this << addr);
+	throw std::runtime_error("Multicast not supported.");
 }
 
-bool
-GSLNetDevice::IsBridge (void) const
+bool GSLNetDevice::IsPointToPoint(void) const
 {
-  NS_LOG_FUNCTION (this);
-  return false;
+	NS_LOG_FUNCTION(this);
+	return false;
 }
 
-bool
-GSLNetDevice::Send (
-  Ptr<Packet> packet, 
-  const Address &dest, 
-  uint16_t protocolNumber)
+bool GSLNetDevice::IsBridge(void) const
 {
-  NS_LOG_FUNCTION (this << packet << dest << protocolNumber);
-  NS_LOG_LOGIC ("p=" << packet << ", dest=" << &dest);
-  NS_LOG_LOGIC ("UID is " << packet->GetUid ());
-  NS_LOG_LOGIC ("node is " << this->GetNode()->GetId());
-
-  //
-  // If IsLinkUp() is false it means there is no channel to send any packet 
-  // over so we just hit the drop trace on the packet and return an error.
-  //
-  if (IsLinkUp () == false)
-    {
-      m_macTxDropTrace (packet);
-      return false;
-    }
-
-  //
-  // Stick a point to point protocol header on the packet in preparation for
-  // shoving it out the door.
-  //
-  AddHeader (packet, protocolNumber);
-
-  m_macTxTrace (packet);
-
-  //
-  // We should enqueue and dequeue the packet to hit the tracing hooks.
-  //
-  if (m_queue->Enqueue (packet))
-    {
-      m_queueDests.push (dest);
-      //
-      // If the channel is ready for transition we send the packet right now
-      // 
-      if (m_txMachineState == READY)
-        {
-          packet = m_queue->Dequeue ();
-          Address next_dest = m_queueDests.front ();
-          m_queueDests.pop ();
-          m_snifferTrace (packet);
-          m_promiscSnifferTrace (packet);
-          bool ret = TransmitStart (packet, next_dest);
-          return ret;
-        }
-      return true;
-    }
-
-  // Enqueue may fail (overflow)
-
-  m_macTxDropTrace (packet);
-  return false;
+	NS_LOG_FUNCTION(this);
+	return false;
 }
 
-bool
-GSLNetDevice::SendFrom (Ptr<Packet> packet, 
-                        const Address &source, 
-                        const Address &dest, 
-                        uint16_t protocolNumber)
+bool GSLNetDevice::Send(Ptr<Packet> packet, const Address &dest, uint16_t protocolNumber)
 {
-  NS_LOG_FUNCTION (this << packet << source << dest << protocolNumber);
-  return false;
+	NS_LOG_FUNCTION(this << packet << dest << protocolNumber);
+	NS_LOG_LOGIC("p=" << packet << ", dest=" << &dest);
+	NS_LOG_LOGIC("UID is " << packet->GetUid());
+	NS_LOG_LOGIC("node is " << this->GetNode()->GetId());
+
+	//
+	// If IsLinkUp() is false it means there is no channel to send any packet
+	// over so we just hit the drop trace on the packet and return an error.
+	//
+	if (IsLinkUp() == false)
+	{
+		m_macTxDropTrace(packet);
+		return false;
+	}
+
+	//
+	// Stick a point to point protocol header on the packet in preparation for
+	// shoving it out the door.
+	//
+	AddHeader(packet, protocolNumber);
+
+	m_macTxTrace(packet);
+
+	//
+	// We should enqueue and dequeue the packet to hit the tracing hooks.
+	//
+	if (m_queue->Enqueue(packet))
+	{
+		m_queueDests.push(dest);
+		//
+		// If the channel is ready for transition we send the packet right now
+		//
+		if (m_txMachineState == READY)
+		{
+			packet = m_queue->Dequeue();
+			Address next_dest = m_queueDests.front();
+			m_queueDests.pop();
+			m_snifferTrace(packet);
+			m_promiscSnifferTrace(packet);
+			bool ret = TransmitStart(packet, next_dest);
+			return ret;
+		}
+		return true;
+	}
+
+	// Enqueue may fail (overflow)
+
+	m_macTxDropTrace(packet);
+	return false;
 }
 
-Ptr<Node>
-GSLNetDevice::GetNode (void) const
+bool GSLNetDevice::SendFrom(Ptr<Packet> packet, const Address &source, const Address &dest, uint16_t protocolNumber)
 {
-  return m_node;
+	NS_LOG_FUNCTION(this << packet << source << dest << protocolNumber);
+	return false;
 }
 
-void
-GSLNetDevice::SetNode (Ptr<Node> node)
+Ptr<Node> GSLNetDevice::GetNode(void) const
 {
-  NS_LOG_FUNCTION (this);
-  m_node = node;
+	return m_node;
 }
 
-bool
-GSLNetDevice::NeedsArp (void) const
+void GSLNetDevice::SetNode(Ptr<Node> node)
 {
-  NS_LOG_FUNCTION (this);
-  return true;
+	NS_LOG_FUNCTION(this);
+	m_node = node;
 }
 
-void
-GSLNetDevice::SetReceiveCallback (NetDevice::ReceiveCallback cb)
+bool GSLNetDevice::NeedsArp(void) const
 {
-  m_rxCallback = cb;
+	NS_LOG_FUNCTION(this);
+	return true;
 }
 
-void
-GSLNetDevice::SetPromiscReceiveCallback (NetDevice::PromiscReceiveCallback cb)
+void GSLNetDevice::SetReceiveCallback(NetDevice::ReceiveCallback cb)
 {
-  m_promiscCallback = cb;
+	m_rxCallback = cb;
 }
 
-bool
-GSLNetDevice::SupportsSendFrom (void) const
+void GSLNetDevice::SetPromiscReceiveCallback(NetDevice::PromiscReceiveCallback cb)
 {
-  NS_LOG_FUNCTION (this);
-  return false;
+	m_promiscCallback = cb;
 }
 
-void
-GSLNetDevice::DoMpiReceive (Ptr<Packet> p)
+bool GSLNetDevice::SupportsSendFrom(void) const
 {
-  NS_LOG_FUNCTION (this << p);
-  Receive (p);
+	NS_LOG_FUNCTION(this);
+	return false;
 }
 
-bool
-GSLNetDevice::SetMtu (uint16_t mtu)
+void GSLNetDevice::DoMpiReceive(Ptr<Packet> p)
 {
-  NS_LOG_FUNCTION (this << mtu);
-  m_mtu = mtu;
-  return true;
+	NS_LOG_FUNCTION(this << p);
+	Receive(p);
 }
 
-uint16_t
-GSLNetDevice::GetMtu (void) const
+bool GSLNetDevice::SetMtu(uint16_t mtu)
 {
-  NS_LOG_FUNCTION (this);
-  return m_mtu;
+	NS_LOG_FUNCTION(this << mtu);
+	m_mtu = mtu;
+	return true;
 }
 
-uint16_t
-GSLNetDevice::PppToEther (uint16_t proto)
+uint16_t GSLNetDevice::GetMtu(void) const
 {
-  NS_LOG_FUNCTION_NOARGS();
-  switch(proto)
-    {
-    case 0x0021: return 0x0800;   //IPv4
-    case 0x0057: return 0x86DD;   //IPv6
-    default: NS_ASSERT_MSG (false, "PPP Protocol number not defined!");
-    }
-  return 0;
+	NS_LOG_FUNCTION(this);
+	return m_mtu;
 }
 
-uint16_t
-GSLNetDevice::EtherToPpp (uint16_t proto)
+uint16_t GSLNetDevice::PppToEther(uint16_t proto)
 {
-  NS_LOG_FUNCTION_NOARGS();
-  switch(proto)
-    {
-    case 0x0800: return 0x0021;   //IPv4
-    case 0x86DD: return 0x0057;   //IPv6
-    default: NS_ASSERT_MSG (false, "PPP Protocol number not defined!");
-    }
-  return 0;
+	NS_LOG_FUNCTION_NOARGS();
+	switch (proto)
+	{
+	case 0x0021:
+		return 0x0800; // IPv4
+	case 0x0057:
+		return 0x86DD; // IPv6
+	default:
+		NS_ASSERT_MSG(false, "PPP Protocol number not defined!");
+	}
+	return 0;
 }
 
+uint16_t GSLNetDevice::EtherToPpp(uint16_t proto)
+{
+	NS_LOG_FUNCTION_NOARGS();
+	switch (proto)
+	{
+	case 0x0800:
+		return 0x0021; // IPv4
+	case 0x86DD:
+		return 0x0057; // IPv6
+	default:
+		NS_ASSERT_MSG(false, "PPP Protocol number not defined!");
+	}
+	return 0;
+}
 
 } // namespace ns3
