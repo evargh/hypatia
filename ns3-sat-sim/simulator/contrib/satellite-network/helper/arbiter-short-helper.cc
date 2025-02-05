@@ -64,9 +64,10 @@ ArbiterShortHelper::ArbiterShortHelper(Ptr<BasicSimulation> basicSimulation, Nod
 		shared_data_for_satellites_mutex = std::shared_ptr<std::mutex>(new std::mutex());
 		for (size_t i = 0; i < num_satellites; i++)
 		{
+			auto table = CreateInterfaceList(i);
 			Ptr<ArbiterShortSat> arbiter = CreateObject<ArbiterShortSat>(
 				m_nodes.Get(i), m_nodes, initial_forwarding_state[i], m_num_orbits, m_satellites_per_orbit,
-				shared_data_for_satellites, shared_data_for_satellites_mutex);
+				shared_data_for_satellites, shared_data_for_satellites_mutex, table);
 			m_sat_arbiters.push_back(arbiter);
 			m_nodes.Get(i)->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4ShortRouting>()->SetArbiter(arbiter);
 		}
@@ -103,6 +104,45 @@ ArbiterShortHelper::ArbiterShortHelper(Ptr<BasicSimulation> basicSimulation, Nod
 	basicSimulation->RegisterTimestamp("Determined coordinates for Ground Stations");
 
 	std::cout << std::endl;
+}
+
+std::vector<std::tuple<int32_t, int32_t, int32_t>> ArbiterShortHelper::CreateInterfaceList(size_t i)
+{
+	std::vector<std::tuple<int32_t, int32_t, int32_t>> table;
+	table.resize(4);
+	// coupled to unchanging interfaces and ipv4 at the moment
+	// this can be run every update step however
+	auto node_ptr = m_nodes.Get(i);
+	for (int idx = 1; idx < 5; idx++)
+	{
+		// up - 3 (2 0-index)
+		// down - 2 (1 0-index)
+		// left - 1 (0 0-index)
+		// right - 4 (3 0-index)
+		// position is currenlty inferred from node ids
+		auto netdev_ptr = node_ptr->GetObject<Ipv4>()->GetNetDevice(idx)->GetObject<PointToPointLaserNetDevice>();
+		auto partner_id = netdev_ptr->GetDestinationNode()->GetId();
+
+		// if up, then it is within the same orbit (so dividing should result in the same number)
+		if (partner_id / m_satellites_per_orbit == i / m_satellites_per_orbit &&
+			(partner_id == i + 1 || i == partner_id + m_satellites_per_orbit - 1))
+			table.at(2) = std::make_tuple(partner_id, netdev_ptr->GetIfIndex(), 5 - netdev_ptr->GetIfIndex());
+		// if down
+		else if (partner_id / m_satellites_per_orbit == i / m_satellites_per_orbit &&
+				 (partner_id + 1 == i || partner_id == i + m_satellites_per_orbit - 1))
+			table.at(1) = std::make_tuple(partner_id, netdev_ptr->GetIfIndex(), 5 - netdev_ptr->GetIfIndex());
+		// if left (in the adjacent orbit less than the current node, unless the current node is within the first orbit)
+		else if ((partner_id / m_satellites_per_orbit + 1 == i / m_satellites_per_orbit) ||
+				 (partner_id / m_satellites_per_orbit >= i / m_satellites_per_orbit + 2))
+			table.at(0) = std::make_tuple(partner_id, netdev_ptr->GetIfIndex(), 5 - netdev_ptr->GetIfIndex());
+		// if right (greater than the current node, unless the neighbor is within the first orbit)
+		else if ((partner_id / m_satellites_per_orbit == i / m_satellites_per_orbit + 1) ||
+				 (partner_id / m_satellites_per_orbit + 2 <= i / m_satellites_per_orbit))
+			table.at(3) = std::make_tuple(partner_id, netdev_ptr->GetIfIndex(), 5 - netdev_ptr->GetIfIndex());
+		else
+			NS_ASSERT_MSG(false, "no valid partner");
+	}
+	return table;
 }
 
 std::tuple<double, double, double, double> ArbiterShortHelper::CartesianToShort(Vector3D cartesian)
@@ -377,6 +417,7 @@ void ArbiterShortHelper::UpdateForwardingState(int64_t t)
 									"Next hop interface id across does not match");
 				}
 			}
+
 			if (current_node_id < m_num_orbits * m_satellites_per_orbit)
 			{
 				// Add to forwarding state

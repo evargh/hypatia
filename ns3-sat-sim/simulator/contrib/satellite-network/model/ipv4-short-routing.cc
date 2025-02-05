@@ -128,16 +128,18 @@ Ptr<Ipv4Route> Ipv4ShortRouting::LookupArbiter(const Ipv4Address &dest, const Ip
  * Get an output route.
  *
  * TCP:
- * (1) RouteOutput gets called once by TCP (tcp-socket-base.cc) with an header of which only the destination
+ * (1) RouteOutput gets called once by TCP (tcp-socket-base.cc) with a header of which only the destination
  *     IP address is set in order to determine the source IP address for the socket (function: SetupEndpoint).
  * (2) Subsequently, RouteOutput is called by TCP (tcp-l4-protocol.cc) on the sender node with a proper IP
  *     AND TCP header.
  *
  * UDP:
- * (1) RouteOutput gets called once by UDP (udp-socket-impl.cc) with an header of which only the destination
+ * (1) RouteOutput gets called once by UDP (udp-socket-impl.cc) with a header of which only the destination
  *     IP address is set in order to determine the source IP address for the socket (function: DoSendTo).
  * (2) It is **NOT** called subsequently in udp-l4-protocol.cc, as such the first decision which did not take
  *     into account the UDP header is final. This means ECMP load balancing does not work at a UDP source.
+ *
+ *  TODO: THIS ASSYMETRY BETWEEN TRANSPORT PROTOCOLS BREAKS SHORT FOR UDP, MUST DEVELOP FIX
  *
  * @param p         Packet
  * @param header    Header
@@ -163,9 +165,15 @@ Ptr<Ipv4Route> Ipv4ShortRouting::RouteOutput(Ptr<Packet> p, const Ipv4Header &he
 	//       the TCP socket will conclude there is no route and not even send out SYNs (any real packet).
 	//       If source IP is set already, it just gets dropped and the TCP socket sees it as a normal loss somewhere in
 	//       the network.
-	// If this node is the first to route into the network, put a SHORT header on it
+	// If this node is the first to route into the network, put a SHORT header on it.
 	// the data for the short header can be extracted by resolving the destination node index from the address, and then
 	// accessing the getters as necessary
+	//
+	// Ideally, we could use short by writing a custom L3 protocol and adding the header there
+	// But that will take more time and will require more modification by the simulation (custom child
+	// InternetStackHelper,
+	// custom child Ipv4L3Protocol, integration with topology setup)
+	//
 	// first see if the packet is nonnull
 	// NS_LOG_DEBUG(m_nodeId);
 	if (p)
@@ -175,9 +183,13 @@ Ptr<Ipv4Route> Ipv4ShortRouting::RouteOutput(Ptr<Packet> p, const Ipv4Header &he
 		Ptr<ArbiterShortGS> gs_arbiter = DynamicCast<ArbiterShortGS>(m_arbiter);
 		if (sat_arbiter)
 		{
+			NS_LOG_DEBUG("satellite " << m_nodeId << " attempts to route");
+			sockerr = Socket::ERROR_NOROUTETOHOST;
+			return 0;
 		}
 		if (gs_arbiter)
 		{
+			auto orbit_config = gs_arbiter->GetOrbitalConfiguration();
 			ShortHeader sh;
 			auto target_node_coords =
 				gs_arbiter->GetOtherGSShortParamsAt(m_arbiter->ResolveNodeIdFromIp(destination.Get()));
@@ -185,7 +197,8 @@ Ptr<Ipv4Route> Ipv4ShortRouting::RouteOutput(Ptr<Packet> p, const Ipv4Header &he
 						 << " " << std::get<1>(target_node_coords) << " " << std::get<2>(target_node_coords) << " "
 						 << std::get<3>(target_node_coords));
 			sh.SetCoordinates(std::get<0>(target_node_coords), std::get<1>(target_node_coords),
-							  std::get<2>(target_node_coords), std::get<3>(target_node_coords), 72, 22);
+							  std::get<2>(target_node_coords), std::get<3>(target_node_coords),
+							  std::get<0>(orbit_config), std::get<1>(orbit_config));
 			p->AddHeader(sh);
 		}
 	}

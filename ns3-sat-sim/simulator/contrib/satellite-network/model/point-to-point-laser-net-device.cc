@@ -37,6 +37,7 @@
 // stuff for debug, need to get rid of later
 #include "ns3/ipv4-header.h"
 #include "ns3/ipv4-arbiter-routing.h"
+#include "ns3/ipv4-short-routing.h"
 #include "ns3/arbiter.h"
 
 namespace ns3
@@ -352,10 +353,12 @@ void PointToPointLaserNetDevice::Receive(Ptr<Packet> packet)
 		// normal receive callback sees.
 		//
 		ProcessHeader(packet, protocol);
+
+		// TODO: this breaks layering and requires tight coupling. it is just for debug and should be removed
 		Ipv4Header ip;
 		packet->PeekHeader(ip);
 		auto ipv4 = m_node->GetObject<Ipv4>();
-		auto ipv4ar = ipv4->GetRoutingProtocol()->GetObject<Ipv4ArbiterRouting>();
+		auto ipv4ar = ipv4->GetRoutingProtocol()->GetObject<Ipv4ShortRouting>();
 		auto arb = ipv4ar->GetArbiter();
 		uint32_t src = arb->ResolveNodeIdFromIp(ip.GetSource().Get());
 		uint32_t dest = arb->ResolveNodeIdFromIp(ip.GetDestination().Get());

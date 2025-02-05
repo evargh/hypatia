@@ -1,4 +1,5 @@
 #include "short-header.h"
+#include "arbiter-short-sat.h"
 
 namespace ns3
 {
@@ -27,10 +28,34 @@ void ShortHeader::SetCoordinates(double aa, double ag, double da, double dg, int
 	{
 		NS_ASSERT_MSG(aa >= 0 && aa <= 360 && ag >= 0 && ag <= 360 && da >= 0 && da <= 360 && dg >= 0 && dg <= 360,
 					  "invalid short coordinates");
-		m_ascending_alpha = static_cast<uint16_t>(std::round((aa * num_orbits) / 360));
-		m_ascending_gamma = static_cast<uint16_t>(std::round((ag * sats_per_orbit) / 360));
-		m_descending_alpha = static_cast<uint16_t>(std::round((da * num_orbits) / 360));
-		m_descending_gamma = static_cast<uint16_t>(std::round((dg * sats_per_orbit) / 360));
+		// clean up
+
+		m_ascending_alpha =
+			static_cast<uint16_t>(std::round((aa * num_orbits * ArbiterShortSat::CELL_SCALING_FACTOR) / 360));
+		if (m_ascending_alpha == num_orbits * ArbiterShortSat::CELL_SCALING_FACTOR)
+			m_ascending_alpha--;
+
+		m_ascending_gamma =
+			static_cast<uint16_t>(std::round((ag * sats_per_orbit * ArbiterShortSat::CELL_SCALING_FACTOR) / 360));
+		if (m_ascending_gamma == sats_per_orbit * ArbiterShortSat::CELL_SCALING_FACTOR)
+			m_ascending_gamma--;
+
+		m_descending_alpha =
+			static_cast<uint16_t>(std::round((da * num_orbits * ArbiterShortSat::CELL_SCALING_FACTOR) / 360));
+		if (m_descending_alpha == num_orbits * ArbiterShortSat::CELL_SCALING_FACTOR)
+			m_descending_alpha--;
+
+		m_descending_gamma =
+			static_cast<uint16_t>(std::round((dg * sats_per_orbit * ArbiterShortSat::CELL_SCALING_FACTOR) / 360));
+		if (m_descending_gamma == sats_per_orbit * ArbiterShortSat::CELL_SCALING_FACTOR)
+			m_descending_gamma--;
+
+		NS_ASSERT_MSG(
+			m_ascending_alpha >= 0 && m_ascending_alpha < num_orbits * ArbiterShortSat::CELL_SCALING_FACTOR &&
+				m_ascending_gamma >= 0 && m_ascending_gamma < sats_per_orbit * ArbiterShortSat::CELL_SCALING_FACTOR &&
+				m_descending_alpha >= 0 && m_descending_alpha < num_orbits * ArbiterShortSat::CELL_SCALING_FACTOR &&
+				m_descending_gamma >= 0 && m_descending_gamma < sats_per_orbit * ArbiterShortSat::CELL_SCALING_FACTOR,
+			"math error");
 	}
 }
 

@@ -48,6 +48,7 @@ class ArbiterShortHelper
 	void UpdateForwardingState(int64_t t);
 	void SetGSParams();
 	void SetCoordinateSkew();
+	std::vector<std::tuple<int32_t, int32_t, int32_t>> CreateInterfaceList(size_t i);
 
 	std::tuple<double, double, double, double> CartesianToShort(Vector3D cartesian);
 	// Parameters

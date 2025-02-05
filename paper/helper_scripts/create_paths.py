@@ -2,12 +2,12 @@ from collections import Counter
 import json
 import csv
 import argparse
+import itertools
 
 props = []
 
 parser = argparse.ArgumentParser()
 parser.add_argument('fstate_dir')
-parser.add_argument('traffic_file')
 parser.add_argument('num_satellites')
 parser.add_argument('time_index')
 parser.add_argument('time_increment')
@@ -18,26 +18,22 @@ time_increment = int(args.time_increment)
 num_satellites = int(args.num_satellites)
 next_step = {}
 
-for tid in range(0, time_index+time_increment, time_increment):
-    weight_dict = {}
-    with open(args.traffic_file, 'r') as f:
-        for line in f:
-            row = line.split(",")
-            if (int(row[0])+num_satellites, int(row[1])+num_satellites) not in weight_dict:
-                weight_dict[(int(row[0])+num_satellites, int(row[1])+num_satellites)] = int(row[2])
-                
-    between_dict = {i: 0 for i in range(num_satellites)}
+for tid in range(0, time_index+time_increment, time_increment): 
+    # paths_dict: set of ground station keypairs
+    paths_dict = {i: [] for i in itertools.product(list(range(num_satellites,100+num_satellites)), list(range(num_satellites, 100+num_satellites))) if (i[0] != i[1])}
     with open(f'{args.fstate_dir}/fstate_{tid}.txt') as ifile:
         steps = csv.reader(ifile, delimiter=',')
+        # write (or overwrite) the next step
         for step in steps:
             next_step[(int(step[0]),int(step[1]))] = int(step[2])
 
-    for (i,j) in weight_dict.keys():
+    for (i,j) in paths_dict.keys():
         satellite = next_step[(i,j)]
         while satellite != j:
-            between_dict[satellite]+=weight_dict[(i,j)]
+            paths_dict[(i,j)].append(satellite)
             satellite = next_step[(satellite,j)]
     
-    with open(f"betweenness_centrality_{tid}.json", 'w') as f:
-        json.dump(between_dict, f)
+    with open(f"paths_{tid}.json", 'w') as f:
+        paths_dictx = {str(i) : paths_dict[i] for i in paths_dict.keys()}
+        json.dump(paths_dictx, f)
 

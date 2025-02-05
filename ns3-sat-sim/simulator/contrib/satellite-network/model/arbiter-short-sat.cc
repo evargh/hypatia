@@ -32,12 +32,15 @@ TypeId ArbiterShortSat::GetTypeId(void)
 ArbiterShortSat::ArbiterShortSat(Ptr<Node> this_node, NodeContainer nodes,
 								 std::vector<std::tuple<int32_t, int32_t, int32_t>> next_hop_list, int64_t n_o,
 								 int64_t s_p_o, std::shared_ptr<std::vector<int64_t>> sdfs,
-								 std::shared_ptr<std::mutex> sdfsm)
+								 std::shared_ptr<std::mutex> sdfsm,
+								 std::vector<std::tuple<int32_t, int32_t, int32_t>> neighbor_ids)
 	: ArbiterSatnet(this_node, nodes)
 {
 	m_next_hop_list = next_hop_list;
 	num_orbits = n_o;
 	num_satellites_per_orbit = s_p_o;
+	m_neighbor_ids = neighbor_ids;
+
 	shared_data_for_satellites = sdfs;
 	shared_data_for_satellites_mutex = sdfsm;
 	std::lock_guard<std::mutex> guard(*shared_data_for_satellites_mutex);
@@ -47,122 +50,110 @@ ArbiterShortSat::ArbiterShortSat(Ptr<Node> this_node, NodeContainer nodes,
 int16_t ArbiterShortSat::GetModularDistance(int16_t a, int16_t b, int16_t base)
 {
 	int16_t distance = std::abs(a - b);
-	return distance < base - distance ? distance : base = distance;
+	return distance < base - distance ? distance : base - distance;
 }
 
-bool ArbiterShortSat::IncreaseInterface(int16_t a, int16_t b, int16_t base)
+std::tuple<int32_t, int32_t, int32_t> ArbiterShortSat::DetermineInterface(int16_t alpha_cell, int16_t gamma_cell,
+																		  int16_t destination_alpha,
+																		  int16_t destination_gamma)
 {
-	int16_t distance = std::abs(a - b);
-	if (a < b)
+
+	// the right orbit will always be CELL_SCALING_FACTOR units to the right of the current satellite, modulo the
+	// number of alpha cells
+	int16_t right_alpha_cell =
+		(alpha_cell + ArbiterShortSat::CELL_SCALING_FACTOR) % (num_orbits * ArbiterShortSat::CELL_SCALING_FACTOR);
+	// the left orbit will always be CELL_SCALING_FACTOR units to the left of the current satellite, modulo the
+	// number of alpha cells
+	int16_t left_alpha_cell = (alpha_cell + (num_orbits - 1) * ArbiterShortSat::CELL_SCALING_FACTOR) %
+							  (num_orbits * ArbiterShortSat::CELL_SCALING_FACTOR);
+
+	// capture whether the right or left orbit is closer
+	bool right_shorter =
+		GetModularDistance(right_alpha_cell, destination_alpha, num_orbits * ArbiterShortSat::CELL_SCALING_FACTOR) <
+		GetModularDistance(alpha_cell, destination_alpha, num_orbits * ArbiterShortSat::CELL_SCALING_FACTOR);
+
+	bool left_shorter =
+		GetModularDistance(left_alpha_cell, destination_alpha, num_orbits * ArbiterShortSat::CELL_SCALING_FACTOR) <
+		GetModularDistance(alpha_cell, destination_alpha, num_orbits * ArbiterShortSat::CELL_SCALING_FACTOR);
+
+	if (right_shorter)
 	{
-		if (distance < base - distance)
+		// go right (interface 4)
+		return m_neighbor_ids[3];
+	}
+	else if (left_shorter)
+	{
+		// go left (interface 1)
+		return m_neighbor_ids[0];
+	}
+	else if (!right_shorter && !left_shorter)
+	{
+		// if neither option is strictly closer, then we just use gamma
+		int16_t up_gamma_cell = (gamma_cell + ArbiterShortSat::CELL_SCALING_FACTOR) %
+								(num_satellites_per_orbit * ArbiterShortSat::CELL_SCALING_FACTOR);
+		int16_t down_gamma_cell = (gamma_cell + (num_satellites_per_orbit - 1) * ArbiterShortSat::CELL_SCALING_FACTOR) %
+								  (num_satellites_per_orbit * ArbiterShortSat::CELL_SCALING_FACTOR);
+
+		bool up_shorter = GetModularDistance(up_gamma_cell, destination_gamma,
+											 num_satellites_per_orbit * ArbiterShortSat::CELL_SCALING_FACTOR) <
+						  GetModularDistance(gamma_cell, destination_gamma,
+											 num_satellites_per_orbit * ArbiterShortSat::CELL_SCALING_FACTOR);
+
+		bool down_shorter = GetModularDistance(down_gamma_cell, destination_gamma,
+											   num_satellites_per_orbit * ArbiterShortSat::CELL_SCALING_FACTOR) <
+							GetModularDistance(gamma_cell, destination_gamma,
+											   num_satellites_per_orbit * ArbiterShortSat::CELL_SCALING_FACTOR);
+		if (up_shorter)
 		{
-			return true;
+			// go up (interface 3)
+			return m_neighbor_ids[2];
+		}
+		else if (down_shorter)
+		{
+			// go down (interface 2)
+			return m_neighbor_ids[1];
 		}
 		else
 		{
-			return false;
+			// log the frequency of this for now before implementing the counterclockwise thing
+			NS_LOG_DEBUG("Dropped inaccessible ground station: " << destination_gamma);
+			return std::make_tuple(-1, -1, -1);
 		}
 	}
 	else
 	{
-		if (distance < base - distance)
-		{
-			return false;
-		}
-		else
-		{
-			return true;
-		}
+		NS_ASSERT_MSG(false, "something incorrect with determinining shortest path");
+		return std::make_tuple(-2, -2, -2);
 	}
-}
-
-std::tuple<int32_t, int32_t, int32_t> ArbiterShortSat::FindDirection(int i)
-{
-	for (int k = num_orbits * num_satellites_per_orbit; k < m_nodes.GetN(); k++)
-	{
-		if (std::get<1>(m_next_hop_list[k]) == i)
-			return m_next_hop_list[k];
-	}
-	return std::make_tuple<int32_t, int32_t, int32_t>(-2, -2, -2);
 }
 
 std::tuple<int32_t, int32_t, int32_t> ArbiterShortSat::ShortDecide(int16_t aa, int16_t ag, int16_t da, int16_t dg)
 {
-	int16_t alpha_cell = static_cast<int16_t>(std::round(m_alpha * num_orbits / 360));
-	int16_t gamma_cell = static_cast<int16_t>(std::round(m_gamma * num_satellites_per_orbit / 360));
+	int16_t alpha_cell =
+		static_cast<int16_t>(std::round(m_alpha * num_orbits * ArbiterShortSat::CELL_SCALING_FACTOR / 360));
+	if (alpha_cell == num_orbits * ArbiterShortSat::CELL_SCALING_FACTOR)
+		alpha_cell--;
 
-	int16_t asc_alpha_distance = GetModularDistance(alpha_cell, aa, num_orbits);
-	int16_t asc_gamma_distance = GetModularDistance(gamma_cell, ag, num_satellites_per_orbit);
-	int16_t desc_alpha_distance = GetModularDistance(alpha_cell, da, num_orbits);
-	int16_t desc_gamma_distance = GetModularDistance(gamma_cell, dg, num_satellites_per_orbit);
+	int16_t gamma_cell = static_cast<int16_t>(
+		std::round(m_gamma * num_satellites_per_orbit * ArbiterShortSat::CELL_SCALING_FACTOR / 360));
+	if (gamma_cell == num_satellites_per_orbit * ArbiterShortSat::CELL_SCALING_FACTOR)
+		gamma_cell--;
 
-	if (asc_alpha_distance == 0 || desc_alpha_distance == 0)
-	{
-		if (asc_gamma_distance == 0 || desc_gamma_distance == 0)
-		{
-			return std::make_tuple(-2, -2, -2);
-		}
-		if (asc_gamma_distance <= desc_gamma_distance)
-		{
-			if (IncreaseInterface(gamma_cell, ag, num_satellites_per_orbit))
-			{
-				// this is not a good way to do this
-				// go up (interface 3)
-				return FindDirection(3);
-			}
-			else
-			{
-				// go down (interface 2)
-				return FindDirection(2);
-			}
-		}
-		else
-		{
-			if (IncreaseInterface(gamma_cell, dg, num_satellites_per_orbit))
-			{
-				// go up (interface 3)
-				return FindDirection(3);
-			}
-			else
-			{
-				// go down (interface 2)
-				return FindDirection(2);
-			}
-		}
-	}
-	else if (asc_alpha_distance <= desc_alpha_distance)
-	{
-		if (IncreaseInterface(alpha_cell, aa, num_orbits))
-		{
-			// go right (interface 4)
-			return FindDirection(4);
-		}
-		else
-		{ // go left (interface 1)
-			return FindDirection(1);
-		}
-	}
+	int16_t asc_alpha_distance = GetModularDistance(alpha_cell, aa, num_orbits * ArbiterShortSat::CELL_SCALING_FACTOR);
+	int16_t desc_alpha_distance = GetModularDistance(alpha_cell, da, num_orbits * ArbiterShortSat::CELL_SCALING_FACTOR);
+
+	// if it requires fewer inter-orbit links to go to the ascending alpha, greedily do that
+	if (asc_alpha_distance <= desc_alpha_distance)
+		return DetermineInterface(alpha_cell, gamma_cell, aa, ag);
 	else
-	{
-		if (IncreaseInterface(alpha_cell, da, num_orbits))
-		{
-			// go right (interface 4)
-			return FindDirection(4);
-		}
-		else
-		{ // go left (interface 1)
-			return FindDirection(1);
-		}
-	}
-	return std::make_tuple(0, 0, 0);
+		return DetermineInterface(alpha_cell, gamma_cell, da, dg);
 }
 
 std::tuple<int32_t, int32_t, int32_t> ArbiterShortSat::TopologySatelliteNetworkDecide(
 	int32_t source_node_id, int32_t target_node_id, Ptr<const Packet> pkt, Ipv4Header const &ipHeader,
 	bool is_request_for_source_ip_so_no_next_header)
 {
-	if (std::get<0>(m_next_hop_list[target_node_id]) == target_node_id)
+	if (std::get<0>(m_next_hop_list[target_node_id]) >= num_orbits * num_satellites_per_orbit)
 	{
 		return m_next_hop_list[target_node_id];
 	}
@@ -175,6 +166,11 @@ std::tuple<int32_t, int32_t, int32_t> ArbiterShortSat::TopologySatelliteNetworkD
 		int16_t aa, ag, da, dg;
 		std::tie(aa, ag, da, dg) = target_node_coords;
 		NS_LOG_DEBUG(aa << " " << ag << " " << da << " " << dg);
+		NS_ASSERT_MSG(aa >= 0 && aa < num_orbits * ArbiterShortSat::CELL_SCALING_FACTOR && ag >= 0 &&
+						  ag < num_satellites_per_orbit * ArbiterShortSat::CELL_SCALING_FACTOR && da >= 0 &&
+						  da < num_orbits * ArbiterShortSat::CELL_SCALING_FACTOR && dg >= 0 &&
+						  dg < num_satellites_per_orbit * ArbiterShortSat::CELL_SCALING_FACTOR,
+					  "invalid cells");
 		return ShortDecide(aa, ag, da, dg);
 	}
 	return m_next_hop_list[target_node_id];
