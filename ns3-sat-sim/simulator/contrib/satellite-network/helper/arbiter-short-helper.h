@@ -46,7 +46,7 @@ class ArbiterShortHelper
 	double m_satelliteInclination;
 	void UpdateOrbitalParams(int64_t t);
 	void UpdateForwardingState(int64_t t);
-	void SetGSParams();
+	void SetRoutingParams();
 	void SetCoordinateSkew();
 	std::vector<std::tuple<int32_t, int32_t, int32_t>> CreateInterfaceList(size_t i);
 
@@ -61,9 +61,7 @@ class ArbiterShortHelper
 	int64_t m_satellites_per_orbit;
 	std::vector<Ptr<ArbiterShortSat>> m_sat_arbiters;
 	std::vector<Ptr<ArbiterShortGS>> m_gs_arbiters;
-	// apparently shared_ptr can tolerate vector memory moves when resized. testing now
-	std::shared_ptr<std::vector<int64_t>> shared_data_for_satellites;
-	std::shared_ptr<std::mutex> shared_data_for_satellites_mutex;
+	std::vector<std::tuple<double, double, double, double>> m_other_table;
 };
 
 } // namespace ns3

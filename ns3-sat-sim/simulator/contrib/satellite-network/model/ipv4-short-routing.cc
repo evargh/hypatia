@@ -139,8 +139,6 @@ Ptr<Ipv4Route> Ipv4ShortRouting::LookupArbiter(const Ipv4Address &dest, const Ip
  * (2) It is **NOT** called subsequently in udp-l4-protocol.cc, as such the first decision which did not take
  *     into account the UDP header is final. This means ECMP load balancing does not work at a UDP source.
  *
- *  TODO: THIS ASSYMETRY BETWEEN TRANSPORT PROTOCOLS BREAKS SHORT FOR UDP, MUST DEVELOP FIX
- *
  * @param p         Packet
  * @param header    Header
  * @param oif       Requested output interface
@@ -176,7 +174,7 @@ Ptr<Ipv4Route> Ipv4ShortRouting::RouteOutput(Ptr<Packet> p, const Ipv4Header &he
 	//
 	// first see if the packet is nonnull
 	// NS_LOG_DEBUG(m_nodeId);
-	if (p)
+	/*if (p)
 	{
 		// then see if this node is a ground station or a satellite
 		Ptr<ArbiterShortSat> sat_arbiter = DynamicCast<ArbiterShortSat>(m_arbiter);
@@ -193,15 +191,15 @@ Ptr<Ipv4Route> Ipv4ShortRouting::RouteOutput(Ptr<Packet> p, const Ipv4Header &he
 			ShortHeader sh;
 			auto target_node_coords =
 				gs_arbiter->GetOtherGSShortParamsAt(m_arbiter->ResolveNodeIdFromIp(destination.Get()));
-			NS_LOG_DEBUG(std::get<0>(target_node_coords)
-						 << " " << std::get<1>(target_node_coords) << " " << std::get<2>(target_node_coords) << " "
-						 << std::get<3>(target_node_coords));
+			// NS_LOG_DEBUG(std::get<0>(target_node_coords)
+			//           << " " << std::get<1>(target_node_coords) << " " << std::get<2>(target_node_coords) << " "
+			//					 << std::get<3>(target_node_coords));
 			sh.SetCoordinates(std::get<0>(target_node_coords), std::get<1>(target_node_coords),
 							  std::get<2>(target_node_coords), std::get<3>(target_node_coords),
 							  std::get<0>(orbit_config), std::get<1>(orbit_config));
 			p->AddHeader(sh);
 		}
-	}
+}*/
 	Ptr<Ipv4Route> route = LookupArbiter(destination, header, p, oif);
 	if (route == 0)
 	{

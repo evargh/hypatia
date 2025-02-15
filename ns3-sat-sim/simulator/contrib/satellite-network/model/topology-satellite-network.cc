@@ -359,6 +359,11 @@ void TopologySatelliteNetwork::ReadISLs(PointToPointLaserHelper p2p_laser_helper
 		Ptr<Satellite> sat0 = m_satellites.at(sat0_id);
 		Ptr<Satellite> sat1 = m_satellites.at(sat1_id);
 
+		Ptr<MobilityModel> sat0_mobmodel = m_satelliteNodes.Get(sat0_id)->GetObject<MobilityModel>();
+		Ptr<MobilityModel> sat1_mobmodel = m_satelliteNodes.Get(sat1_id)->GetObject<MobilityModel>();
+		double distance = sat0_mobmodel->GetDistanceFrom(sat1_mobmodel);
+		NS_LOG_DEBUG(distance);
+
 		// Install a p2p laser link between these two satellites
 		NodeContainer c;
 		c.Add(m_satelliteNodes.Get(sat0_id));
@@ -437,6 +442,12 @@ void TopologySatelliteNetwork::ReadISLs(DhpbPointToPointLaserHelper p2p_laser_he
 		NodeContainer c;
 		c.Add(m_satelliteNodes.Get(sat0_id));
 		c.Add(m_satelliteNodes.Get(sat1_id));
+
+		Ptr<MobilityModel> sat0_mobmodel = m_satelliteNodes.Get(sat0_id)->GetObject<MobilityModel>();
+		Ptr<MobilityModel> sat1_mobmodel = m_satelliteNodes.Get(sat1_id)->GetObject<MobilityModel>();
+		double distance = sat0_mobmodel->GetDistanceFrom(sat1_mobmodel);
+		NS_LOG_DEBUG(distance);
+
 		NetDeviceContainer netDevices = p2p_laser_helper.Install(c);
 
 		// Install traffic control helper
@@ -469,7 +480,6 @@ void TopologySatelliteNetwork::ReadISLs(DhpbPointToPointLaserHelper p2p_laser_he
 		counter += 1;
 	}
 	fs.close();
-
 	// Completed
 	std::cout << "    >> Created " << std::to_string(counter) << " ISL(s)" << std::endl;
 }
