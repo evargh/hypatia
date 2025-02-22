@@ -58,6 +58,11 @@ ArbiterShortHelper::ArbiterShortHelper(Ptr<BasicSimulation> basicSimulation, Nod
 		m_satellites_per_orbit = parse_positive_int64(res[1]);
 		int64_t num_satellites = m_num_orbits * m_satellites_per_orbit;
 
+		std::vector<int64_t> s = {-1};
+		s.resize(num_satellites, -1);
+		shared_data_for_satellites = std::shared_ptr<std::vector<int64_t>>(new std::vector<int64_t>(s));
+		shared_data_for_satellites_mutex = std::shared_ptr<std::mutex>(new std::mutex());
+
 		double left_neighbor_gamma_difference = 360.0 / (2 * m_satellites_per_orbit);
 		double right_neighbor_gamma_difference = -360.0 / (2 * m_satellites_per_orbit);
 
@@ -65,8 +70,9 @@ ArbiterShortHelper::ArbiterShortHelper(Ptr<BasicSimulation> basicSimulation, Nod
 		{
 			auto table = CreateInterfaceList(i);
 			Ptr<ArbiterShortSat> arbiter = CreateObject<ArbiterShortSat>(
-				m_nodes.Get(i), m_nodes, initial_forwarding_state[i], m_num_orbits, m_satellites_per_orbit, table,
-				left_neighbor_gamma_difference, right_neighbor_gamma_difference);
+				m_nodes.Get(i), m_nodes, initial_forwarding_state[i], m_num_orbits, m_satellites_per_orbit,
+				shared_data_for_satellites, shared_data_for_satellites_mutex, table, left_neighbor_gamma_difference,
+				right_neighbor_gamma_difference);
 			m_sat_arbiters.push_back(arbiter);
 			m_nodes.Get(i)->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4ShortRouting>()->SetArbiter(arbiter);
 		}
@@ -267,23 +273,17 @@ void ArbiterShortHelper::UpdateOrbitalParams(int64_t t)
 			// title line isn't strictly formatted, so just split on space and parse the result as an integer
 			int32_t current_node_id = std::stoi(title_line.substr(title_line.find(" ")));
 			// line 1 doesn't have anything useful for us
-			// line 2 has mean motion (revs per day) which can be converted into orbital period in nanoseconds (days/rev
-			// * hours/day * minutes/hour * seconds/minute * nanosecs/sec) this is columns 53-64
-			// line 2 has RAAN and mean anomaly, which are columns 18-26 and 44-52 it also has inclination, which are
-			// columns 9-16
+			// line 2 has mean motion (revs per day) which can be converted into orbital period in nanoseconds
+			// this is columns 53-64
+			// line 2 has RAAN and mean anomaly, which are columns 18-26 and 44-52
+			// it also has inclination, which are columns 9-16
 			// TODO: determine why I need to shift the substring indices here
-			double RAAN = std::stod(line2.substr(17, 8));
-			double mean_motion = std::stod(line2.substr(52, 12));
-			double mean_anomaly = std::stod(line2.substr(43, 8));
-			double inclination = std::stod(line2.substr(8, 8));
-
-			NS_LOG_DEBUG("RAAN: " << RAAN << " -- Mean Motion: " << mean_motion << " -- Mean Anomaly: " << mean_anomaly
-								  << " -- Inclination: " << inclination);
-
-			double satellite_alpha = std::fmod(360 + RAAN - 360 * t / EARTH_ORBIT_TIME_NS, 360);
-			double satellite_orbital_period = (1 / mean_motion) * 24 * 60 * 60 * 1000000000;
-			double satellite_gamma = std::fmod(360 + mean_anomaly + 360 * t / satellite_orbital_period, 360);
-			m_satelliteInclination = inclination;
+			double satellite_alpha =
+				std::fmod(360 + std::stod(line2.substr(17, 8)) - 2 * pi * t / EARTH_ORBIT_TIME_NS, 360);
+			double satellite_orbital_period = (1 / std::stod(line2.substr(52, 12))) * 60 * 60 * 1000000000;
+			double satellite_gamma =
+				std::fmod(360 + std::stod(line2.substr(43, 8)) + 2 * pi * t / satellite_orbital_period, 360);
+			m_satelliteInclination = std::stod(line2.substr(8, 8));
 
 			m_sat_arbiters.at(current_node_id)->SetShortParams(satellite_alpha, satellite_gamma);
 		}
@@ -327,8 +327,7 @@ void ArbiterShortHelper::UpdateForwardingState(int64_t t)
 	// Filename
 	std::ostringstream res;
 	res << m_basicSimulation->GetRunDir() << "/";
-	res << m_basicSimulation->GetConfigParamOrFail("satellite_network_routes_dir") << "/truncated_dir/fstate_" << t
-		<< "_truncated.txt";
+	res << m_basicSimulation->GetConfigParamOrFail("satellite_network_routes_dir") << "/fstate_" << t << ".txt";
 	std::string fstate_filename = res.str();
 
 	// Check that the file exists

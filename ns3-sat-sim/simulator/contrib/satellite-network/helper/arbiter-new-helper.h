@@ -62,6 +62,9 @@ class ArbiterShortHelper
 	std::vector<Ptr<ArbiterShortSat>> m_sat_arbiters;
 	std::vector<Ptr<ArbiterShortGS>> m_gs_arbiters;
 	std::vector<std::tuple<double, double, double, double>> m_other_table;
+	// apparently shared_ptr can tolerate vector memory moves when resized. testing now
+	std::shared_ptr<std::vector<int64_t>> shared_data_for_satellites;
+	std::shared_ptr<std::mutex> shared_data_for_satellites_mutex;
 };
 
 } // namespace ns3

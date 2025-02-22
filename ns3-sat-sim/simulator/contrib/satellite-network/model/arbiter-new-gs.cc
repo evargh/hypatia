@@ -17,58 +17,71 @@
  * Author: Simon               2020
  */
 
-#include "arbiter-short.h"
+#include "arbiter-short-gs.h"
 
 namespace ns3
 {
-NS_LOG_COMPONENT_DEFINE("ArbiterShort");
-NS_OBJECT_ENSURE_REGISTERED(ArbiterShort);
-TypeId ArbiterShort::GetTypeId(void)
+NS_LOG_COMPONENT_DEFINE("ArbiterShortGS");
+NS_OBJECT_ENSURE_REGISTERED(ArbiterShortGS);
+TypeId ArbiterShortGS::GetTypeId(void)
 {
 	static TypeId tid = TypeId("ns3::ArbiterShort").SetParent<ArbiterSatnet>().SetGroupName("BasicSim");
 	return tid;
 }
 
-ArbiterShort::ArbiterShort(Ptr<Node> this_node, NodeContainer nodes,
-						   std::vector<std::tuple<int32_t, int32_t, int32_t>> next_hop_list)
+ArbiterShortGS::ArbiterShortGS(Ptr<Node> this_node, NodeContainer nodes,
+							   std::vector<std::tuple<int32_t, int32_t, int32_t>> next_hop_list, int64_t n_o,
+							   int64_t s_p_o)
 	: ArbiterSatnet(this_node, nodes)
 {
 	m_next_hop_list = next_hop_list;
+	num_orbits = n_o;
+	satellites_per_orbit = s_p_o;
 }
 
-std::tuple<int32_t, int32_t, int32_t> ArbiterShort::TopologySatelliteNetworkDecide(
+std::tuple<int32_t, int32_t, int32_t> ArbiterShortGS::TopologySatelliteNetworkDecide(
 	int32_t source_node_id, int32_t target_node_id, Ptr<const Packet> pkt, Ipv4Header const &ipHeader,
 	bool is_request_for_source_ip_so_no_next_header)
 {
-	// TODO: need to see if there's a way to check of the existence of a header on this packet
-	// if there isn't, a header needs to be put on. for routing only with satellites, the first ground station
-	// can do this.
-	// can peekheader to see if the pointer isn't null
-	// if the pointer is null, then can generate that from target_node_id
-	if (pkt)
-	{
-		ShortHeader sh;
-		pkt->PeekHeader(sh);
-		NS_LOG_DEBUG(sh.GetInstanceTypeId().GetName());
-	}
 	return m_next_hop_list[target_node_id];
 }
 
-void ArbiterShort::SetSingleForwardState(int32_t target_node_id, int32_t next_node_id, int32_t own_if_id,
-										 int32_t next_if_id)
+void ArbiterShortGS::SetSingleForwardState(int32_t target_node_id, int32_t next_node_id, int32_t own_if_id,
+										   int32_t next_if_id)
 {
 	NS_ABORT_MSG_IF(next_node_id == -2 || own_if_id == -2 || next_if_id == -2, "Not permitted to set invalid (-2).");
 	m_next_hop_list[target_node_id] = std::make_tuple(next_node_id, own_if_id, next_if_id);
 }
 
-void ArbiterShort::SetShortParams(double alpha, double gamma)
+void ArbiterShortGS::SetGSShortParams(std::tuple<double, double, double, double> pos)
 {
-	NS_LOG_DEBUG(m_node_id << ": alpha - " << alpha << " - gamma - " << gamma);
-	m_alpha = alpha;
-	m_gamma = gamma;
+	m_asc_alpha = std::get<0>(pos);
+	m_asc_gamma = std::get<1>(pos);
+	m_desc_alpha = std::get<2>(pos);
+	m_desc_gamma = std::get<3>(pos);
 }
 
-std::string ArbiterShort::StringReprOfForwardingState()
+std::tuple<double, double, double, double> ArbiterShortGS::GetOtherGSShortParamsAt(int32_t idx)
+{
+	return m_other_table.at(idx - num_orbits * satellites_per_orbit);
+}
+
+std::tuple<int64_t, int64_t> ArbiterShortGS::GetOrbitalConfiguration()
+{
+	return std::make_tuple(num_orbits, satellites_per_orbit);
+}
+
+void ArbiterShortGS::SetGSShortTable(std::vector<std::tuple<double, double, double, double>> table)
+{
+	m_other_table = table;
+}
+
+std::tuple<double, double, double, double> ArbiterShortGS::GetGSShortParams()
+{
+	return std::make_tuple(m_asc_alpha, m_asc_gamma, m_desc_alpha, m_desc_gamma);
+}
+
+std::string ArbiterShortGS::StringReprOfForwardingState()
 {
 	std::ostringstream res;
 	res << "Single-forward state of node " << m_node_id << std::endl;

@@ -30,7 +30,7 @@
 #include "ns3/point-to-point-net-device.h"
 #include "ns3/ptr.h"
 #include "ns3/socket.h"
-#include "ns3/short-header.h"
+// #include "ns3/short-header.h"
 #include "ns3/arbiter-short-gs.h"
 #include "ns3/arbiter-short-sat.h"
 #include <list>

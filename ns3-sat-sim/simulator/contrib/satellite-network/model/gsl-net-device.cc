@@ -341,7 +341,8 @@ void GSLNetDevice::Receive(Ptr<Packet> packet)
 		//
 		ProcessHeader(packet, protocol);
 
-		NS_LOG_DEBUG("To " << m_node->GetId() << " -- UID is " << packet->GetUid());
+		NS_LOG_DEBUG("To " << m_node->GetId() << " -- UID is " << packet->GetUid() << " -- Size is "
+						   << packet->GetSize());
 		if (!m_promiscCallback.IsNull())
 		{
 			m_macPromiscRxTrace(originalPacket);
