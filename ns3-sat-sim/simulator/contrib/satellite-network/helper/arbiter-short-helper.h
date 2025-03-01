@@ -46,9 +46,10 @@ class ArbiterShortHelper
 	double m_satelliteInclination;
 	void UpdateOrbitalParams(int64_t t);
 	void UpdateForwardingState(int64_t t);
+	void UpdateCentralityState(int64_t t);
 	void SetRoutingParams();
 	void SetCoordinateSkew();
-	std::vector<std::tuple<int32_t, int32_t, int32_t>> CreateInterfaceList(size_t i);
+	std::vector<std::tuple<int32_t, int32_t, int32_t>> CreateInterfaceList(int32_t i);
 
 	std::tuple<double, double, double, double> CartesianToShort(Vector3D cartesian);
 	// Parameters

@@ -17,13 +17,13 @@
  * Author: Simon               2020
  */
 
-#include "arbiter-short-helper.h"
+#include "arbiter-new-helper.h"
 
 namespace ns3
 {
-NS_LOG_COMPONENT_DEFINE("ArbiterShortHelper");
+NS_LOG_COMPONENT_DEFINE("ArbiterNewHelper");
 
-ArbiterShortHelper::ArbiterShortHelper(Ptr<BasicSimulation> basicSimulation, NodeContainer nodes)
+ArbiterNewHelper::ArbiterNewHelper(Ptr<BasicSimulation> basicSimulation, NodeContainer nodes)
 {
 	std::cout << "SETUP SINGLE FORWARDING ROUTING" << std::endl;
 	m_basicSimulation = basicSimulation;
@@ -61,25 +61,26 @@ ArbiterShortHelper::ArbiterShortHelper(Ptr<BasicSimulation> basicSimulation, Nod
 		std::vector<int64_t> s = {-1};
 		s.resize(num_satellites, -1);
 		shared_data_for_satellites = std::shared_ptr<std::vector<int64_t>>(new std::vector<int64_t>(s));
-		shared_data_for_satellites_mutex = std::shared_ptr<std::mutex>(new std::mutex());
+		shared_mutex_for_satellites =
+			std::shared_ptr<std::vector<std::mutex>>(new std::vector<std::mutex>(num_satellites));
 
 		double left_neighbor_gamma_difference = 360.0 / (2 * m_satellites_per_orbit);
 		double right_neighbor_gamma_difference = -360.0 / (2 * m_satellites_per_orbit);
 
 		for (size_t i = 0; i < num_satellites; i++)
 		{
-			auto table = CreateInterfaceList(i);
-			Ptr<ArbiterShortSat> arbiter = CreateObject<ArbiterShortSat>(
+			auto table = CreateOutboundInterfaceList(i);
+			Ptr<ArbiterNewSat> arbiter = CreateObject<ArbiterNewSat>(
 				m_nodes.Get(i), m_nodes, initial_forwarding_state[i], m_num_orbits, m_satellites_per_orbit,
-				shared_data_for_satellites, shared_data_for_satellites_mutex, table, left_neighbor_gamma_difference,
+				shared_data_for_satellites, shared_mutex_for_satellites, table, left_neighbor_gamma_difference,
 				right_neighbor_gamma_difference);
 			m_sat_arbiters.push_back(arbiter);
 			m_nodes.Get(i)->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4ShortRouting>()->SetArbiter(arbiter);
 		}
 		for (size_t i = num_satellites; i < nodes.GetN(); i++)
 		{
-			Ptr<ArbiterShortGS> arbiter = CreateObject<ArbiterShortGS>(
-				m_nodes.Get(i), m_nodes, initial_forwarding_state[i], m_num_orbits, m_satellites_per_orbit);
+			Ptr<ArbiterNewGS> arbiter = CreateObject<ArbiterNewGS>(m_nodes.Get(i), m_nodes, initial_forwarding_state[i],
+																   m_num_orbits, m_satellites_per_orbit);
 			m_gs_arbiters.push_back(arbiter);
 			m_nodes.Get(i)->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4ShortRouting>()->SetArbiter(arbiter);
 		}
@@ -111,7 +112,7 @@ ArbiterShortHelper::ArbiterShortHelper(Ptr<BasicSimulation> basicSimulation, Nod
 	std::cout << std::endl;
 }
 
-std::vector<std::tuple<int32_t, int32_t, int32_t>> ArbiterShortHelper::CreateInterfaceList(size_t i)
+std::vector<std::tuple<int32_t, int32_t, int32_t>> ArbiterNewHelper::CreateOutboundInterfaceList(size_t i)
 {
 	std::vector<std::tuple<int32_t, int32_t, int32_t>> table;
 	table.resize(4);
@@ -150,9 +151,9 @@ std::vector<std::tuple<int32_t, int32_t, int32_t>> ArbiterShortHelper::CreateInt
 	return table;
 }
 
-std::tuple<double, double, double, double> ArbiterShortHelper::CartesianToShort(Vector3D cartesian)
+std::tuple<double, double, double, double> ArbiterNewHelper::CartesianToShort(Vector3D cartesian)
 {
-	Vector2D latlon = Vector2D(std::asin(cartesian.z / ArbiterShortHelper::APPROXIMATE_EARTH_RADIUS_M) * 180.0 / pi,
+	Vector2D latlon = Vector2D(std::asin(cartesian.z / ArbiterNewHelper::APPROXIMATE_EARTH_RADIUS_M) * 180.0 / pi,
 							   std::atan2(cartesian.y, cartesian.x) * 180.0 / pi);
 
 	// use the formulas given in the paper:
@@ -203,7 +204,7 @@ std::tuple<double, double, double, double> ArbiterShortHelper::CartesianToShort(
 	}
 }
 
-void ArbiterShortHelper::SetCoordinateSkew()
+void ArbiterNewHelper::SetCoordinateSkew()
 {
 	// because satgenpy generates tles such that the RAAN is always 0 and the inclination is always 0 for hte first
 	// satellite, we can use that here to if the method of TLE generation changes, this will have to change. we
@@ -216,7 +217,7 @@ void ArbiterShortHelper::SetCoordinateSkew()
 	m_coordinateSkew_deg = first_mm->GetSatellite()->GetGeographicPosition(first_mm->GetSatellite()->GetTleEpoch()).y;
 }
 
-void ArbiterShortHelper::SetRoutingParams()
+void ArbiterNewHelper::SetRoutingParams()
 {
 
 	std::vector<std::tuple<double, double, double, double>> short_table;
@@ -247,7 +248,7 @@ void ArbiterShortHelper::SetRoutingParams()
 	}
 }
 
-void ArbiterShortHelper::UpdateOrbitalParams(int64_t t)
+void ArbiterNewHelper::UpdateOrbitalParams(int64_t t)
 {
 	// Filename
 	std::ostringstream res;
@@ -278,12 +279,18 @@ void ArbiterShortHelper::UpdateOrbitalParams(int64_t t)
 			// line 2 has RAAN and mean anomaly, which are columns 18-26 and 44-52
 			// it also has inclination, which are columns 9-16
 			// TODO: determine why I need to shift the substring indices here
-			double satellite_alpha =
-				std::fmod(360 + std::stod(line2.substr(17, 8)) - 2 * pi * t / EARTH_ORBIT_TIME_NS, 360);
-			double satellite_orbital_period = (1 / std::stod(line2.substr(52, 12))) * 60 * 60 * 1000000000;
-			double satellite_gamma =
-				std::fmod(360 + std::stod(line2.substr(43, 8)) + 2 * pi * t / satellite_orbital_period, 360);
-			m_satelliteInclination = std::stod(line2.substr(8, 8));
+			double RAAN = std::stod(line2.substr(17, 8));
+			double mean_motion = std::stod(line2.substr(52, 12));
+			double mean_anomaly = std::stod(line2.substr(43, 8));
+			double inclination = std::stod(line2.substr(8, 8));
+
+			NS_LOG_DEBUG("RAAN: " << RAAN << " -- Mean Motion: " << mean_motion << " -- Mean Anomaly: " << mean_anomaly
+								  << " -- Inclination: " << inclination);
+
+			double satellite_alpha = std::fmod(360 + RAAN - 360 * t / EARTH_ORBIT_TIME_NS, 360);
+			double satellite_orbital_period = (1 / mean_motion) * 24 * 60 * 60 * 1000000000;
+			double satellite_gamma = std::fmod(360 + mean_anomaly + 360 * t / satellite_orbital_period, 360);
+			m_satelliteInclination = inclination;
 
 			m_sat_arbiters.at(current_node_id)->SetShortParams(satellite_alpha, satellite_gamma);
 		}
@@ -301,13 +308,13 @@ void ArbiterShortHelper::UpdateOrbitalParams(int64_t t)
 		int64_t next_update_ns = t + m_dynamicStateUpdateIntervalNs;
 		if (next_update_ns < m_basicSimulation->GetSimulationEndTimeNs())
 		{
-			Simulator::Schedule(NanoSeconds(m_dynamicStateUpdateIntervalNs), &ArbiterShortHelper::UpdateOrbitalParams,
+			Simulator::Schedule(NanoSeconds(m_dynamicStateUpdateIntervalNs), &ArbiterNewHelper::UpdateOrbitalParams,
 								this, next_update_ns);
 		}
 	}
 }
 
-std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>> ArbiterShortHelper::InitialEmptyForwardingState()
+std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>> ArbiterNewHelper::InitialEmptyForwardingState()
 {
 	std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>> initial_forwarding_state;
 	for (size_t i = 0; i < m_nodes.GetN(); i++)
@@ -322,12 +329,13 @@ std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>> ArbiterShortHelp
 	return initial_forwarding_state;
 }
 
-void ArbiterShortHelper::UpdateForwardingState(int64_t t)
+void ArbiterNewHelper::UpdateForwardingState(int64_t t)
 {
 	// Filename
 	std::ostringstream res;
 	res << m_basicSimulation->GetRunDir() << "/";
-	res << m_basicSimulation->GetConfigParamOrFail("satellite_network_routes_dir") << "/fstate_" << t << ".txt";
+	res << m_basicSimulation->GetConfigParamOrFail("satellite_network_routes_dir") << "/truncated_dir/fstate_" << t
+		<< "_truncated.txt";
 	std::string fstate_filename = res.str();
 
 	// Check that the file exists
@@ -464,7 +472,7 @@ void ArbiterShortHelper::UpdateForwardingState(int64_t t)
 		int64_t next_update_ns = t + m_dynamicStateUpdateIntervalNs;
 		if (next_update_ns < m_basicSimulation->GetSimulationEndTimeNs())
 		{
-			Simulator::Schedule(NanoSeconds(m_dynamicStateUpdateIntervalNs), &ArbiterShortHelper::UpdateForwardingState,
+			Simulator::Schedule(NanoSeconds(m_dynamicStateUpdateIntervalNs), &ArbiterNewHelper::UpdateForwardingState,
 								this, next_update_ns);
 		}
 	}

@@ -17,29 +17,29 @@
  * Author: Simon               2020
  */
 
-#ifndef ARBITER_SHORT_HELPER
-#define ARBITER_SHORT_HELPER
+#ifndef ARBITER_NEW_HELPER
+#define ARBITER_NEW_HELPER
 
 #include <mutex>
 #include "ns3/ipv4-routing-helper.h"
 #include "ns3/basic-simulation.h"
 #include "ns3/topology-satellite-network.h"
 #include "ns3/ipv4-short-routing.h"
-#include "ns3/arbiter-short-gs.h"
-#include "ns3/arbiter-short-sat.h"
+#include "ns3/arbiter-new-gs.h"
+#include "ns3/arbiter-new-sat.h"
 #include "ns3/abort.h"
 
 namespace ns3
 {
 
-class ArbiterShortHelper
+class ArbiterNewHelper
 {
   public:
 	// APPROXIMATE WGS72 VALUES
 	const double EARTH_ORBIT_TIME_NS = 86400000000000;
 	const int32_t APPROXIMATE_EARTH_RADIUS_M = 6371000;
 
-	ArbiterShortHelper(Ptr<BasicSimulation> basicSimulation, NodeContainer nodes);
+	ArbiterNewHelper(Ptr<BasicSimulation> basicSimulation, NodeContainer nodes);
 
   private:
 	std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>> InitialEmptyForwardingState();
@@ -48,7 +48,7 @@ class ArbiterShortHelper
 	void UpdateForwardingState(int64_t t);
 	void SetRoutingParams();
 	void SetCoordinateSkew();
-	std::vector<std::tuple<int32_t, int32_t, int32_t>> CreateInterfaceList(size_t i);
+	std::vector<std::tuple<int32_t, int32_t, int32_t>> CreateOutboundInterfaceList(size_t i);
 
 	std::tuple<double, double, double, double> CartesianToShort(Vector3D cartesian);
 	// Parameters
@@ -59,12 +59,12 @@ class ArbiterShortHelper
 
 	int64_t m_num_orbits;
 	int64_t m_satellites_per_orbit;
-	std::vector<Ptr<ArbiterShortSat>> m_sat_arbiters;
-	std::vector<Ptr<ArbiterShortGS>> m_gs_arbiters;
+	std::vector<Ptr<ArbiterNewSat>> m_sat_arbiters;
+	std::vector<Ptr<ArbiterNewGS>> m_gs_arbiters;
 	std::vector<std::tuple<double, double, double, double>> m_other_table;
 	// apparently shared_ptr can tolerate vector memory moves when resized. testing now
 	std::shared_ptr<std::vector<int64_t>> shared_data_for_satellites;
-	std::shared_ptr<std::mutex> shared_data_for_satellites_mutex;
+	std::shared_ptr<std::vector<std::mutex>> shared_mutex_for_satellites;
 };
 
 } // namespace ns3

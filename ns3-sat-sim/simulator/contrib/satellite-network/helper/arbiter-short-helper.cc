@@ -61,7 +61,7 @@ ArbiterShortHelper::ArbiterShortHelper(Ptr<BasicSimulation> basicSimulation, Nod
 		double left_neighbor_gamma_difference = 360.0 / (2 * m_satellites_per_orbit);
 		double right_neighbor_gamma_difference = -360.0 / (2 * m_satellites_per_orbit);
 
-		for (size_t i = 0; i < num_satellites; i++)
+		for (int32_t i = 0; i < num_satellites; i++)
 		{
 			auto table = CreateInterfaceList(i);
 			Ptr<ArbiterShortSat> arbiter = CreateObject<ArbiterShortSat>(
@@ -105,7 +105,7 @@ ArbiterShortHelper::ArbiterShortHelper(Ptr<BasicSimulation> basicSimulation, Nod
 	std::cout << std::endl;
 }
 
-std::vector<std::tuple<int32_t, int32_t, int32_t>> ArbiterShortHelper::CreateInterfaceList(size_t i)
+std::vector<std::tuple<int32_t, int32_t, int32_t>> ArbiterShortHelper::CreateInterfaceList(int32_t i)
 {
 	std::vector<std::tuple<int32_t, int32_t, int32_t>> table;
 	table.resize(4);
@@ -321,6 +321,24 @@ std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>> ArbiterShortHelp
 	}
 	return initial_forwarding_state;
 }
+
+// we run this only every (t), because we have identified that the standing queue duration (which is substantiated as
+// the cause of real network damage in queue management literature) is actually low-frequency: we don't need to run at
+// nyquist of some arbitrary packet arrival rate in order to capture a lethargic queue
+/*void ArbiterShortHelper::UpdateCentralityState(int64_t t)
+{
+	if (!parse_boolean(m_basicSimulation->GetConfigParamOrDefault("satellite_network_force_static", "false")))
+	{
+
+		// Plan the next update
+		int64_t next_update_ns = t + m_dynamicStateUpdateIntervalNs;
+		if (next_update_ns < m_basicSimulation->GetSimulationEndTimeNs())
+		{
+			Simulator::Schedule(NanoSeconds(m_dynamicStateUpdateIntervalNs), &ArbiterShortHelper::UpdateForwardingState,
+								this, next_update_ns);
+		}
+	}
+}*/
 
 void ArbiterShortHelper::UpdateForwardingState(int64_t t)
 {

@@ -17,8 +17,8 @@
  * Author: Simon               2020
  */
 
-#ifndef ARBITER_SHORT_SAT_H
-#define ARBITER_SHORT_SAT_H
+#ifndef ARBITER_NEW_SAT_H
+#define ARBITER_NEW_SAT_H
 
 #include "ns3/abort.h"
 #include "ns3/arbiter-satnet.h"
@@ -33,18 +33,20 @@
 namespace ns3
 {
 
-class ArbiterShortSat : public ArbiterSatnet
+class ArbiterNewSat : public ArbiterSatnet
 {
   public:
 	static const int32_t CELL_SCALING_FACTOR = 5;
+	static const int32_t MINIMUM_FULLNESS_THRESHOLD = 20;
+	static const int64_t MINIMUM_FULLNESS_INTERVAL_NS = 10000000;
 
 	static TypeId GetTypeId(void);
 
 	// Constructor for single forward next-hop forwarding state
-	ArbiterShortSat(Ptr<Node> this_node, NodeContainer nodes,
-					std::vector<std::tuple<int32_t, int32_t, int32_t>> next_hop_list, int64_t n_o, int64_t s_p_o,
-					std::shared_ptr<std::vector<int64_t>> sdfs, std::shared_ptr<std::mutex> sdfsm,
-					std::vector<std::tuple<int32_t, int32_t, int32_t>> neighbor_ids, double lngd, double rngd);
+	ArbiterNewSat(Ptr<Node> this_node, NodeContainer nodes,
+				  std::vector<std::tuple<int32_t, int32_t, int32_t>> next_hop_list, int64_t n_o, int64_t s_p_o,
+				  std::shared_ptr<std::vector<int64_t>> sdfs, std::shared_ptr<std::vector<std::mutex>> sdfsm,
+				  std::vector<std::tuple<int32_t, int32_t, int32_t>> neighbor_ids, double lngd, double rngd);
 
 	// Single forward next-hop implementation
 	std::tuple<int32_t, int32_t, int32_t> TopologySatelliteNetworkDecide(int32_t source_node_id, int32_t target_node_id,
@@ -60,7 +62,8 @@ class ArbiterShortSat : public ArbiterSatnet
 	// Static routing table
 	std::string StringReprOfForwardingState();
 
-	std::tuple<int32_t, int32_t, int32_t> ShortDecide(int16_t aa, int16_t ag, int16_t da, int16_t dg);
+	std::tuple<int32_t, int32_t, int32_t> ShortDecide(int16_t aa, int16_t ag, int16_t da, int16_t dg,
+													  int32_t target_node_id);
 
 	void SetGSShortTable(std::vector<std::tuple<double, double, double, double>> table);
 	void SetSharedState(int64_t val);
@@ -68,14 +71,18 @@ class ArbiterShortSat : public ArbiterSatnet
 
   private:
 	std::tuple<int32_t, int32_t, int32_t> DetermineInterface(int16_t alpha_cell, int16_t gamma_cell,
-															 int16_t destination_alpha, int16_t destination_gamma);
+															 int16_t destination_alpha, int16_t destination_gamma,
+															 int32_t target_node_id);
 
 	int16_t CreateAlphaCell(double a);
 	int16_t CreateGammaCell(double g);
 
+	void SetInterfaceCongestionBits();
 	int8_t IncreaseInterface(int16_t a, int16_t b, int16_t base);
 	int16_t GetModularDistance(int16_t a, int16_t b, int16_t base);
 	bool VerifyInRange(int16_t alpha_cell, int16_t gamma_cell, int16_t destination_alpha, int16_t destination_gamma);
+	int32_t GetSquaredEuclideanModularDistance(int16_t alpha_cell, int16_t gamma_cell, int16_t destination_alpha,
+											   int16_t destination_gamma);
 
 	std::vector<std::tuple<int32_t, int32_t, int32_t>> m_next_hop_list;
 
@@ -93,8 +100,10 @@ class ArbiterShortSat : public ArbiterSatnet
 	double left_neighbor_gamma_difference;
 	double right_neighbor_gamma_difference;
 
+	std::array<int64_t, 4> m_interface_congestion_timer;
+
 	std::shared_ptr<std::vector<int64_t>> shared_data_for_satellites;
-	std::shared_ptr<std::mutex> shared_data_for_satellites_mutex;
+	std::shared_ptr<std::vector<std::mutex>> shared_data_for_satellites_mutex;
 };
 
 } // namespace ns3

@@ -17,8 +17,8 @@
  * Author: Simon               2020
  */
 
-#ifndef ARBITER_SHORT_GS_H
-#define ARBITER_SHORT_GS_H
+#ifndef ARBITER_NEW_GS_H
+#define ARBITER_NEW_GS_H
 
 #include "ns3/abort.h"
 #include "ns3/arbiter-satnet.h"
@@ -32,14 +32,14 @@
 namespace ns3
 {
 
-class ArbiterShortGS : public ArbiterSatnet
+class ArbiterNewGS : public ArbiterSatnet
 {
   public:
 	static TypeId GetTypeId(void);
 
 	// Constructor for single forward next-hop forwarding state
-	ArbiterShortGS(Ptr<Node> this_node, NodeContainer nodes,
-				   std::vector<std::tuple<int32_t, int32_t, int32_t>> next_hop_list, int64_t n_o, int64_t s_p_o);
+	ArbiterNewGS(Ptr<Node> this_node, NodeContainer nodes,
+				 std::vector<std::tuple<int32_t, int32_t, int32_t>> next_hop_list, int64_t n_o, int64_t s_p_o);
 
 	// Single forward next-hop implementation
 	std::tuple<int32_t, int32_t, int32_t> TopologySatelliteNetworkDecide(int32_t source_node_id, int32_t target_node_id,

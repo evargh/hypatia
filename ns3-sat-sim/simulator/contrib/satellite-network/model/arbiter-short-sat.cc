@@ -235,42 +235,6 @@ std::tuple<int32_t, int32_t, int32_t> ArbiterShortSat::DetermineInterface(int16_
 
 	NS_ASSERT_MSG(false, "something incorrect with determinining shortest path");
 	return std::make_tuple(-2, -2, -2);
-	// capture whether the right or left orbit is closer
-	/*bool right_shorter = GetModularDistance(right_alpha_cell, destination_alpha, alpha_base) <
-						 GetModularDistance(alpha_cell, destination_alpha, alpha_base);
-
-	bool left_shorter = GetModularDistance(left_alpha_cell, destination_alpha, alpha_base) <
-						GetModularDistance(alpha_cell, destination_alpha, alpha_base);
-
-	if (right_shorter)
-		return m_neighbor_ids[3]; // go right (interface 4)
-	else if (left_shorter)
-		return m_neighbor_ids[0]; // go left (interface 1)
-	else if (!right_shorter && !left_shorter)
-	{
-		// if neither option is strictly closer, then we just use gamma
-		bool up_shorter = GetModularDistance(up_gamma_cell, destination_gamma, gamma_base) <
-						  GetModularDistance(gamma_cell, destination_gamma, gamma_base);
-
-		bool down_shorter = GetModularDistance(down_gamma_cell, destination_gamma, gamma_base) <
-							GetModularDistance(gamma_cell, destination_gamma, gamma_base);
-
-		if (up_shorter)
-			return m_neighbor_ids[2]; // go up (interface 3)
-		else if (down_shorter)
-			return m_neighbor_ids[1]; // go down (interface 2)
-		else
-		{
-			// log the frequency of this for now before implementing the counterclockwise thing
-			NS_LOG_DEBUG("Dropped inaccessible ground station: " << destination_gamma);
-			return std::make_tuple(-1, -1, -1);
-		}
-	}
-	else
-	{
-		NS_ASSERT_MSG(false, "something incorrect with determinining shortest path");
-		return std::make_tuple(-2, -2, -2);
-	}*/
 }
 
 void ArbiterShortSat::SetGSShortTable(std::vector<std::tuple<double, double, double, double>> table)
