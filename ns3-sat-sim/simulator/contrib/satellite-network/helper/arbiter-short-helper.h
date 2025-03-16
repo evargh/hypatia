@@ -24,8 +24,8 @@
 #include "ns3/ipv4-routing-helper.h"
 #include "ns3/basic-simulation.h"
 #include "ns3/topology-satellite-network.h"
-#include "ns3/ipv4-short-routing.h"
-#include "ns3/arbiter-short-gs.h"
+#include "ns3/ipv4-arbiter-routing.h"
+#include "ns3/arbiter-single-forward.h"
 #include "ns3/arbiter-short-sat.h"
 #include "ns3/abort.h"
 
@@ -41,7 +41,7 @@ class ArbiterShortHelper
 
 	ArbiterShortHelper(Ptr<BasicSimulation> basicSimulation, NodeContainer nodes);
 
-  private:
+  protected:
 	std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>> InitialEmptyForwardingState();
 	double m_satelliteInclination;
 	void UpdateOrbitalParams(int64_t t);
@@ -49,9 +49,9 @@ class ArbiterShortHelper
 	void UpdateCentralityState(int64_t t);
 	void SetRoutingParams();
 	void SetCoordinateSkew();
-	std::vector<std::tuple<int32_t, int32_t, int32_t>> CreateInterfaceList(int32_t i);
-
+	std::vector<std::tuple<int32_t, int32_t, int32_t>> CreateOutboundInterfaceList(int32_t i);
 	std::tuple<double, double, double, double> CartesianToShort(Vector3D cartesian);
+
 	// Parameters
 	Ptr<BasicSimulation> m_basicSimulation;
 	NodeContainer m_nodes;
@@ -61,7 +61,7 @@ class ArbiterShortHelper
 	int64_t m_num_orbits;
 	int64_t m_satellites_per_orbit;
 	std::vector<Ptr<ArbiterShortSat>> m_sat_arbiters;
-	std::vector<Ptr<ArbiterShortGS>> m_gs_arbiters;
+	std::vector<Ptr<ArbiterSingleForward>> m_gs_arbiters;
 	std::vector<std::tuple<double, double, double, double>> m_other_table;
 };
 

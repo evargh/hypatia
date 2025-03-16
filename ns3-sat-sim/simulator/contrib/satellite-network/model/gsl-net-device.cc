@@ -33,6 +33,8 @@
 #include "ns3/node-container.h"
 #include "gsl-net-device.h"
 #include "gsl-channel.h"
+#include "ns3/arbiter-dhpb-sat.h"
+#include "ns3/ipv4-arbiter-routing.h"
 
 namespace ns3
 {
@@ -228,9 +230,24 @@ bool GSLNetDevice::TransmitStart(Ptr<Packet> p, const Address dest)
 
 	// copied code from point to point net device. need to make a parent class that these can inherit from
 	bool result = m_channel->TransmitStart(p, this, dest, txTime);
+	Ptr<Arbiter> arb = m_node->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4ArbiterRouting>()->GetArbiter();
 	if (result == false)
 	{
 		m_phyTxDropTrace(p);
+	}
+	else if (arb->GetInstanceTypeId() == TypeId::LookupByName("ns3::ArbiterDhpbSat"))
+	{
+		Ptr<ArbiterDhpbSat> arb_dhpb = DynamicCast<ArbiterDhpbSat>(arb);
+		Ptr<Packet> p_cpy = p->Copy();
+		uint16_t protocol = 0;
+		ProcessHeader(p_cpy, protocol);
+		if (protocol == 0x0800)
+		{
+			Ipv4Header ip;
+			p_cpy->PeekHeader(ip);
+			uint32_t dest = arb_dhpb->ResolveNodeIdFromIp(ip.GetDestination().Get());
+			arb_dhpb->DecreaseQueue(dest);
+		}
 	}
 	NS_LOG_DEBUG("From " << m_node->GetId() << " -- UID is " << p->GetUid() << " -- Delay is "
 						 << txCompleteTime.GetSeconds());
@@ -340,6 +357,20 @@ void GSLNetDevice::Receive(Ptr<Packet> packet)
 		// normal receive callback sees.
 		//
 		ProcessHeader(packet, protocol);
+		Ptr<Arbiter> arb =
+			m_node->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4ArbiterRouting>()->GetArbiter();
+		if (arb->GetInstanceTypeId() == TypeId::LookupByName("ns3::ArbiterDhpbSat"))
+		{
+			Ptr<ArbiterDhpbSat> arb_dhpb = DynamicCast<ArbiterDhpbSat>(arb);
+			Ptr<Packet> p_cpy = packet->Copy();
+			if (protocol == 0x0800)
+			{
+				Ipv4Header ip;
+				p_cpy->PeekHeader(ip);
+				uint32_t dest = arb_dhpb->ResolveNodeIdFromIp(ip.GetDestination().Get());
+				arb_dhpb->IncreaseQueue(dest);
+			}
+		}
 
 		NS_LOG_DEBUG("To " << m_node->GetId() << " -- UID is " << packet->GetUid() << " -- Size is "
 						   << packet->GetSize());

@@ -25,7 +25,7 @@ NS_LOG_COMPONENT_DEFINE("ArbiterShortHelper");
 
 ArbiterShortHelper::ArbiterShortHelper(Ptr<BasicSimulation> basicSimulation, NodeContainer nodes)
 {
-	std::cout << "SETUP SINGLE FORWARDING ROUTING" << std::endl;
+	std::cout << "SETUP SHORT ROUTING" << std::endl;
 	m_basicSimulation = basicSimulation;
 	m_nodes = nodes;
 
@@ -63,19 +63,21 @@ ArbiterShortHelper::ArbiterShortHelper(Ptr<BasicSimulation> basicSimulation, Nod
 
 		for (int32_t i = 0; i < num_satellites; i++)
 		{
-			auto table = CreateInterfaceList(i);
+			auto table = CreateOutboundInterfaceList(i);
 			Ptr<ArbiterShortSat> arbiter = CreateObject<ArbiterShortSat>(
 				m_nodes.Get(i), m_nodes, initial_forwarding_state[i], m_num_orbits, m_satellites_per_orbit, table,
 				left_neighbor_gamma_difference, right_neighbor_gamma_difference);
 			m_sat_arbiters.push_back(arbiter);
-			m_nodes.Get(i)->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4ShortRouting>()->SetArbiter(arbiter);
+			m_nodes.Get(i)->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4ArbiterRouting>()->SetArbiter(
+				arbiter);
 		}
 		for (size_t i = num_satellites; i < nodes.GetN(); i++)
 		{
-			Ptr<ArbiterShortGS> arbiter = CreateObject<ArbiterShortGS>(
-				m_nodes.Get(i), m_nodes, initial_forwarding_state[i], m_num_orbits, m_satellites_per_orbit);
+			Ptr<ArbiterSingleForward> arbiter =
+				CreateObject<ArbiterSingleForward>(m_nodes.Get(i), m_nodes, initial_forwarding_state[i]);
 			m_gs_arbiters.push_back(arbiter);
-			m_nodes.Get(i)->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4ShortRouting>()->SetArbiter(arbiter);
+			m_nodes.Get(i)->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4ArbiterRouting>()->SetArbiter(
+				arbiter);
 		}
 	}
 	else
@@ -105,7 +107,7 @@ ArbiterShortHelper::ArbiterShortHelper(Ptr<BasicSimulation> basicSimulation, Nod
 	std::cout << std::endl;
 }
 
-std::vector<std::tuple<int32_t, int32_t, int32_t>> ArbiterShortHelper::CreateInterfaceList(int32_t i)
+std::vector<std::tuple<int32_t, int32_t, int32_t>> ArbiterShortHelper::CreateOutboundInterfaceList(int32_t i)
 {
 	std::vector<std::tuple<int32_t, int32_t, int32_t>> table;
 	table.resize(4);
@@ -120,7 +122,7 @@ std::vector<std::tuple<int32_t, int32_t, int32_t>> ArbiterShortHelper::CreateInt
 		// right - 4 (3 0-index)
 		// position is currenlty inferred from node ids
 		auto netdev_ptr = node_ptr->GetObject<Ipv4>()->GetNetDevice(idx)->GetObject<PointToPointLaserNetDevice>();
-		auto partner_id = netdev_ptr->GetDestinationNode()->GetId();
+		auto partner_id = static_cast<int32_t>(netdev_ptr->GetDestinationNode()->GetId());
 
 		// if up, then it is within the same orbit (so dividing should result in the same number)
 		if (partner_id / m_satellites_per_orbit == i / m_satellites_per_orbit &&
@@ -223,17 +225,11 @@ void ArbiterShortHelper::SetRoutingParams()
 		if (mm != nullptr)
 		{
 			std::tuple<double, double, double, double> pos = CartesianToShort(mm->GetPosition());
-			m_gs_arbiters.at(current_node_id)->SetGSShortParams(pos);
 			NS_LOG_DEBUG(current_node_id << ": " << std::get<0>(pos) << " " << std::get<1>(pos) << " "
 										 << std::get<2>(pos) << " " << std::get<3>(pos));
 
 			short_table.push_back(pos);
 		}
-	}
-	for (uint32_t current_node_id = 0; current_node_id < m_nodes.GetN() - m_num_orbits * m_satellites_per_orbit;
-		 current_node_id++)
-	{
-		m_gs_arbiters.at(current_node_id)->SetGSShortTable(short_table);
 	}
 	for (uint32_t current_node_id = 0; current_node_id < m_num_orbits * m_satellites_per_orbit; current_node_id++)
 	{

@@ -1,0 +1,226 @@
+/*
+ * Copyright (c) 2020 ETH Zurich
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation;
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ * Author: Simon               2020
+ */
+
+#include "arbiter-dhpb-sat.h"
+
+namespace ns3
+{
+NS_LOG_COMPONENT_DEFINE("ArbiterDhpbSat");
+NS_OBJECT_ENSURE_REGISTERED(ArbiterDhpbSat);
+TypeId ArbiterDhpbSat::GetTypeId(void)
+{
+	static TypeId tid = TypeId("ns3::ArbiterDhpbSat").SetParent<ArbiterSatnet>().SetGroupName("BasicSim");
+	return tid;
+}
+
+ArbiterDhpbSat::ArbiterDhpbSat(Ptr<Node> this_node, NodeContainer nodes,
+							   std::vector<std::tuple<int32_t, int32_t, int32_t>> next_hop_list, int64_t n_o,
+							   int64_t s_p_o, std::shared_ptr<std::vector<std::vector<int64_t>>> sdfs,
+							   std::shared_ptr<std::vector<std::mutex>> sdfsm,
+							   std::vector<std::tuple<int32_t, int32_t, int32_t>> neighbor_ids, double lngd,
+							   double rngd)
+	: ArbiterShortSat(this_node, nodes, next_hop_list, n_o, s_p_o, neighbor_ids, lngd, rngd)
+{
+	shared_data_for_satellites = sdfs;
+	shared_data_for_satellites_mutex = sdfsm;
+}
+
+std::tuple<int32_t, int32_t, int32_t> ArbiterDhpbSat::DetermineInterface(int16_t destination_alpha,
+																		 int16_t destination_gamma,
+																		 int16_t source_alpha, int16_t source_gamma,
+																		 int32_t target_node_id)
+{
+	if (neighbors.VerifyInRange(NeighborCoordContainer::SELF, destination_alpha, destination_gamma))
+	{
+		return HandleClose(destination_alpha, destination_gamma, target_node_id);
+	}
+	int32_t right_hops = neighbors.GetAlphaModularDistance(NeighborCoordContainer::RIGHT, destination_alpha) +
+						 neighbors.GetGammaModularDistance(NeighborCoordContainer::RIGHT, destination_gamma);
+	int32_t left_hops = neighbors.GetAlphaModularDistance(NeighborCoordContainer::LEFT, destination_alpha) +
+						neighbors.GetGammaModularDistance(NeighborCoordContainer::LEFT, destination_gamma);
+	int32_t up_hops = neighbors.GetAlphaModularDistance(NeighborCoordContainer::UP, destination_alpha) +
+					  neighbors.GetGammaModularDistance(NeighborCoordContainer::UP, destination_gamma);
+	int32_t down_hops = neighbors.GetAlphaModularDistance(NeighborCoordContainer::DOWN, destination_alpha) +
+						neighbors.GetGammaModularDistance(NeighborCoordContainer::DOWN, destination_gamma);
+
+	int32_t current_hops = neighbors.GetAlphaModularDistance(NeighborCoordContainer::SELF, destination_alpha) +
+						   neighbors.GetGammaModularDistance(NeighborCoordContainer::SELF, destination_gamma);
+	// generate a list of all next hops that are closer to the final target, ideally going to a functional approach
+	// iterate through that list, up to 0, and check the shared state
+	// load balance as a function of those and the distance of the nodes from the target
+	//
+	// each satellite reports how full their queue is for that traffic flow
+	// when comparing, just look at that flow, compute the distance of that neighbor to the destination, and pick based
+	// on that make sure the next hop is "in the rectangle"
+
+	// the next hops are constrained under a grid+ topology, there is a small search space of the next few hops.
+	// see if the interfaces on the closer hops are central
+	// initializer list
+	typedef std::tuple<NeighborCoordContainer::Direction, int32_t, int64_t> distance_element;
+
+	auto distances = {
+		std::make_tuple(
+			NeighborCoordContainer::LEFT, left_hops,
+			GetQueueSizeForNode(std::get<0>(m_neighbor_ids.at(NeighborCoordContainer::LEFT - 1)), target_node_id) *
+				left_hops),
+		std::make_tuple(
+			NeighborCoordContainer::DOWN, down_hops,
+			GetQueueSizeForNode(std::get<0>(m_neighbor_ids.at(NeighborCoordContainer::DOWN - 1)), target_node_id) *
+				down_hops),
+		std::make_tuple(
+			NeighborCoordContainer::UP, up_hops,
+			GetQueueSizeForNode(std::get<0>(m_neighbor_ids.at(NeighborCoordContainer::UP - 1)), target_node_id) *
+				up_hops),
+		std::make_tuple(
+			NeighborCoordContainer::RIGHT, right_hops,
+			GetQueueSizeForNode(std::get<0>(m_neighbor_ids.at(NeighborCoordContainer::RIGHT - 1)), target_node_id) *
+				right_hops)};
+
+	std::vector<distance_element> thresholded_distances;
+	// the original DHPB has a dependence on knowing the destination and source satellites for making a space
+	// restriction.
+	// this requires a packet to embed information about source satellite (2 bytes in starlink), and requires
+	// some inference about what the destination satellite could be ahead of time.
+	//
+	// instead of that, for now we restrict the space by only permitting the use of satellites that are geographically
+	// closer this also prevents loops in case the traffic is ever sparse
+	std::copy_if(distances.begin(), distances.end(), std::back_inserter(thresholded_distances),
+				 [current_hops](distance_element i) { return std::get<1>(i) <= current_hops; });
+
+	// then pick the minimum
+	std::sort(thresholded_distances.begin(), thresholded_distances.end(),
+			  [](distance_element a, distance_element b) { return std::get<2>(a) < std::get<2>(b); });
+	NS_LOG_DEBUG(m_node_id << " num viable targets to " << target_node_id << ": " << thresholded_distances.size());
+	// consider which interface to use here, can be more complex than this
+	for (auto elem : thresholded_distances)
+	{
+		NS_LOG_DEBUG("neighbor: " << std::get<0>(elem) << " distance: " << std::get<1>(elem)
+								  << " queue: " << std::get<2>(elem));
+	}
+
+	if (thresholded_distances.size() > 0)
+	{
+		auto if_index = m_neighbor_ids[std::get<0>(thresholded_distances[0]) - 1];
+		return if_index;
+	}
+	else
+	{
+		NS_ASSERT_MSG(thresholded_distances.size() != 0, "something incorrect with determinining shortest path");
+		return std::make_tuple(-2, -2, -2);
+	}
+}
+
+std::tuple<int32_t, int32_t, int32_t> ArbiterDhpbSat::ShortDecide(int16_t aa, int16_t ag, int16_t da, int16_t dg,
+																  int32_t source_node_id, int32_t target_node_id)
+{
+	int16_t asc_alpha_distance = neighbors.GetAlphaModularDistance(NeighborCoordContainer::SELF, aa);
+	int16_t desc_alpha_distance = neighbors.GetAlphaModularDistance(NeighborCoordContainer::SELF, da);
+
+	// if it requires fewer inter-orbit links to go to the ascending alpha, greedily do that
+	double source_aa, source_ag, source_da, source_dg;
+	std::tie(source_aa, source_ag, source_da, source_dg) =
+		m_other_table.at(source_node_id - num_orbits * num_satellites_per_orbit);
+	int16_t source_aac = neighbors.CreateAlphaCell(source_aa);
+	int16_t source_agc = neighbors.CreateGammaCell(source_ag);
+	int16_t source_dac = neighbors.CreateAlphaCell(source_da);
+	int16_t source_dgc = neighbors.CreateGammaCell(source_dg);
+
+	int16_t asc_alpha_source_distance = neighbors.GetAlphaModularDistance(NeighborCoordContainer::SELF, source_aac);
+	int16_t desc_alpha_source_distance = neighbors.GetAlphaModularDistance(NeighborCoordContainer::SELF, source_dac);
+	if (asc_alpha_distance <= desc_alpha_distance)
+	{
+		if (asc_alpha_source_distance <= desc_alpha_source_distance)
+			return DetermineInterface(aa, ag, source_aac, source_agc, target_node_id);
+		else
+			return DetermineInterface(aa, ag, source_dac, source_dgc, target_node_id);
+	}
+	else
+	{
+		if (asc_alpha_source_distance <= desc_alpha_source_distance)
+			return DetermineInterface(da, dg, source_aac, source_agc, target_node_id);
+		else
+			return DetermineInterface(da, dg, source_dac, source_dgc, target_node_id);
+	}
+}
+
+std::tuple<int32_t, int32_t, int32_t> ArbiterDhpbSat::TopologySatelliteNetworkDecide(
+	int32_t source_node_id, int32_t target_node_id, Ptr<const Packet> pkt, Ipv4Header const &ipHeader,
+	bool is_request_for_source_ip_so_no_next_header)
+{
+	if (std::get<0>(m_next_hop_list[target_node_id]) >= num_orbits * num_satellites_per_orbit)
+	{
+		return m_next_hop_list[target_node_id];
+	}
+	double aa, ag, da, dg;
+	std::tie(aa, ag, da, dg) = m_other_table.at(target_node_id - num_orbits * num_satellites_per_orbit);
+
+	int16_t aac = neighbors.CreateAlphaCell(aa);
+	int16_t agc = neighbors.CreateGammaCell(ag);
+	int16_t dac = neighbors.CreateAlphaCell(da);
+	int16_t dgc = neighbors.CreateGammaCell(dg);
+
+	return ShortDecide(aac, agc, dac, dgc, source_node_id, target_node_id);
+}
+
+void ArbiterDhpbSat::IncreaseQueue(int32_t target_node_id)
+{
+	std::lock_guard<std::mutex> guard(shared_data_for_satellites_mutex->at(m_node_id));
+	NS_ASSERT(GSLNodeIdToGSLIndex(target_node_id) < (int32_t)shared_data_for_satellites->at(m_node_id).size());
+	shared_data_for_satellites->at(m_node_id).at(GSLNodeIdToGSLIndex(target_node_id)) += 1;
+}
+
+void ArbiterDhpbSat::DecreaseQueue(int32_t target_node_id)
+{
+	std::lock_guard<std::mutex> guard(shared_data_for_satellites_mutex->at(m_node_id));
+	NS_ASSERT(GSLNodeIdToGSLIndex(target_node_id) < (int32_t)shared_data_for_satellites->at(m_node_id).size());
+	if (shared_data_for_satellites->at(m_node_id).at(GSLNodeIdToGSLIndex(target_node_id)) > 0)
+	{
+		shared_data_for_satellites->at(m_node_id).at(GSLNodeIdToGSLIndex(target_node_id)) -= 1;
+	}
+	else
+	{
+		NS_LOG_DEBUG("attempted to reduce 0-length distance queue");
+	}
+}
+
+int64_t ArbiterDhpbSat::GetQueueSizeForNode(int32_t neighbor_id, uint32_t gid)
+{
+	std::lock_guard<std::mutex> guard(shared_data_for_satellites_mutex->at(neighbor_id));
+	NS_ASSERT(GSLNodeIdToGSLIndex(gid) < (int32_t)shared_data_for_satellites->at(neighbor_id).size());
+	return shared_data_for_satellites->at(m_node_id).at(GSLNodeIdToGSLIndex(gid));
+}
+
+int32_t ArbiterDhpbSat::GSLNodeIdToGSLIndex(int32_t id)
+{
+	return id - num_orbits * num_satellites_per_orbit;
+}
+
+int32_t ArbiterDhpbSat::GSLIndexToGSLNodeId(int32_t id)
+{
+	return num_orbits * num_satellites_per_orbit + id;
+}
+
+void ArbiterDhpbSat::SetSingleForwardState(int32_t target_node_id, int32_t next_node_id, int32_t own_if_id,
+										   int32_t next_if_id)
+{
+	NS_ABORT_MSG_IF(next_node_id == -2 || own_if_id == -2 || next_if_id == -2, "Not permitted to set invalid (-2).");
+	m_next_hop_list[target_node_id] = std::make_tuple(next_node_id, own_if_id, next_if_id);
+}
+
+} // namespace ns3

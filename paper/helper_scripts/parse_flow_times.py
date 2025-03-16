@@ -18,8 +18,11 @@ with open(f"{args.flow_file}") as ifile:
             flow_dict[(flow[1], flow[2])] = []
         if flow[8] == "YES":
             flow_dict[(flow[1], flow[2])].append(int(flow[5]) - int(flow[4]))
+        elif flow[8] == "NO_ONGOING":
+            flow_dict[(flow[1], flow[2])].append(-1)
         else:
             flow_dict[(flow[1], flow[2])].append(-1)
+            print(flow[8])
 
 
 with open("flow_aggregate_times.json", "w+") as ofile:
