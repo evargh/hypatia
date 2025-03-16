@@ -27,8 +27,9 @@
 #include "ns3/tcp-header.h"
 #include "ns3/topology-satellite-network.h"
 #include "ns3/udp-header.h"
-// #include "modular-arithmetic-helper.h"
+#include "modular-arithmetic-helper.h"
 #include <tuple>
+#include <array>
 
 namespace ns3
 {
@@ -64,36 +65,65 @@ class ArbiterShortSat : public ArbiterSatnet
 
 	void SetGSShortTable(std::vector<std::tuple<double, double, double, double>> table);
 
-  private:
-	std::tuple<int32_t, int32_t, int32_t> DetermineInterface(int16_t alpha_cell, int16_t gamma_cell,
-															 int16_t destination_alpha, int16_t destination_gamma,
+  protected:
+	class NeighborCoordContainer
+	{
+	  public:
+		// this is meant to be an index to the underlying container of coordinates
+		enum Direction
+		{
+			SELF,
+			LEFT,
+			DOWN,
+			UP,
+			RIGHT
+		};
+
+		NeighborCoordContainer(double lngd, double rngd, int64_t num_orbits, int64_t num_satellites_per_orbit);
+		void UpdateCoords(double alpha, double gamma);
+		bool VerifyInRange(Direction d, int16_t destination_alpha, int16_t destination_gamma);
+		int16_t GetAlphaModularDistance(Direction d, int16_t destination_alpha);
+		int16_t GetGammaModularDistance(Direction d, int16_t destination_gamma);
+		int8_t CheckIfAlphaIncrease(Direction d, int16_t destination_alpha);
+		int8_t CheckIfGammaIncrease(Direction d, int16_t destination_gamma);
+		int8_t CheckIfAlphaIncrease(int16_t source_alpha, int16_t destination_alpha);
+		int8_t CheckIfGammaIncrease(int16_t source_gamma, int16_t destination_gamma);
+		int32_t GetSquaredEuclideanModularDistance(Direction d, int16_t destination_alpha, int16_t destination_gamma);
+		int32_t GetSquaredEuclideanModularDistance(std::tuple<int16_t, int16_t> c, int16_t destination_alpha,
+												   int16_t destination_gamma);
+		int16_t GetAlphaBase();
+		int16_t GetGammaBase();
+		int16_t CreateAlphaCell(double a);
+		int16_t CreateGammaCell(double g);
+
+		std::tuple<int16_t, int16_t> GetCoords(Direction d);
+		std::tuple<int16_t, int16_t> GetCoordsFromSequence(std::vector<Direction> &d);
+		std::tuple<double, double> TransformByDirection(Direction d, double alpha, double gamma);
+
+	  private:
+		std::array<std::tuple<double, double>, 5> m_coords;
+
+		double m_lngd, m_rngd;
+		int16_t m_alpha_base, m_gamma_base;
+		int64_t m_num_orbits, m_num_satellites_per_orbit;
+	};
+
+  protected:
+	std::tuple<int32_t, int32_t, int32_t> DetermineInterface(int16_t destination_alpha, int16_t destination_gamma,
 															 int32_t target_node_id);
 
-	int16_t CreateAlphaCell(double a);
-	int16_t CreateGammaCell(double g);
-
-	int8_t IncreaseInterface(int16_t a, int16_t b, int16_t base);
-	int16_t GetModularDistance(int16_t a, int16_t b, int16_t base);
-	bool VerifyInRange(int16_t alpha_cell, int16_t gamma_cell, int16_t destination_alpha, int16_t destination_gamma);
-
-	int32_t GetSquaredEuclideanModularDistance(int16_t alpha_cell, int16_t gamma_cell, int16_t destination_alpha,
-											   int16_t destination_gamma);
+	std::tuple<int32_t, int32_t, int32_t> HandleClose(int16_t destination_alpha, int16_t destination_gamma,
+													  int32_t target_node_id);
 
 	std::vector<std::tuple<int32_t, int32_t, int32_t>> m_next_hop_list;
 
 	std::vector<std::tuple<double, double, double, double>> m_other_table;
 	std::vector<std::tuple<int32_t, int32_t, int32_t>> m_neighbor_ids;
 
-	double m_alpha;
-	double m_gamma;
 	int64_t num_orbits;
 	int64_t num_satellites_per_orbit;
 
-	int16_t alpha_base;
-	int16_t gamma_base;
-
-	double left_neighbor_gamma_difference;
-	double right_neighbor_gamma_difference;
+	NeighborCoordContainer neighbors;
 };
 
 } // namespace ns3

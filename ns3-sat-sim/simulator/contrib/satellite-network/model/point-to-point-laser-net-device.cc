@@ -33,12 +33,8 @@
 #include "ns3/ppp-header.h"
 #include "point-to-point-laser-net-device.h"
 #include "point-to-point-laser-channel.h"
-
-// stuff for debug, need to get rid of later
-#include "ns3/ipv4-header.h"
+#include "ns3/arbiter-dhpb-sat.h"
 #include "ns3/ipv4-arbiter-routing.h"
-#include "ns3/ipv4-short-routing.h"
-#include "ns3/arbiter.h"
 
 namespace ns3
 {
@@ -247,10 +243,25 @@ bool PointToPointLaserNetDevice::TransmitStart(Ptr<Packet> p)
 	Simulator::Schedule(txCompleteTime, &PointToPointLaserNetDevice::TransmitComplete, this);
 
 	bool result = m_channel->TransmitStart(p, this, m_destination_node, txTime);
+	Ptr<Arbiter> arb = m_node->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4ArbiterRouting>()->GetArbiter();
 	if (result == false)
 	{
 		// result is always true anyway, so there should be no drop
 		m_phyTxDropTrace(p);
+	}
+	else if (arb->GetInstanceTypeId() == TypeId::LookupByName("ns3::ArbiterDhpbSat"))
+	{
+		Ptr<ArbiterDhpbSat> arb_dhpb = DynamicCast<ArbiterDhpbSat>(arb);
+		Ptr<Packet> p_cpy = p->Copy();
+		uint16_t protocol = 0;
+		ProcessHeader(p_cpy, protocol);
+		if (protocol == 0x0800)
+		{
+			Ipv4Header ip;
+			p_cpy->PeekHeader(ip);
+			uint32_t dest = arb_dhpb->ResolveNodeIdFromIp(ip.GetDestination().Get());
+			arb_dhpb->DecreaseQueue(dest);
+		}
 	}
 	NS_LOG_DEBUG("From " << m_node->GetId() << " -- To " << m_destination_node->GetId() << " -- UID is " << p->GetUid()
 						 << " -- Delay is " << txCompleteTime.GetSeconds());
@@ -354,14 +365,20 @@ void PointToPointLaserNetDevice::Receive(Ptr<Packet> packet)
 		//
 		ProcessHeader(packet, protocol);
 
-		// this broke layering, but was conducted for debugging purposes just for debug and should be removed
-		// Ipv4Header ip;
-		// packet->PeekHeader(ip);
-		// auto ipv4 = m_node->GetObject<Ipv4>();
-		// auto ipv4ar = ipv4->GetRoutingProtocol()->GetObject<Ipv4ShortRouting>();
-		// auto arb = ipv4ar->GetArbiter();
-		// uint32_t src = arb->ResolveNodeIdFromIp(ip.GetSource().Get());
-		// uint32_t dest = arb->ResolveNodeIdFromIp(ip.GetDestination().Get());
+		Ptr<Arbiter> arb =
+			m_node->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4ArbiterRouting>()->GetArbiter();
+		if (arb->GetInstanceTypeId() == TypeId::LookupByName("ns3::ArbiterDhpbSat"))
+		{
+			Ptr<ArbiterDhpbSat> arb_dhpb = DynamicCast<ArbiterDhpbSat>(arb);
+			Ptr<Packet> p_cpy = packet->Copy();
+			if (protocol == 0x0800)
+			{
+				Ipv4Header ip;
+				p_cpy->PeekHeader(ip);
+				uint32_t dest = arb_dhpb->ResolveNodeIdFromIp(ip.GetDestination().Get());
+				arb_dhpb->IncreaseQueue(dest);
+			}
+		}
 		NS_LOG_DEBUG("From " << m_destination_node->GetId() << " -- To " << m_node->GetId() << " -- UID is "
 							 << packet->GetUid() << " -- Size is " << packet->GetSize());
 

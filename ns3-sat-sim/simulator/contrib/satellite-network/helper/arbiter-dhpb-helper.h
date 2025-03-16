@@ -20,11 +20,13 @@
 #ifndef ARBITER_DHPB_HELPER
 #define ARBITER_DHPB_HELPER
 
+#include <mutex>
 #include "ns3/ipv4-routing-helper.h"
 #include "ns3/basic-simulation.h"
 #include "ns3/topology-satellite-network.h"
 #include "ns3/ipv4-dhpb-arbiter-routing.h"
-#include "ns3/arbiter-dhpb.h"
+#include "ns3/arbiter-dhpb-sat.h"
+#include "ns3/arbiter-single-forward.h"
 #include "ns3/abort.h"
 
 namespace ns3
@@ -33,18 +35,33 @@ namespace ns3
 class ArbiterDhpbHelper
 {
   public:
+	// APPROXIMATE WGS72 VALUES
+	const double EARTH_ORBIT_TIME_NS = 86400000000000;
+	const int32_t APPROXIMATE_EARTH_RADIUS_M = 6371000;
+
 	ArbiterDhpbHelper(Ptr<BasicSimulation> basicSimulation, NodeContainer nodes);
 
   private:
 	std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>> InitialEmptyForwardingState();
+	double m_satelliteInclination;
+	void UpdateOrbitalParams(int64_t t);
 	void UpdateForwardingState(int64_t t);
+	void SetRoutingParams();
+	void SetCoordinateSkew();
+	std::vector<std::tuple<int32_t, int32_t, int32_t>> CreateOutboundInterfaceList(int32_t i);
+	std::tuple<double, double, double, double> CartesianToShort(Vector3D cartesian);
 
 	// Parameters
 	Ptr<BasicSimulation> m_basicSimulation;
 	NodeContainer m_nodes;
+	double m_coordinateSkew_deg;
 	int64_t m_dynamicStateUpdateIntervalNs;
-	std::vector<Ptr<ArbiterDhpb>> m_arbiters;
-	std::vector<std::set<int32_t>> m_destination_satellite_list;
+	std::vector<Ptr<ArbiterDhpbSat>> m_sat_arbiters;
+	std::vector<Ptr<ArbiterSingleForward>> m_gs_arbiters;
+	std::vector<std::tuple<double, double, double, double>> m_other_table;
+
+	std::shared_ptr<std::vector<std::vector<int64_t>>> shared_data_for_satellites;
+	std::shared_ptr<std::vector<std::mutex>> shared_mutex_for_satellites;
 
 	int64_t m_num_orbits;
 	int64_t m_satellites_per_orbit;

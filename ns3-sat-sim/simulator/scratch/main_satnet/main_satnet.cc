@@ -121,8 +121,8 @@ int main(int argc, char *argv[])
 	}
 	else if (routing_algorithm == 1)
 	{
-		topology = CreateObject<TopologySatelliteNetwork>(basicSimulation, Ipv4DhpbArbiterRoutingHelper(),
-														  DhpbPointToPointLaserHelper(), DhpbGSLHelper());
+		topology = CreateObject<TopologySatelliteNetwork>(basicSimulation, Ipv4ArbiterRoutingHelper(),
+														  PointToPointLaserHelper(), GSLHelper());
 		ArbiterDhpbHelper arbiterHelper(basicSimulation, topology->GetNodes());
 		GslIfBandwidthHelper gslIfBandwidthHelper(basicSimulation, topology->GetNodes());
 
@@ -157,7 +157,7 @@ int main(int argc, char *argv[])
 	}
 	if (routing_algorithm == 2)
 	{
-		topology = CreateObject<TopologySatelliteNetwork>(basicSimulation, Ipv4ShortRoutingHelper(),
+		topology = CreateObject<TopologySatelliteNetwork>(basicSimulation, Ipv4ArbiterRoutingHelper(),
 														  PointToPointLaserHelper(), GSLHelper());
 		ArbiterShortHelper arbiterHelper(basicSimulation, topology->GetNodes());
 		// weird scope thing, just move everything into here
@@ -194,7 +194,7 @@ int main(int argc, char *argv[])
 	}
 	if (routing_algorithm == 3)
 	{
-		topology = CreateObject<TopologySatelliteNetwork>(basicSimulation, Ipv4ShortRoutingHelper(),
+		topology = CreateObject<TopologySatelliteNetwork>(basicSimulation, Ipv4ArbiterRoutingHelper(),
 														  PointToPointLaserHelper(), GSLHelper());
 		ArbiterNewHelper arbiterHelper(basicSimulation, topology->GetNodes());
 		// weird scope thing, just move everything into here
