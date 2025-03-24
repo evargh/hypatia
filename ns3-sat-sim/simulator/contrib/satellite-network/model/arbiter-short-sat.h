@@ -37,7 +37,7 @@ namespace ns3
 class ArbiterShortSat : public ArbiterSatnet
 {
   public:
-	static const int32_t CELL_SCALING_FACTOR = 5;
+	static const int32_t CELL_SCALING_FACTOR = 9;
 
 	static TypeId GetTypeId(void);
 
@@ -91,6 +91,10 @@ class ArbiterShortSat : public ArbiterSatnet
 		int32_t GetSquaredEuclideanModularDistance(Direction d, int16_t destination_alpha, int16_t destination_gamma);
 		int32_t GetSquaredEuclideanModularDistance(std::tuple<int16_t, int16_t> c, int16_t destination_alpha,
 												   int16_t destination_gamma);
+		int16_t GetHopcount(Direction d, int16_t destination_alpha, int16_t destination_gamma);
+		int16_t GetHopcount(std::tuple<int16_t, int16_t> coords, int16_t destination_alpha, int16_t destination_gamma);
+		int16_t GetAlphaModularDistance(int16_t coordinate_alpha, int16_t destination_alpha);
+		int16_t GetGammaModularDistance(int16_t coordinate_gamma, int16_t destination_gamma);
 		int16_t GetAlphaBase();
 		int16_t GetGammaBase();
 		int16_t CreateAlphaCell(double a);

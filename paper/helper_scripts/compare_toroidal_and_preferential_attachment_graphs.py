@@ -1,12 +1,13 @@
 import networkx as nx
+import numpy as np
+import json
 import matplotlib.pyplot as plt
 import random
 from collections import Counter
 
-random.seed(1)
 
-
-def generate_satellite_toroid(num_satellites_per_orbit, num_orbits, gs_num):
+def generate_satellite_toroid(num_satellites_per_orbit, num_orbits, gs_num, seed):
+    random.seed(seed)
     total_satellites = num_satellites_per_orbit * num_orbits
     # m by n graph
     # when the graph is created, we randomly attach a gs to an unclaimed center node. then we attach it to the 8 nodes around that center node
@@ -39,6 +40,7 @@ def generate_satellite_toroid(num_satellites_per_orbit, num_orbits, gs_num):
         total_satellites,
         total_satellites + gs_num,
     ):
+        random_satellite = 0
         while True:
             random_satellite = int(random.random() * total_satellites)
             if random_satellite not in claimed_centers:
@@ -63,7 +65,7 @@ def generate_satellite_toroid(num_satellites_per_orbit, num_orbits, gs_num):
             (random_satellite - num_satellites_per_orbit + total_satellites)
             % (total_satellites)
         )
-        print(nearby_random)
+        # print(nearby_random)
         # diagonals
         nearby_random.append(
             (
@@ -97,14 +99,14 @@ def generate_satellite_toroid(num_satellites_per_orbit, num_orbits, gs_num):
             )
             % (total_satellites)
         )
-        print(nearby_random)
+        # print(nearby_random)
         gs_edges = [(i, k) for k in nearby_random]
         G.add_edges_from(gs_edges)
 
     return G
 
 
-# check correctness, because I'm getting odd numbers here
+# odd numbers can come out of this due to the randomness of how networkx selects one possible shortest path
 def calculate_leaf_shortest_paths(G, leaves):
     significant_edges = []
     for source in leaves:
@@ -119,23 +121,182 @@ def calculate_leaf_shortest_paths(G, leaves):
     return Counter(significant_edges)
 
 
-num_satellites_per_orbit = 22
-num_orbits = 72
-ground_stations = 64
-toroidgraph = generate_satellite_toroid(
-    num_satellites_per_orbit, num_orbits, ground_stations
-)
-edges = calculate_leaf_shortest_paths(
-    toroidgraph,
-    [
-        i
-        for i in range(
-            num_satellites_per_orbit * num_orbits,
-            num_satellites_per_orbit * num_orbits + ground_stations,
-        )
-    ],
-)
+def generate_BA_with_attachments(total_satellites, k, ground_stations, seed):
+    random.seed(seed)
+    complete = nx.complete_graph(k)
+    G = nx.barabasi_albert_graph(total_satellites, k - 1, seed, complete)
+    # for now, cities are uniformly distributed around the resulting graph,
+    # but we can do preferential attachment based on degree as well
 
-print(edges)
-# nx.draw(toroidgraph)
-# plt.show()
+    claimed_centers = []
+    for i in range(
+        total_satellites,
+        total_satellites + ground_stations,
+    ):
+        random_satellite = 0
+        while True:
+            random_satellite = int(random.random() * total_satellites)
+            if random_satellite not in claimed_centers:
+                claimed_centers.append(random_satellite)
+                break
+
+        G.add_edges_from([(i, random_satellite)])
+
+    return G
+
+
+def generate_data(
+    num_satellites_per_orbit, num_orbits, ground_stations, max_power, percentile
+):
+    toroid_average_max = []
+    toroid_stdev = []
+    power_law_average_max = []
+    power_law_stdev = []
+
+    # the base toroidal graph has 2*num_satellites_per_orbit*num_orbits edges
+    # for a fixed k, a power law graph has (k*(k-1))/2 + (k-1)(n-k) edges
+    # for an equivalent amount of edges, the BA graph needs
+    # 2(num_satellites_per_orbit * num_orbits)/2
+    #
+    # as a result, the requisite amount of nodes is:
+    # (4*num_orbits*num_satellites_per_orbit - k**2 - k)/(2k-2) + k
+    k = 4
+    BA_node_count = (4 * num_orbits * num_satellites_per_orbit - k**2 + k) / (
+        2 * k - 2
+    ) + k
+
+    print(BA_node_count)
+    while ground_stations <= 2**max_power:
+        toroid_max_edge = []
+        power_law_max_edge = []
+        for i in range(5):
+            toroidgraph = generate_satellite_toroid(
+                num_satellites_per_orbit, num_orbits, ground_stations, i * 10
+            )
+            power_law_graph = generate_BA_with_attachments(
+                int(BA_node_count), 4, ground_stations, i * 10
+            )
+            toroid_edges = calculate_leaf_shortest_paths(
+                toroidgraph,
+                [
+                    i
+                    for i in range(
+                        toroidgraph.number_of_nodes() - ground_stations,
+                        toroidgraph.number_of_nodes(),
+                    )
+                ],
+            )
+            power_law_edges = calculate_leaf_shortest_paths(
+                power_law_graph,
+                [
+                    i
+                    for i in range(
+                        power_law_graph.number_of_nodes() - ground_stations,
+                        power_law_graph.number_of_nodes(),
+                    )
+                ],
+            )
+            toroid_edges = list(toroid_edges.values()) + [0] * (
+                toroidgraph.number_of_edges() - len(list(toroid_edges.values()))
+            )
+            power_law_edges = list(power_law_edges.values()) + [0] * (
+                power_law_graph.number_of_edges() - len(list(power_law_edges.values()))
+            )
+
+            # print(int(percentile * len(power_law_edges)))
+            access_percentile_toroid = sorted(toroid_edges)[
+                int(percentile * len(toroid_edges))
+            ]
+            access_percentile_power_law = sorted(power_law_edges)[
+                int(percentile * len(power_law_edges))
+            ]
+            # print(access_percentile_power_law)
+            toroid_max_edge.append(access_percentile_toroid)
+            power_law_max_edge.append(access_percentile_power_law)
+
+        toroid_average_max.append(sum(toroid_max_edge) / len(toroid_max_edge))
+        power_law_average_max.append(sum(power_law_max_edge) / len(power_law_max_edge))
+        toroid_stdev.append(np.std(toroid_max_edge))
+        power_law_stdev.append(np.std(power_law_max_edge))
+        ground_stations *= 2
+
+    return (toroid_average_max, power_law_average_max, toroid_stdev, power_law_stdev)
+
+
+gd = False
+
+
+def plot_data(
+    toroid_average_max, power_law_average_max, toroid_stdev, power_law_stdev, max_power
+):
+    plt.errorbar(
+        range(max_power),
+        toroid_average_max,
+        yerr=toroid_stdev,
+        label="Toroidal (Satellite)",
+    )
+    plt.errorbar(
+        range(max_power),
+        power_law_average_max,
+        yerr=power_law_stdev,
+        label="Power Law (Terrestrial)",
+    )
+    plt.xticks(range(0, max_power), [2**i for i in range(1, max_power + 1)])
+    plt.xlabel("# Stubs Connected to Backbone")
+    plt.ylabel("# Flows Through Edge with 95th-Percentile Utilization")
+    plt.title(
+        "95th-Percentile Edge Congestion in Toroidal and \n Barabási–Albert Power-Law Backbone "
+    )
+    plt.legend()
+    plt.show()
+
+
+max_power = 9
+if gd:
+    num_satellites_per_orbit = 22
+    num_orbits = 72
+    ground_stations = 2
+
+    (toroid_average_max, power_law_average_max, toroid_stdev, power_law_stdev) = (
+        generate_data(
+            num_satellites_per_orbit, num_orbits, ground_stations, max_power, 0.5
+        )
+    )
+
+    with open("toroid_average_max.json", "w+") as f:
+        json.dump(toroid_average_max, f)
+    with open("power_law_average_max.json", "w+") as f:
+        json.dump(power_law_average_max, f)
+    with open("toroid_average_max_stdev.json", "w+") as f:
+        json.dump(toroid_stdev, f)
+    with open("power_law_average_max_stdev.json", "w+") as f:
+        json.dump(power_law_stdev, f)
+
+    plot_data(
+        toroid_average_max,
+        power_law_average_max,
+        toroid_stdev,
+        power_law_stdev,
+        max_power,
+    )
+else:
+    toroid_average_max = []
+    power_law_average_max = []
+    toroid_stdev = []
+    power_law_stdev = []
+    with open("95th_percentile_same_edges/toroid_average_max.json") as f:
+        toroid_average_max = json.load(f)
+    with open("95th_percentile_same_edges/power_law_average_max.json") as f:
+        power_law_average_max = json.load(f)
+    with open("95th_percentile_same_edges/toroid_average_max_stdev.json") as f:
+        toroid_stdev = json.load(f)
+    with open("95th_percentile_same_edges/power_law_average_max_stdev.json") as f:
+        power_law_stdev = json.load(f)
+
+    plot_data(
+        toroid_average_max,
+        power_law_average_max,
+        toroid_stdev,
+        power_law_stdev,
+        max_power,
+    )

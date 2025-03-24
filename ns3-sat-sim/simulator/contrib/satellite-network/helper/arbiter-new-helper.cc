@@ -66,16 +66,20 @@ ArbiterNewHelper::ArbiterNewHelper(Ptr<BasicSimulation> basicSimulation, NodeCon
 
 		double left_neighbor_gamma_difference = 360.0 / (2 * m_satellites_per_orbit);
 		double right_neighbor_gamma_difference = -360.0 / (2 * m_satellites_per_orbit);
-
+		std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>> table_of_node;
+		for (int32_t i = 0; i < num_satellites; i++)
+		{
+			table_of_node.push_back(CreateOutboundInterfaceList(i));
+		}
 		for (int32_t i = 0; i < num_satellites; i++)
 		{
 			std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>> neighbors_of_neighbors;
 			neighbors_of_neighbors.resize(4);
-			auto table = CreateOutboundInterfaceList(i);
+			auto table = table_of_node.at(i);
 			// can memoize
 			for (int idx = 0; idx < 4; idx++)
 			{
-				neighbors_of_neighbors.at(idx) = CreateOutboundInterfaceList(std::get<0>(table.at(idx)));
+				neighbors_of_neighbors.at(idx) = table_of_node.at(std::get<0>(table.at(idx)));
 			}
 			Ptr<ArbiterNewSat> arbiter = CreateObject<ArbiterNewSat>(
 				m_nodes.Get(i), m_nodes, initial_forwarding_state[i], m_num_orbits, m_satellites_per_orbit,

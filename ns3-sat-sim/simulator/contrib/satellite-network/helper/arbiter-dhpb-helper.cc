@@ -66,8 +66,8 @@ ArbiterDhpbHelper::ArbiterDhpbHelper(Ptr<BasicSimulation> basicSimulation, NodeC
 	stack_vector.resize(num_satellites);
 	for (auto &elem : stack_vector)
 	{
-		NS_ASSERT(m_nodes.GetN() > num_satellites);
-		elem.resize(m_nodes.GetN() - num_satellites);
+		// like fq_codel, hash flows into 1024 buckets. for the flows we test, this results in no collision
+		elem.resize(1024);
 	}
 	double left_neighbor_gamma_difference = 360.0 / (2 * m_satellites_per_orbit);
 	double right_neighbor_gamma_difference = -360.0 / (2 * m_satellites_per_orbit);

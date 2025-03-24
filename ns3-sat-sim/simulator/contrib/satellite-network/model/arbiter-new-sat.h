@@ -34,9 +34,12 @@ namespace ns3
 class ArbiterNewSat : public ArbiterShortSat
 {
   public:
-	static const int32_t MINIMUM_FULLNESS_THRESHOLD = 20;
+	static const int32_t MINIMUM_FULLNESS_THRESHOLD = 30;
 	static const int64_t MINIMUM_FULLNESS_INTERVAL_NS = 10000000;
 
+	typedef std::tuple<NeighborCoordContainer::Direction, NeighborCoordContainer::Direction, bool, int32_t, int32_t,
+					   int64_t, int64_t>
+		distance_element;
 	static TypeId GetTypeId(void);
 
 	// Constructor for single forward next-hop forwarding state
@@ -64,6 +67,8 @@ class ArbiterNewSat : public ArbiterShortSat
   private:
 	std::tuple<int32_t, int32_t, int32_t> DetermineInterface(int16_t destination_alpha, int16_t destination_gamma,
 															 int32_t target_node_id);
+	std::vector<distance_element> PopulateDistances(int32_t current_hops, int16_t destination_alpha,
+													int16_t destination_gamma);
 
 	void SetInterfaceCongestionBits();
 

@@ -56,14 +56,13 @@ class ArbiterDhpbSat : public ArbiterShortSat
 	std::tuple<int32_t, int32_t, int32_t> ShortDecide(int16_t aa, int16_t ag, int16_t da, int16_t dg,
 													  int32_t source_node_id, int32_t target_node_id);
 
-	void IncreaseQueue(int32_t target_node_id);
-	void DecreaseQueue(int32_t target_node_id);
-	int64_t GetQueueSizeForNode(int32_t neighbor_id, uint32_t gid);
+	void IncreaseQueue(int32_t source_node_id, int32_t target_node_id);
+	void DecreaseQueue(int32_t source_node_id, int32_t target_node_id);
+	int64_t GetQueueSizeForFlow(int32_t neighbor_id, int32_t source_node_id, int32_t target_node_id);
 
   private:
 	std::tuple<int32_t, int32_t, int32_t> DetermineInterface(int16_t destination_alpha, int16_t destination_gamma,
-															 int16_t source_alpha, int16_t source_gamma,
-															 int32_t target_node_id);
+															 int32_t source_node_id, int32_t target_node_id);
 
 	// std::tuple<int8_t, int8_t, int8_t, int8_t> CompareSourceDest(int16_t source_alpha, int16_t source_gamma,
 	//															 int16_t destination_alpha, int16_t destination_gamma);
@@ -71,6 +70,7 @@ class ArbiterDhpbSat : public ArbiterShortSat
 	//						int16_t destination_alpha, int16_t destination_gamma);
 	int32_t GSLNodeIdToGSLIndex(int32_t id);
 	int32_t GSLIndexToGSLNodeId(int32_t id);
+	int64_t GetFlowMapping(int32_t source_node_id, int32_t target_node_id);
 
 	std::shared_ptr<std::vector<std::vector<int64_t>>> shared_data_for_satellites;
 	std::shared_ptr<std::vector<std::mutex>> shared_data_for_satellites_mutex;

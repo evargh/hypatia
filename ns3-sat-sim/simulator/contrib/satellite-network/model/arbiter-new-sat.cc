@@ -45,6 +45,66 @@ ArbiterNewSat::ArbiterNewSat(Ptr<Node> this_node, NodeContainer nodes,
 	shared_data_for_satellites->at(m_node_id) = 0;
 }
 
+std::vector<ArbiterNewSat::distance_element> ArbiterNewSat::PopulateDistances(int32_t current_hops,
+																			  int16_t destination_alpha,
+																			  int16_t destination_gamma)
+{
+	std::vector<distance_element> distances;
+	for (int neighbor_idx = 1; neighbor_idx < 5; neighbor_idx++)
+	{
+		// for each neighbor
+		std::vector<NeighborCoordContainer::Direction> direction_sequence;
+		direction_sequence.resize(2);
+		direction_sequence.at(0) = static_cast<NeighborCoordContainer::Direction>(neighbor_idx);
+
+		int64_t neighbor_distance_to_target = neighbors.GetSquaredEuclideanModularDistance(
+			direction_sequence.at(0), destination_alpha, destination_gamma);
+		bool neighbor_in_range =
+			neighbors.VerifyInRange(direction_sequence.at(0), destination_alpha, destination_gamma);
+
+		if (neighbor_in_range || neighbor_distance_to_target < current_hops)
+		{
+			auto neighbor_id = std::get<0>(m_neighbor_ids.at(neighbor_idx - 1));
+			int64_t congestion_to_neighbor = (GetSharedState(m_node_id) >> (neighbor_idx - 1)) & 1;
+			for (int neighbor_of_neighbor_idx = 1; neighbor_of_neighbor_idx < 5; neighbor_of_neighbor_idx++)
+			{
+				// look at their neighbors
+				int32_t neighbor_neighbor_id =
+					std::get<0>(m_neighbor_neighbors.at(neighbor_idx - 1).at(neighbor_of_neighbor_idx - 1));
+				if (neighbor_neighbor_id != m_node_id)
+				{
+					direction_sequence.at(1) = static_cast<NeighborCoordContainer::Direction>(neighbor_of_neighbor_idx);
+					std::tuple<int16_t, int16_t> coords = neighbors.GetCoordsFromSequence(direction_sequence);
+					int16_t neighbor_neighbor_distance_to_target =
+						neighbors.GetSquaredEuclideanModularDistance(coords, destination_alpha, destination_gamma);
+
+					if (neighbor_in_range || neighbor_neighbor_distance_to_target < neighbor_distance_to_target)
+					{
+						int64_t neighbor_congestion_to_neighbor =
+							(GetSharedState(neighbor_id) >> (neighbor_of_neighbor_idx - 1)) & 1;
+
+						NS_ASSERT_MSG(
+							(congestion_to_neighbor == 0 || congestion_to_neighbor == 1) &&
+								(neighbor_congestion_to_neighbor == 0 || neighbor_congestion_to_neighbor == 1),
+							"bitshift error");
+
+						distance_element this_dist = std::make_tuple(
+							static_cast<NeighborCoordContainer::Direction>(neighbor_idx),
+							static_cast<NeighborCoordContainer::Direction>(neighbor_of_neighbor_idx),
+							//    use the fact that the gamma/alpha differentials are constant to get
+							//    the position of their neighbors
+							neighbor_in_range, neighbor_distance_to_target, neighbor_neighbor_distance_to_target,
+							congestion_to_neighbor, neighbor_congestion_to_neighbor);
+
+						distances.push_back(this_dist);
+					}
+				}
+			}
+		}
+	}
+	return distances;
+}
+
 std::tuple<int32_t, int32_t, int32_t> ArbiterNewSat::DetermineInterface(int16_t destination_alpha,
 																		int16_t destination_gamma,
 																		int32_t target_node_id)
@@ -53,135 +113,80 @@ std::tuple<int32_t, int32_t, int32_t> ArbiterNewSat::DetermineInterface(int16_t 
 	{
 		return HandleClose(destination_alpha, destination_gamma, target_node_id);
 	}
-	int32_t current_distance = neighbors.GetSquaredEuclideanModularDistance(NeighborCoordContainer::SELF,
-																			destination_alpha, destination_gamma);
-	// generate a list of all next hops that are closer to the final target, ideally going to a functional approach
-	// iterate through that list, up to 0, and check the shared state
-	// load balance as a function of those and the distance of the nodes from the target
+	int32_t current_hops = neighbors.GetSquaredEuclideanModularDistance(NeighborCoordContainer::SELF, destination_alpha,
+																		destination_gamma);
 
-	// the next hops are constrained under a grid+ topology, there is a small search space of the next few hops.
-	//
-	// the sketch:
-	//    first, look at all the nodes that are one hop away
-	//    see which of their neighbors are closer than both you and your neighbor to the destination
-	//    see which interfaces go to those neighbors
-	//    forward to the satellite that posesses an uncongested interface that goes to the closest satellite
-	// store the first direction, the second direction, and then all the congestion information
-	typedef std::tuple<NeighborCoordContainer::Direction, NeighborCoordContainer::Direction, bool, int32_t, int64_t,
-					   int64_t>
-		distance_element;
+	std::vector<distance_element> distances = PopulateDistances(current_hops, destination_alpha, destination_gamma);
 
-	std::set<distance_element> distances;
-
-	// LEFT, DOWN, UP, RIGHT
-	for (int neighbor_idx = 1; neighbor_idx < 5; neighbor_idx++)
-	{
-		// for each neighbor
-		std::vector<NeighborCoordContainer::Direction> direction_sequence;
-		direction_sequence.resize(2);
-		direction_sequence.at(0) = static_cast<NeighborCoordContainer::Direction>(neighbor_idx);
-		for (int neighbor_of_neighbor_idx = 1; neighbor_of_neighbor_idx < 5; neighbor_of_neighbor_idx++)
-		{
-			// look at their neighbors
-			int32_t neighbor_neighbor_id =
-				std::get<0>(m_neighbor_neighbors.at(neighbor_idx - 1).at(neighbor_of_neighbor_idx - 1));
-			if (neighbor_neighbor_id != m_node_id)
-			{
-				direction_sequence.at(1) = static_cast<NeighborCoordContainer::Direction>(neighbor_of_neighbor_idx);
-				int64_t neighbor_congestion = GetSharedState(std::get<0>(m_neighbor_ids.at(neighbor_idx - 1)));
-				int64_t neighbor_neighbor_congestion = GetSharedState(neighbor_neighbor_id);
-
-				distance_element this_dist = std::make_tuple(
-					static_cast<NeighborCoordContainer::Direction>(neighbor_idx),
-					static_cast<NeighborCoordContainer::Direction>(neighbor_of_neighbor_idx),
-					//    use the fact that the gamma/alpha differentials are constant to get the position of their
-					//    neighbors
-					neighbors.VerifyInRange(direction_sequence.at(0), destination_alpha, destination_gamma),
-					neighbors.GetSquaredEuclideanModularDistance(neighbors.GetCoordsFromSequence(direction_sequence),
-																 destination_alpha, destination_gamma),
-					(neighbor_congestion >> (neighbor_idx - 1)),
-					(neighbor_neighbor_congestion >> (neighbor_of_neighbor_idx - 1)));
-
-				distances.emplace(this_dist);
-			}
-			// get their position
-		}
-	}
-	// for each satellite in your list of neighbors
-	//    combine your own interface congestion information, and neighbor congestion information, to determine likely
-	//    congestion along that path forward to the most uncongested interface possible. if theres a tie, forward to the
-	//    closer interface
-	//
-
-	std::vector<distance_element> thresholded_distances;
-	std::copy_if(
-		distances.begin(), distances.end(), std::back_inserter(thresholded_distances),
-		[current_distance](distance_element i) { return std::get<2>(i) || (std::get<3>(i) < current_distance); });
-
-	std::sort(thresholded_distances.begin(), thresholded_distances.end(), [](distance_element a, distance_element b) {
+	std::sort(distances.begin(), distances.end(), [](distance_element a, distance_element b) {
 		if (std::get<2>(a) && !std::get<2>(b))
 			return true;
-		else
-			return (std::get<3>(a)) < std::get<3>(b);
+		if (std::get<3>(a) == std::get<3>(b))
+			return (std::get<4>(a)) < std::get<4>(b);
+		return std::get<3>(a) < std::get<3>(b);
 	});
-	NS_LOG_DEBUG(m_node_id << " num viable targets to " << target_node_id << ": " << thresholded_distances.size());
-	// consider which interface to use here, can be more complex than this
-	for (int i = 0; i < thresholded_distances.size(); i++)
-	{
-		// first, identify the interfaces that go directly to the loop
-		// if this condition is true, we have direct access
-		if (std::get<2>(thresholded_distances.at(0)))
-		{
-			int option = 0;
-			while (option < thresholded_distances.size() && std::get<2>(thresholded_distances.at(option)))
-			{
-				if (std::get<4>(thresholded_distances.at(option)) == 0)
-				{
-					auto if_index = m_neighbor_ids.at(std::get<0>(thresholded_distances.at(option)) - 1);
-					return if_index;
-				}
-				option += 1;
-			}
-			// if all of my interfaces to that node are congested, just pick the first one
 
-			auto if_index = m_neighbor_ids.at(std::get<0>(thresholded_distances.at(0)) - 1);
-			return if_index;
-		}
-		// if we don't have that, then we optimize based on two hop distance
-		// refactor this to be smarter later, this is just a test for now
-		int option = 0;
-		while (option < thresholded_distances.size())
-		{
-			if (std::get<4>(thresholded_distances.at(option)) + std::get<5>(thresholded_distances.at(option)) == 0)
-			{
-				auto if_index = m_neighbor_ids.at(std::get<0>(thresholded_distances.at(option)) - 1);
-				return if_index;
-			}
-			option += 1;
-		}
-		option = 0;
-		while (option < thresholded_distances.size())
-		{
-			if (std::get<4>(thresholded_distances.at(option)) + std::get<5>(thresholded_distances.at(option)) == 1)
-			{
-				auto if_index = m_neighbor_ids.at(std::get<0>(thresholded_distances.at(option)) - 1);
-				return if_index;
-			}
-			option += 1;
-		}
-		option = 0;
-		while (option < thresholded_distances.size())
-		{
-			if (std::get<4>(thresholded_distances.at(option)) + std::get<5>(thresholded_distances.at(option)) == 2)
-			{
-				auto if_index = m_neighbor_ids.at(std::get<0>(thresholded_distances.at(option)) - 1);
-				return if_index;
-			}
-			option += 1;
-		}
+	std::vector<distance_element> very_close_distances;
+	std::copy_if(distances.begin(), distances.end(), std::back_inserter(very_close_distances),
+				 [](distance_element i) { return std::get<2>(i); });
+
+	std::vector<distance_element> zero_congestion_distances;
+	std::copy_if(distances.begin(), distances.end(), std::back_inserter(zero_congestion_distances),
+				 [](distance_element i) { return std::get<5>(i) + std::get<6>(i) == 0; });
+
+	std::vector<distance_element> first_congestion_distances;
+	std::copy_if(distances.begin(), distances.end(), std::back_inserter(first_congestion_distances),
+				 [](distance_element i) { return std::get<5>(i) == 1 && std::get<6>(i) == 0; });
+
+	std::vector<distance_element> second_congestion_distances;
+	std::copy_if(distances.begin(), distances.end(), std::back_inserter(second_congestion_distances),
+				 [](distance_element i) { return std::get<5>(i) == 0 && std::get<6>(i) == 1; });
+
+	std::vector<distance_element> all_congestion_distances;
+	std::copy_if(distances.begin(), distances.end(), std::back_inserter(all_congestion_distances),
+				 [](distance_element i) { return std::get<5>(i) == 1 && std::get<6>(i) == 1; });
+
+	NS_ASSERT_MSG(distances.size() != 0, "no one to forward to");
+	NS_LOG_DEBUG(m_node_id << " num viable targets to " << target_node_id << ": " << distances.size());
+
+	Ptr<UniformRandomVariable> x = CreateObject<UniformRandomVariable>();
+	x->SetAttribute("Min", DoubleValue(0.0));
+
+	if (very_close_distances.size() != 0)
+	{
+		// at low congestion, be deterministic
+		auto if_index = m_neighbor_ids.at(std::get<0>(very_close_distances.at(0)) - 1);
+		return if_index;
 	}
-	NS_ASSERT_MSG(thresholded_distances.size() != 0, "something incorrect with determinining shortest path");
-	auto if_index = m_neighbor_ids[std::get<0>(thresholded_distances[0]) - 1];
+	if (zero_congestion_distances.size() != 0)
+	{
+		// ditto
+		auto if_index = m_neighbor_ids.at(std::get<0>(zero_congestion_distances.at(0)) - 1);
+		return if_index;
+	}
+	if (second_congestion_distances.size() != 0)
+	{
+		// ditto
+		auto if_index = m_neighbor_ids.at(std::get<0>(second_congestion_distances.at(0)) - 1);
+		return if_index;
+	}
+	if (first_congestion_distances.size() != 0)
+	{
+		// as congestion increases, load balance
+		NS_LOG_DEBUG(m_node_id << " IS LOAD BALANCING");
+		x->SetAttribute("Max", DoubleValue(first_congestion_distances.size() - 1));
+		auto if_index = m_neighbor_ids.at(std::get<0>(first_congestion_distances.at(x->GetInteger())) - 1);
+		return if_index;
+	}
+	if (all_congestion_distances.size() != 0)
+	{
+		NS_LOG_DEBUG(m_node_id << " IS LOAD BALANCING");
+		x->SetAttribute("Max", DoubleValue(all_congestion_distances.size() - 1));
+		auto if_index = m_neighbor_ids.at(std::get<0>(all_congestion_distances.at(x->GetInteger())) - 1);
+		return if_index;
+	}
+	NS_ASSERT_MSG(false, "interface check failed");
+	auto if_index = m_neighbor_ids.at(std::get<0>(distances.at(0)) - 1);
 	return if_index;
 }
 
@@ -200,39 +205,46 @@ std::tuple<int32_t, int32_t, int32_t> ArbiterNewSat::ShortDecide(int16_t aa, int
 
 void ArbiterNewSat::SetInterfaceCongestionBits()
 {
-	// when an interface is found to be at an intolerable level, record that timestamp
-	// if the interface goes under `interval` in that timestamp, its not congested
-	// otherwise, set it as congested, and keep it as congested until the queue goes under intolerable levels
+	// when an interface is found to be at an intolerable level, freeze a timestamp
+	// if the interface stays congested for an appropriate amount of time after that frozen timestamp, then mark the
+	// interface as experiencing a standing queue otherwise, set it as congested, and keep it as congested until the
+	// queue goes under intolerable levels
 	for (auto i : m_neighbor_ids)
 	{
-		int32_t id, outgoing_if, dummy;
-		std::tie(id, outgoing_if, dummy) = i;
-		auto num_packets = m_nodes.Get(m_node_id)
-							   ->GetObject<Ipv4>()
-							   ->GetNetDevice(outgoing_if)
-							   ->GetObject<PointToPointLaserNetDevice>()
-							   ->GetQueue()
-							   ->GetNPackets();
+		int32_t id, outgoing_if_id, dummy;
+		std::tie(id, outgoing_if_id, dummy) = i;
+		Ptr<NetDevice> outgoing_if = m_nodes.Get(m_node_id)->GetObject<Ipv4>()->GetNetDevice(outgoing_if_id);
+		NS_ASSERT_MSG(outgoing_if != 0, "No NetDevice on Interface");
+		auto num_packets = outgoing_if->GetObject<PointToPointLaserNetDevice>()->GetQueue()->GetNPackets();
 		bool under_target = num_packets < ArbiterNewSat::MINIMUM_FULLNESS_THRESHOLD;
+
+		int64_t current_congestion = GetSharedState(m_node_id);
+		int64_t this_interface_congestion_flag = (current_congestion >> (outgoing_if_id - 1)) & 1;
+		NS_ASSERT_MSG(this_interface_congestion_flag == 0 || this_interface_congestion_flag == 1,
+					  "Flag incorrectly retrieved");
+
 		if (under_target)
 		{
 			// update the timestamp regardless
-			m_interface_congestion_timer.at(outgoing_if - 1) = Simulator::Now().GetNanoSeconds();
-			// writing is not multithreaded
-			// if the node is not currently marked as congested
-			if ((GetSharedState(m_node_id) >> (outgoing_if - 1) & 1) == 1)
+			m_interface_congestion_timer.at(outgoing_if_id - 1) = Simulator::Now().GetNanoSeconds();
+			// if the node is currently marked as congested
+			if (this_interface_congestion_flag == 1)
 			{
-				auto newval = GetSharedState(m_node_id) - (1 << (outgoing_if - 1));
+				auto newval = current_congestion - (1 << (outgoing_if_id - 1));
 				SetSharedState(newval);
+				NS_LOG_DEBUG(m_node_id << " DE-CONGESTED ON INTERFACE " << outgoing_if_id << ", FROM "
+									   << current_congestion << " TO " << newval);
 			}
 		}
 		// if the node is currently marked as uncongested
-		else if ((GetSharedState(m_node_id) >> (outgoing_if - 1) & 1) == 0 &&
+		else if (this_interface_congestion_flag == 0 &&
 				 Simulator::Now().GetNanoSeconds() >
-					 m_interface_congestion_timer.at(outgoing_if - 1) + ArbiterNewSat::MINIMUM_FULLNESS_INTERVAL_NS)
+					 m_interface_congestion_timer.at(outgoing_if_id - 1) + ArbiterNewSat::MINIMUM_FULLNESS_INTERVAL_NS)
 		{
-			auto newval = GetSharedState(m_node_id) + (1 << (outgoing_if - 1));
+			auto newval = current_congestion + (1 << (outgoing_if_id - 1));
 			SetSharedState(newval);
+			NS_LOG_DEBUG(m_node_id << " CONGESTED ON INTERFACE " << outgoing_if_id << ", FROM " << current_congestion
+								   << " TO " << newval);
 		}
 	}
 	//    get their queue lengths. if the queue lengths are under 20 packets, store the timestamp for that moment
@@ -269,21 +281,16 @@ void ArbiterNewSat::SetSingleForwardState(int32_t target_node_id, int32_t next_n
 
 void ArbiterNewSat::SetSharedState(int64_t val)
 {
+	NS_ASSERT_MSG(val >= 0 && val <= 15, "Invalid Shared State Value");
 	std::lock_guard<std::mutex> guard(shared_data_for_satellites_mutex->at(m_node_id));
 	shared_data_for_satellites->at(m_node_id) = val;
 }
 
 int64_t ArbiterNewSat::GetSharedState(size_t loc)
 {
-	if (loc < num_orbits * num_satellites_per_orbit)
-	{
-		std::lock_guard<std::mutex> guard(shared_data_for_satellites_mutex->at(loc));
-		return shared_data_for_satellites->at(loc);
-	}
-	else
-	{
-		return -1;
-	}
+	NS_ASSERT_MSG(loc >= 0 && loc < num_orbits * num_satellites_per_orbit, "Incorrect Index Access");
+	std::lock_guard<std::mutex> guard(shared_data_for_satellites_mutex->at(loc));
+	return shared_data_for_satellites->at(loc);
 }
 
 } // namespace ns3

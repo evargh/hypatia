@@ -245,8 +245,9 @@ bool GSLNetDevice::TransmitStart(Ptr<Packet> p, const Address dest)
 		{
 			Ipv4Header ip;
 			p_cpy->PeekHeader(ip);
+			uint32_t src = arb_dhpb->ResolveNodeIdFromIp(ip.GetSource().Get());
 			uint32_t dest = arb_dhpb->ResolveNodeIdFromIp(ip.GetDestination().Get());
-			arb_dhpb->DecreaseQueue(dest);
+			arb_dhpb->DecreaseQueue(src, dest);
 		}
 	}
 	NS_LOG_DEBUG("From " << m_node->GetId() << " -- UID is " << p->GetUid() << " -- Delay is "
@@ -367,8 +368,9 @@ void GSLNetDevice::Receive(Ptr<Packet> packet)
 			{
 				Ipv4Header ip;
 				p_cpy->PeekHeader(ip);
+				uint32_t src = arb_dhpb->ResolveNodeIdFromIp(ip.GetSource().Get());
 				uint32_t dest = arb_dhpb->ResolveNodeIdFromIp(ip.GetDestination().Get());
-				arb_dhpb->IncreaseQueue(dest);
+				arb_dhpb->IncreaseQueue(src, dest);
 			}
 		}
 

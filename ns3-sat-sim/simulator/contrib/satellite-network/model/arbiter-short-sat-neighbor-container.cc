@@ -55,6 +55,44 @@ std::tuple<double, double> ArbiterShortSat::NeighborCoordContainer::TransformByD
 	}
 }
 
+int16_t ArbiterShortSat::NeighborCoordContainer::GetHopcount(Direction d, int16_t destination_alpha,
+															 int16_t destination_gamma)
+{
+	return GetHopcount(GetCoords(d), destination_alpha, destination_gamma);
+}
+
+int16_t ArbiterShortSat::NeighborCoordContainer::GetHopcount(std::tuple<int16_t, int16_t> coords,
+															 int16_t destination_alpha, int16_t destination_gamma)
+{
+	// more approximate, since we don't have the underlying gamma
+	int16_t coordinate_alpha = std::get<0>(coords);
+	int16_t coordinate_gamma = std::get<1>(coords);
+	int16_t horizontal_distance = GetAlphaModularDistance(coordinate_alpha, destination_alpha);
+	int16_t horizontal_hops = horizontal_distance / ArbiterShortSat::CELL_SCALING_FACTOR;
+	int8_t alpha_direction = CheckIfAlphaIncrease(coordinate_alpha, destination_alpha);
+	if (alpha_direction == 0)
+	{
+		return horizontal_distance + GetGammaModularDistance(coordinate_gamma, destination_gamma);
+	}
+	else if (alpha_direction == 1)
+	{
+		// as long as the inter-orbit phasing is larger than our gamma resolution, then there shouldnt be a problem with
+		// this rounding
+		// the accumulated phase aliasing to something else isnt an issue for starlink unless you go over half the globe
+		double gamma_after_increase =
+			std::fmod(float(coordinate_gamma) * 360.0 / (m_gamma_base) + m_rngd * horizontal_hops, 360);
+		return horizontal_distance + GetGammaModularDistance(CreateGammaCell(gamma_after_increase), destination_gamma);
+	}
+	else if (alpha_direction == -1)
+	{
+		double gamma_after_increase =
+			std::fmod(float(coordinate_gamma) * 360.0 / (m_gamma_base) + m_lngd * horizontal_hops, 360);
+		return horizontal_distance + GetGammaModularDistance(CreateGammaCell(gamma_after_increase), destination_gamma);
+	}
+	NS_ASSERT_MSG(false, "direction check failed");
+	return -1;
+}
+
 int16_t ArbiterShortSat::NeighborCoordContainer::GetAlphaModularDistance(Direction d, int16_t destination_alpha)
 {
 
@@ -62,10 +100,24 @@ int16_t ArbiterShortSat::NeighborCoordContainer::GetAlphaModularDistance(Directi
 													   m_alpha_base);
 }
 
+int16_t ArbiterShortSat::NeighborCoordContainer::GetAlphaModularDistance(int16_t coordinate_alpha,
+																		 int16_t destination_alpha)
+{
+
+	return ModularArithmeticHelper::GetModularDistance(coordinate_alpha, destination_alpha, m_alpha_base);
+}
+
 int16_t ArbiterShortSat::NeighborCoordContainer::GetGammaModularDistance(Direction d, int16_t destination_gamma)
 {
 	return ModularArithmeticHelper::GetModularDistance(CreateGammaCell(std::get<1>(m_coords.at(d))), destination_gamma,
 													   m_gamma_base);
+}
+
+int16_t ArbiterShortSat::NeighborCoordContainer::GetGammaModularDistance(int16_t coordinate_gamma,
+																		 int16_t destination_gamma)
+{
+
+	return ModularArithmeticHelper::GetModularDistance(coordinate_gamma, destination_gamma, m_gamma_base);
 }
 
 int8_t ArbiterShortSat::NeighborCoordContainer::CheckIfAlphaIncrease(Direction d, int16_t destination_alpha)

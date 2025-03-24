@@ -58,7 +58,8 @@ std::tuple<int32_t, int32_t, int32_t> ArbiterShortSat::HandleClose(int16_t desti
 			if (neighbors.VerifyInRange(NeighborCoordContainer::RIGHT, destination_alpha, destination_gamma))
 				return m_neighbor_ids[3]; // go right (interface 4)
 			else if (neighbors.VerifyInRange(NeighborCoordContainer::UP, destination_alpha, destination_gamma))
-				return m_neighbor_ids[2]; // go up (interface 3)
+				return m_neighbor_ids[2]; // go up (interface 3), in case theres a rounding error for the ground station
+										  // cell
 			else
 			{
 				NS_ASSERT_MSG(false, "routing failure directly up");
@@ -69,7 +70,7 @@ std::tuple<int32_t, int32_t, int32_t> ArbiterShortSat::HandleClose(int16_t desti
 			if (neighbors.VerifyInRange(NeighborCoordContainer::LEFT, destination_alpha, destination_gamma))
 				return m_neighbor_ids[0]; // go left (interface 1)
 			else if (neighbors.VerifyInRange(NeighborCoordContainer::DOWN, destination_alpha, destination_gamma))
-				return m_neighbor_ids[1]; // go down (interface 2)
+				return m_neighbor_ids[1]; // go down (interface 2), again in case of a rounding error
 			else
 				NS_ASSERT_MSG(false, "routing failure directly down");
 		}

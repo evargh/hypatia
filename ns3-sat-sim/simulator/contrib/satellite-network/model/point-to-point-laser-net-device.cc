@@ -259,8 +259,9 @@ bool PointToPointLaserNetDevice::TransmitStart(Ptr<Packet> p)
 		{
 			Ipv4Header ip;
 			p_cpy->PeekHeader(ip);
+			uint32_t src = arb_dhpb->ResolveNodeIdFromIp(ip.GetSource().Get());
 			uint32_t dest = arb_dhpb->ResolveNodeIdFromIp(ip.GetDestination().Get());
-			arb_dhpb->DecreaseQueue(dest);
+			arb_dhpb->DecreaseQueue(src, dest);
 		}
 	}
 	NS_LOG_DEBUG("From " << m_node->GetId() << " -- To " << m_destination_node->GetId() << " -- UID is " << p->GetUid()
@@ -375,8 +376,9 @@ void PointToPointLaserNetDevice::Receive(Ptr<Packet> packet)
 			{
 				Ipv4Header ip;
 				p_cpy->PeekHeader(ip);
+				uint32_t src = arb_dhpb->ResolveNodeIdFromIp(ip.GetSource().Get());
 				uint32_t dest = arb_dhpb->ResolveNodeIdFromIp(ip.GetDestination().Get());
-				arb_dhpb->IncreaseQueue(dest);
+				arb_dhpb->IncreaseQueue(src, dest);
 			}
 		}
 		NS_LOG_DEBUG("From " << m_destination_node->GetId() << " -- To " << m_node->GetId() << " -- UID is "
