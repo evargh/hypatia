@@ -95,14 +95,14 @@ std::tuple<int16_t, int16_t> ArbiterShortSat::NeighborCoordContainer::GetHopcoun
 		// this rounding
 		// the accumulated phase aliasing to something else isnt an issue for starlink unless you go over half the globe
 		double gamma_after_increase =
-			std::fmod(float(coordinate_gamma) * 360.0 / (m_gamma_base) + m_rngd * horizontal_hops, 360);
+			std::fmod(float(coordinate_gamma) * 360.0 / (m_gamma_base) + m_rngd * float(horizontal_hops), 360);
 		return std::make_tuple(horizontal_distance,
 							   GetGammaModularDistance(CreateGammaCell(gamma_after_increase), destination_gamma));
 	}
 	else if (alpha_direction == -1)
 	{
 		double gamma_after_increase =
-			std::fmod(float(coordinate_gamma) * 360.0 / (m_gamma_base) + m_lngd * horizontal_hops, 360);
+			std::fmod(float(coordinate_gamma) * 360.0 / (m_gamma_base) + m_lngd * float(horizontal_hops), 360);
 		return std::make_tuple(horizontal_distance,
 							   GetGammaModularDistance(CreateGammaCell(gamma_after_increase), destination_gamma));
 	}

@@ -47,8 +47,9 @@ ArbiterNewSat::ArbiterNewSat(Ptr<Node> this_node, NodeContainer nodes,
 
 float ArbiterNewSat::GetEstimatedPropagationDelay(int32_t horizontal_hops, int32_t vertical_hops)
 {
-	return INTER_ORBIT_PROPAGATION_DELAY_SECONDS * float(horizontal_hops) +
-		   INTRA_ORBIT_PROPAGATION_DELAY_SECONDS * float(vertical_hops);
+	return (INTER_ORBIT_PROPAGATION_DELAY_SECONDS * float(horizontal_hops) +
+			INTRA_ORBIT_PROPAGATION_DELAY_SECONDS * float(vertical_hops)) /
+		   float(ArbiterShortSat::CELL_SCALING_FACTOR);
 }
 
 std::vector<ArbiterNewSat::distance_element> ArbiterNewSat::PopulateDistances(int32_t current_hops,
@@ -104,41 +105,42 @@ std::vector<ArbiterNewSat::distance_element> ArbiterNewSat::PopulateDistances(in
 						if (neighbor_idx == NeighborCoordContainer::LEFT ||
 							neighbor_idx == NeighborCoordContainer::RIGHT)
 						{
-							horizontal_hops_to_neighbor += 1;
+							horizontal_hops_to_neighbor += ArbiterShortSat::CELL_SCALING_FACTOR;
 						}
 						if (neighbor_of_neighbor_idx == NeighborCoordContainer::LEFT ||
 							neighbor_of_neighbor_idx == NeighborCoordContainer::RIGHT)
 						{
-							horizontal_hops_to_neighbor += 1;
+							horizontal_hops_to_neighbor += ArbiterShortSat::CELL_SCALING_FACTOR;
 						}
 						if (neighbor_idx == NeighborCoordContainer::UP || neighbor_idx == NeighborCoordContainer::DOWN)
 						{
-							vertical_hops_to_neighbor += 1;
+							vertical_hops_to_neighbor += ArbiterShortSat::CELL_SCALING_FACTOR;
 						}
 						if (neighbor_of_neighbor_idx == NeighborCoordContainer::UP ||
 							neighbor_of_neighbor_idx == NeighborCoordContainer::DOWN)
 						{
-							vertical_hops_to_neighbor += 1;
+							vertical_hops_to_neighbor += ArbiterShortSat::CELL_SCALING_FACTOR;
 						}
 
 						float metric_to_neighbor = 0;
+						float prop_delay_to_neighbor =
+							GetEstimatedPropagationDelay(horizontal_hops_to_neighbor, vertical_hops_to_neighbor);
+
 						if (congestion_to_neighbor + neighbor_congestion_to_neighbor == 0)
 						{
-							metric_to_neighbor =
-								GetEstimatedPropagationDelay(horizontal_hops_to_neighbor, vertical_hops_to_neighbor) +
-								2 * MINIMUM_FULLNESS_THRESHOLD * 1500.0 / float(LINK_BANDWIDTH);
+							metric_to_neighbor = prop_delay_to_neighbor +
+												 2 * MINIMUM_FULLNESS_THRESHOLD * 1500.0 / float(LINK_BANDWIDTH);
 						}
 						else if (congestion_to_neighbor + neighbor_congestion_to_neighbor == 1)
 						{
 							metric_to_neighbor =
-								GetEstimatedPropagationDelay(horizontal_hops_to_neighbor, vertical_hops_to_neighbor) +
+								prop_delay_to_neighbor +
 								(LINK_QUEUE_SIZE + MINIMUM_FULLNESS_THRESHOLD) * 1500.0 / float(LINK_BANDWIDTH);
 						}
 						else if (congestion_to_neighbor + neighbor_congestion_to_neighbor == 2)
 						{
 							metric_to_neighbor =
-								GetEstimatedPropagationDelay(horizontal_hops_to_neighbor, vertical_hops_to_neighbor) +
-								2 * LINK_QUEUE_SIZE * 1500.0 / float(LINK_BANDWIDTH);
+								prop_delay_to_neighbor + 2 * LINK_QUEUE_SIZE * 1500.0 / float(LINK_BANDWIDTH);
 						}
 						else
 						{
@@ -146,8 +148,7 @@ std::vector<ArbiterNewSat::distance_element> ArbiterNewSat::PopulateDistances(in
 						}
 
 						float neighbor_metric_to_destination =
-							INTER_ORBIT_PROPAGATION_DELAY_SECONDS * float(horizontal_hops) +
-							INTRA_ORBIT_PROPAGATION_DELAY_SECONDS * float(vertical_hops);
+							GetEstimatedPropagationDelay(horizontal_hops, vertical_hops);
 
 						// direction, direction, is in range, propagation delay to this neighbor based on hops +
 						// standing queue delay, propagation delay to destination based on hops
