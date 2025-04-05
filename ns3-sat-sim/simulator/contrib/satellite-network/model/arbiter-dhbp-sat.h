@@ -17,8 +17,8 @@
  * Author: Simon               2020
  */
 
-#ifndef ARBITER_DHPB_SAT_H
-#define ARBITER_DHPB_SAT_H
+#ifndef ARBITER_DHBP_SAT_H
+#define ARBITER_DHBP_SAT_H
 
 #include "ns3/abort.h"
 #include "ns3/arbiter-short-sat.h"
@@ -33,13 +33,13 @@
 namespace ns3
 {
 
-class ArbiterDhpbSat : public ArbiterShortSat
+class ArbiterDhbpSat : public ArbiterShortSat
 {
   public:
 	static TypeId GetTypeId(void);
 
 	// Constructor for single forward next-hop forwarding state
-	ArbiterDhpbSat(Ptr<Node> this_node, NodeContainer nodes,
+	ArbiterDhbpSat(Ptr<Node> this_node, NodeContainer nodes,
 				   std::vector<std::tuple<int32_t, int32_t, int32_t>> next_hop_list, int64_t n_o, int64_t s_p_o,
 				   std::shared_ptr<std::vector<std::vector<int64_t>>> sdfs,
 				   std::shared_ptr<std::vector<std::mutex>> sdfsm,
@@ -78,4 +78,4 @@ class ArbiterDhpbSat : public ArbiterShortSat
 
 } // namespace ns3
 
-#endif // ARBITER_DHPB_SAT_H
+#endif // ARBITER_DHBP_SAT_H

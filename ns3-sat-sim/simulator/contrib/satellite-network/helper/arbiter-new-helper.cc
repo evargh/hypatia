@@ -243,8 +243,6 @@ void ArbiterNewHelper::SetRoutingParams()
 		if (mm != nullptr)
 		{
 			std::tuple<double, double, double, double> pos = CartesianToShort(mm->GetPosition());
-			NS_LOG_DEBUG(current_node_id << ": " << std::get<0>(pos) << " " << std::get<1>(pos) << " "
-										 << std::get<2>(pos) << " " << std::get<3>(pos));
 
 			short_table.push_back(pos);
 		}
@@ -291,14 +289,16 @@ void ArbiterNewHelper::UpdateOrbitalParams(int64_t t)
 			double mean_anomaly = std::stod(line2.substr(43, 8));
 			double inclination = std::stod(line2.substr(8, 8));
 
-			NS_LOG_DEBUG("RAAN: " << RAAN << " -- Mean Motion: " << mean_motion << " -- Mean Anomaly: " << mean_anomaly
-								  << " -- Inclination: " << inclination);
+			// NS_LOG_DEBUG("RAAN: " << RAAN << " -- Mean Motion: " << mean_motion << " -- Mean Anomaly: " <<
+			// mean_anomaly
+			//				  << " -- Inclination: " << inclination);
 
 			double satellite_alpha = std::fmod(360 + RAAN - 360 * t / EARTH_ORBIT_TIME_NS, 360);
 			double satellite_orbital_period = (1 / mean_motion) * 24 * 60 * 60 * 1000000000;
 			double satellite_gamma = std::fmod(360 + mean_anomaly + 360 * t / satellite_orbital_period, 360);
 			m_satelliteInclination = inclination;
 
+			NS_LOG_DEBUG(current_node_id << ": " << satellite_alpha << " " << satellite_gamma);
 			m_sat_arbiters.at(current_node_id)->SetShortParams(satellite_alpha, satellite_gamma);
 		}
 	}

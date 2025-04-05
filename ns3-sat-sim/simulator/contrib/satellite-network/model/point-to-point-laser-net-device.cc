@@ -33,7 +33,7 @@
 #include "ns3/ppp-header.h"
 #include "point-to-point-laser-net-device.h"
 #include "point-to-point-laser-channel.h"
-#include "ns3/arbiter-dhpb-sat.h"
+#include "ns3/arbiter-dhbp-sat.h"
 #include "ns3/ipv4-arbiter-routing.h"
 
 namespace ns3
@@ -249,9 +249,9 @@ bool PointToPointLaserNetDevice::TransmitStart(Ptr<Packet> p)
 		// result is always true anyway, so there should be no drop
 		m_phyTxDropTrace(p);
 	}
-	else if (arb->GetInstanceTypeId() == TypeId::LookupByName("ns3::ArbiterDhpbSat"))
+	else if (arb->GetInstanceTypeId() == TypeId::LookupByName("ns3::ArbiterDhbpSat"))
 	{
-		Ptr<ArbiterDhpbSat> arb_dhpb = DynamicCast<ArbiterDhpbSat>(arb);
+		Ptr<ArbiterDhbpSat> arb_dhbp = DynamicCast<ArbiterDhbpSat>(arb);
 		Ptr<Packet> p_cpy = p->Copy();
 		uint16_t protocol = 0;
 		ProcessHeader(p_cpy, protocol);
@@ -259,9 +259,9 @@ bool PointToPointLaserNetDevice::TransmitStart(Ptr<Packet> p)
 		{
 			Ipv4Header ip;
 			p_cpy->PeekHeader(ip);
-			uint32_t src = arb_dhpb->ResolveNodeIdFromIp(ip.GetSource().Get());
-			uint32_t dest = arb_dhpb->ResolveNodeIdFromIp(ip.GetDestination().Get());
-			arb_dhpb->DecreaseQueue(src, dest);
+			uint32_t src = arb_dhbp->ResolveNodeIdFromIp(ip.GetSource().Get());
+			uint32_t dest = arb_dhbp->ResolveNodeIdFromIp(ip.GetDestination().Get());
+			arb_dhbp->DecreaseQueue(src, dest);
 		}
 	}
 	NS_LOG_DEBUG("From " << m_node->GetId() << " -- To " << m_destination_node->GetId() << " -- UID is " << p->GetUid()
@@ -368,17 +368,17 @@ void PointToPointLaserNetDevice::Receive(Ptr<Packet> packet)
 
 		Ptr<Arbiter> arb =
 			m_node->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4ArbiterRouting>()->GetArbiter();
-		if (arb->GetInstanceTypeId() == TypeId::LookupByName("ns3::ArbiterDhpbSat"))
+		if (arb->GetInstanceTypeId() == TypeId::LookupByName("ns3::ArbiterDhbpSat"))
 		{
-			Ptr<ArbiterDhpbSat> arb_dhpb = DynamicCast<ArbiterDhpbSat>(arb);
+			Ptr<ArbiterDhbpSat> arb_dhbp = DynamicCast<ArbiterDhbpSat>(arb);
 			Ptr<Packet> p_cpy = packet->Copy();
 			if (protocol == 0x0800)
 			{
 				Ipv4Header ip;
 				p_cpy->PeekHeader(ip);
-				uint32_t src = arb_dhpb->ResolveNodeIdFromIp(ip.GetSource().Get());
-				uint32_t dest = arb_dhpb->ResolveNodeIdFromIp(ip.GetDestination().Get());
-				arb_dhpb->IncreaseQueue(src, dest);
+				uint32_t src = arb_dhbp->ResolveNodeIdFromIp(ip.GetSource().Get());
+				uint32_t dest = arb_dhbp->ResolveNodeIdFromIp(ip.GetDestination().Get());
+				arb_dhbp->IncreaseQueue(src, dest);
 			}
 		}
 		NS_LOG_DEBUG("From " << m_destination_node->GetId() << " -- To " << m_node->GetId() << " -- UID is "

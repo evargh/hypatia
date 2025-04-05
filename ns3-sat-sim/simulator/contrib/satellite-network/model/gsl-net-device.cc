@@ -33,7 +33,7 @@
 #include "ns3/node-container.h"
 #include "gsl-net-device.h"
 #include "gsl-channel.h"
-#include "ns3/arbiter-dhpb-sat.h"
+#include "ns3/arbiter-dhbp-sat.h"
 #include "ns3/ipv4-arbiter-routing.h"
 
 namespace ns3
@@ -235,9 +235,9 @@ bool GSLNetDevice::TransmitStart(Ptr<Packet> p, const Address dest)
 	{
 		m_phyTxDropTrace(p);
 	}
-	else if (arb->GetInstanceTypeId() == TypeId::LookupByName("ns3::ArbiterDhpbSat"))
+	else if (arb->GetInstanceTypeId() == TypeId::LookupByName("ns3::ArbiterDhbpSat"))
 	{
-		Ptr<ArbiterDhpbSat> arb_dhpb = DynamicCast<ArbiterDhpbSat>(arb);
+		Ptr<ArbiterDhbpSat> arb_dhbp = DynamicCast<ArbiterDhbpSat>(arb);
 		Ptr<Packet> p_cpy = p->Copy();
 		uint16_t protocol = 0;
 		ProcessHeader(p_cpy, protocol);
@@ -245,9 +245,9 @@ bool GSLNetDevice::TransmitStart(Ptr<Packet> p, const Address dest)
 		{
 			Ipv4Header ip;
 			p_cpy->PeekHeader(ip);
-			uint32_t src = arb_dhpb->ResolveNodeIdFromIp(ip.GetSource().Get());
-			uint32_t dest = arb_dhpb->ResolveNodeIdFromIp(ip.GetDestination().Get());
-			arb_dhpb->DecreaseQueue(src, dest);
+			uint32_t src = arb_dhbp->ResolveNodeIdFromIp(ip.GetSource().Get());
+			uint32_t dest = arb_dhbp->ResolveNodeIdFromIp(ip.GetDestination().Get());
+			arb_dhbp->DecreaseQueue(src, dest);
 		}
 	}
 	NS_LOG_DEBUG("From " << m_node->GetId() << " -- UID is " << p->GetUid() << " -- Delay is "
@@ -360,17 +360,17 @@ void GSLNetDevice::Receive(Ptr<Packet> packet)
 		ProcessHeader(packet, protocol);
 		Ptr<Arbiter> arb =
 			m_node->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4ArbiterRouting>()->GetArbiter();
-		if (arb->GetInstanceTypeId() == TypeId::LookupByName("ns3::ArbiterDhpbSat"))
+		if (arb->GetInstanceTypeId() == TypeId::LookupByName("ns3::ArbiterDhbpSat"))
 		{
-			Ptr<ArbiterDhpbSat> arb_dhpb = DynamicCast<ArbiterDhpbSat>(arb);
+			Ptr<ArbiterDhbpSat> arb_dhbp = DynamicCast<ArbiterDhbpSat>(arb);
 			Ptr<Packet> p_cpy = packet->Copy();
 			if (protocol == 0x0800)
 			{
 				Ipv4Header ip;
 				p_cpy->PeekHeader(ip);
-				uint32_t src = arb_dhpb->ResolveNodeIdFromIp(ip.GetSource().Get());
-				uint32_t dest = arb_dhpb->ResolveNodeIdFromIp(ip.GetDestination().Get());
-				arb_dhpb->IncreaseQueue(src, dest);
+				uint32_t src = arb_dhbp->ResolveNodeIdFromIp(ip.GetSource().Get());
+				uint32_t dest = arb_dhbp->ResolveNodeIdFromIp(ip.GetDestination().Get());
+				arb_dhbp->IncreaseQueue(src, dest);
 			}
 		}
 

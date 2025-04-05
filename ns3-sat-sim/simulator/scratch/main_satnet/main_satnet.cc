@@ -37,17 +37,13 @@
 #include "ns3/topology-satellite-network.h"
 #include "ns3/tcp-optimizer.h"
 #include "ns3/arbiter-single-forward-helper.h"
-#include "ns3/arbiter-dhpb-helper.h"
+#include "ns3/arbiter-dhbp-helper.h"
 #include "ns3/arbiter-short-helper.h"
 #include "ns3/arbiter-new-helper.h"
 #include "ns3/ipv4-arbiter-routing-helper.h"
-#include "ns3/ipv4-dhpb-arbiter-routing-helper.h"
-#include "ns3/ipv4-short-routing-helper.h"
 #include "ns3/gsl-if-bandwidth-helper.h"
 #include "ns3/point-to-point-laser-helper.h"
 #include "ns3/gsl-helper.h"
-#include "ns3/dhpb-laser-helper.h"
-#include "ns3/dhpb-gsl-helper.h"
 
 using namespace ns3;
 
@@ -78,7 +74,7 @@ int main(int argc, char *argv[])
 					   StringValue("ns3::" + basicSimulation->GetConfigParamOrFail("tcp_socket_type")));
 
 	// Optimize TCP
-	TcpOptimizer::OptimizeBasic(basicSimulation);
+	// TcpOptimizer::OptimizeBasic(basicSimulation);
 
 	// TODO: should probably downcast the arbiter pointer safely here, haven't tested
 	Ptr<TopologySatelliteNetwork> topology;
@@ -123,7 +119,7 @@ int main(int argc, char *argv[])
 	{
 		topology = CreateObject<TopologySatelliteNetwork>(basicSimulation, Ipv4ArbiterRoutingHelper(),
 														  PointToPointLaserHelper(), GSLHelper());
-		ArbiterDhpbHelper arbiterHelper(basicSimulation, topology->GetNodes());
+		ArbiterDhbpHelper arbiterHelper(basicSimulation, topology->GetNodes());
 		GslIfBandwidthHelper gslIfBandwidthHelper(basicSimulation, topology->GetNodes());
 
 		// Schedule flows

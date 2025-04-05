@@ -17,15 +17,15 @@
  * Author: Simon               2020
  */
 
-#include "arbiter-dhpb-helper.h"
+#include "arbiter-dhbp-helper.h"
 
 namespace ns3
 {
-NS_LOG_COMPONENT_DEFINE("ArbiterDhpbHelper");
+NS_LOG_COMPONENT_DEFINE("ArbiterDhbpHelper");
 
-ArbiterDhpbHelper::ArbiterDhpbHelper(Ptr<BasicSimulation> basicSimulation, NodeContainer nodes)
+ArbiterDhbpHelper::ArbiterDhbpHelper(Ptr<BasicSimulation> basicSimulation, NodeContainer nodes)
 {
-	std::cout << "SETUP DHPB ROUTING" << std::endl;
+	std::cout << "SETUP DHBP ROUTING" << std::endl;
 	m_basicSimulation = basicSimulation;
 	m_nodes = nodes;
 
@@ -78,7 +78,7 @@ ArbiterDhpbHelper::ArbiterDhpbHelper(Ptr<BasicSimulation> basicSimulation, NodeC
 	for (int32_t i = 0; i < num_satellites; i++)
 	{
 		auto table = CreateOutboundInterfaceList(i);
-		Ptr<ArbiterDhpbSat> arbiter = CreateObject<ArbiterDhpbSat>(
+		Ptr<ArbiterDhbpSat> arbiter = CreateObject<ArbiterDhbpSat>(
 			m_nodes.Get(i), m_nodes, initial_forwarding_state[i], m_num_orbits, m_satellites_per_orbit,
 			shared_data_for_satellites, shared_mutex_for_satellites, table, left_neighbor_gamma_difference,
 			right_neighbor_gamma_difference);
@@ -112,7 +112,7 @@ ArbiterDhpbHelper::ArbiterDhpbHelper(Ptr<BasicSimulation> basicSimulation, NodeC
 	std::cout << std::endl;
 }
 
-void ArbiterDhpbHelper::SetRoutingParams()
+void ArbiterDhbpHelper::SetRoutingParams()
 {
 
 	std::vector<std::tuple<double, double, double, double>> short_table;
@@ -136,7 +136,7 @@ void ArbiterDhpbHelper::SetRoutingParams()
 		m_sat_arbiters.at(current_node_id)->SetGSShortTable(short_table);
 	}
 }
-std::vector<std::tuple<int32_t, int32_t, int32_t>> ArbiterDhpbHelper::CreateOutboundInterfaceList(int32_t i)
+std::vector<std::tuple<int32_t, int32_t, int32_t>> ArbiterDhbpHelper::CreateOutboundInterfaceList(int32_t i)
 {
 	std::vector<std::tuple<int32_t, int32_t, int32_t>> table;
 	table.resize(4);
@@ -175,9 +175,9 @@ std::vector<std::tuple<int32_t, int32_t, int32_t>> ArbiterDhpbHelper::CreateOutb
 	return table;
 }
 
-std::tuple<double, double, double, double> ArbiterDhpbHelper::CartesianToShort(Vector3D cartesian)
+std::tuple<double, double, double, double> ArbiterDhbpHelper::CartesianToShort(Vector3D cartesian)
 {
-	Vector2D latlon = Vector2D(std::asin(cartesian.z / ArbiterDhpbHelper::APPROXIMATE_EARTH_RADIUS_M) * 180.0 / pi,
+	Vector2D latlon = Vector2D(std::asin(cartesian.z / ArbiterDhbpHelper::APPROXIMATE_EARTH_RADIUS_M) * 180.0 / pi,
 							   std::atan2(cartesian.y, cartesian.x) * 180.0 / pi);
 
 	// use the formulas given in the paper:
@@ -228,7 +228,7 @@ std::tuple<double, double, double, double> ArbiterDhpbHelper::CartesianToShort(V
 	}
 }
 
-void ArbiterDhpbHelper::SetCoordinateSkew()
+void ArbiterDhbpHelper::SetCoordinateSkew()
 {
 	// because satgenpy generates tles such that the RAAN is always 0 and the inclination is always 0 for hte first
 	// satellite, we can use that here to if the method of TLE generation changes, this will have to change. we
@@ -240,7 +240,7 @@ void ArbiterDhpbHelper::SetCoordinateSkew()
 	}
 	m_coordinateSkew_deg = first_mm->GetSatellite()->GetGeographicPosition(first_mm->GetSatellite()->GetTleEpoch()).y;
 }
-std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>> ArbiterDhpbHelper::InitialEmptyForwardingState()
+std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>> ArbiterDhbpHelper::InitialEmptyForwardingState()
 {
 	std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>> initial_forwarding_state;
 	for (size_t i = 0; i < m_nodes.GetN(); i++)
@@ -255,7 +255,7 @@ std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>> ArbiterDhpbHelpe
 	return initial_forwarding_state;
 }
 
-void ArbiterDhpbHelper::UpdateOrbitalParams(int64_t t)
+void ArbiterDhbpHelper::UpdateOrbitalParams(int64_t t)
 {
 	// Filename
 	std::ostringstream res;
@@ -315,13 +315,13 @@ void ArbiterDhpbHelper::UpdateOrbitalParams(int64_t t)
 		int64_t next_update_ns = t + m_dynamicStateUpdateIntervalNs;
 		if (next_update_ns < m_basicSimulation->GetSimulationEndTimeNs())
 		{
-			Simulator::Schedule(NanoSeconds(m_dynamicStateUpdateIntervalNs), &ArbiterDhpbHelper::UpdateOrbitalParams,
+			Simulator::Schedule(NanoSeconds(m_dynamicStateUpdateIntervalNs), &ArbiterDhbpHelper::UpdateOrbitalParams,
 								this, next_update_ns);
 		}
 	}
 }
 
-void ArbiterDhpbHelper::UpdateForwardingState(int64_t t)
+void ArbiterDhbpHelper::UpdateForwardingState(int64_t t)
 {
 
 	// Filename
@@ -464,7 +464,7 @@ void ArbiterDhpbHelper::UpdateForwardingState(int64_t t)
 		int64_t next_update_ns = t + m_dynamicStateUpdateIntervalNs;
 		if (next_update_ns < m_basicSimulation->GetSimulationEndTimeNs())
 		{
-			Simulator::Schedule(NanoSeconds(m_dynamicStateUpdateIntervalNs), &ArbiterDhpbHelper::UpdateForwardingState,
+			Simulator::Schedule(NanoSeconds(m_dynamicStateUpdateIntervalNs), &ArbiterDhbpHelper::UpdateForwardingState,
 								this, next_update_ns);
 		}
 	}

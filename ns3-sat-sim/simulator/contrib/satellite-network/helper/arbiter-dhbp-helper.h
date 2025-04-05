@@ -17,29 +17,29 @@
  * Author: Simon               2020
  */
 
-#ifndef ARBITER_DHPB_HELPER
-#define ARBITER_DHPB_HELPER
+#ifndef ARBITER_DHBP_HELPER
+#define ARBITER_DHBP_HELPER
 
 #include <mutex>
 #include "ns3/ipv4-routing-helper.h"
 #include "ns3/basic-simulation.h"
 #include "ns3/topology-satellite-network.h"
-#include "ns3/ipv4-dhpb-arbiter-routing.h"
-#include "ns3/arbiter-dhpb-sat.h"
+#include "ns3/ipv4-arbiter-routing.h"
+#include "ns3/arbiter-dhbp-sat.h"
 #include "ns3/arbiter-single-forward.h"
 #include "ns3/abort.h"
 
 namespace ns3
 {
 
-class ArbiterDhpbHelper
+class ArbiterDhbpHelper
 {
   public:
 	// APPROXIMATE WGS72 VALUES
 	const double EARTH_ORBIT_TIME_NS = 86400000000000;
 	const int32_t APPROXIMATE_EARTH_RADIUS_M = 6371000;
 
-	ArbiterDhpbHelper(Ptr<BasicSimulation> basicSimulation, NodeContainer nodes);
+	ArbiterDhbpHelper(Ptr<BasicSimulation> basicSimulation, NodeContainer nodes);
 
   private:
 	std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>> InitialEmptyForwardingState();
@@ -56,7 +56,7 @@ class ArbiterDhpbHelper
 	NodeContainer m_nodes;
 	double m_coordinateSkew_deg;
 	int64_t m_dynamicStateUpdateIntervalNs;
-	std::vector<Ptr<ArbiterDhpbSat>> m_sat_arbiters;
+	std::vector<Ptr<ArbiterDhbpSat>> m_sat_arbiters;
 	std::vector<Ptr<ArbiterSingleForward>> m_gs_arbiters;
 	std::vector<std::tuple<double, double, double, double>> m_other_table;
 
@@ -69,4 +69,4 @@ class ArbiterDhpbHelper
 
 } // namespace ns3
 
-#endif /* ARBITER_DHPB_HELPER */
+#endif /* ARBITER_DHBP_HELPER */

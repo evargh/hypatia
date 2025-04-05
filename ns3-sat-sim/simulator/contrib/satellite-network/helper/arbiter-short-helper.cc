@@ -273,8 +273,9 @@ void ArbiterShortHelper::UpdateOrbitalParams(int64_t t)
 			double mean_anomaly = std::stod(line2.substr(43, 8));
 			double inclination = std::stod(line2.substr(8, 8));
 
-			NS_LOG_DEBUG("RAAN: " << RAAN << " -- Mean Motion: " << mean_motion << " -- Mean Anomaly: " << mean_anomaly
-								  << " -- Inclination: " << inclination);
+			// NS_LOG_DEBUG("RAAN: " << RAAN << " -- Mean Motion: " << mean_motion << " -- Mean Anomaly: " <<
+			// mean_anomaly
+			//					  << " -- Inclination: " << inclination);
 
 			double satellite_alpha = std::fmod(360 + RAAN - 360 * t / EARTH_ORBIT_TIME_NS, 360);
 			double satellite_orbital_period = (1 / mean_motion) * 24 * 60 * 60 * 1000000000;

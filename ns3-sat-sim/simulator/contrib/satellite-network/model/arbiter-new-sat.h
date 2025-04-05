@@ -35,10 +35,15 @@ class ArbiterNewSat : public ArbiterShortSat
 {
   public:
 	static const int32_t MINIMUM_FULLNESS_THRESHOLD = 30;
-	static const int64_t MINIMUM_FULLNESS_INTERVAL_NS = 10000000;
+	static const int64_t MINIMUM_FULLNESS_INTERVAL_NS = 100000000;
+	static const int32_t LINK_QUEUE_SIZE = 120;
+	static const int64_t LINK_BANDWIDTH = 10000000;
+	static constexpr float INTER_ORBIT_PROPAGATION_DELAY_SECONDS = 0.003;
+	static constexpr float INTRA_ORBIT_PROPAGATION_DELAY_SECONDS = 0.007;
 
-	typedef std::tuple<NeighborCoordContainer::Direction, NeighborCoordContainer::Direction, bool, int32_t, int32_t,
-					   int64_t, int64_t>
+	// direction, direction, is in range, fastpath, normal_distance, propagation delay to this neighbor based on hops +
+	// standing queue delay, propagation delay to destination based on hops
+	typedef std::tuple<NeighborCoordContainer::Direction, NeighborCoordContainer::Direction, bool, bool, float, float>
 		distance_element;
 	static TypeId GetTypeId(void);
 
@@ -71,6 +76,7 @@ class ArbiterNewSat : public ArbiterShortSat
 													int16_t destination_gamma);
 
 	void SetInterfaceCongestionBits();
+	float GetEstimatedPropagationDelay(int32_t horizontal_hops, int32_t vertical_hops);
 
 	std::array<int64_t, 4> m_interface_congestion_timer;
 	std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>> m_neighbor_neighbors;

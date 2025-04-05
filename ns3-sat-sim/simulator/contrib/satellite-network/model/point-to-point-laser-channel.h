@@ -28,7 +28,6 @@
 #include "ns3/mobility-model.h"
 #include "ns3/node.h"
 #include "ns3/point-to-point-laser-net-device.h"
-#include "ns3/dhpb-laser-net-device.h"
 
 namespace ns3
 {

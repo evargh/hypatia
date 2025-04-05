@@ -17,19 +17,19 @@
  * Author: Simon               2020
  */
 
-#include "arbiter-dhpb-sat.h"
+#include "arbiter-dhbp-sat.h"
 
 namespace ns3
 {
-NS_LOG_COMPONENT_DEFINE("ArbiterDhpbSat");
-NS_OBJECT_ENSURE_REGISTERED(ArbiterDhpbSat);
-TypeId ArbiterDhpbSat::GetTypeId(void)
+NS_LOG_COMPONENT_DEFINE("ArbiterDhbpSat");
+NS_OBJECT_ENSURE_REGISTERED(ArbiterDhbpSat);
+TypeId ArbiterDhbpSat::GetTypeId(void)
 {
-	static TypeId tid = TypeId("ns3::ArbiterDhpbSat").SetParent<ArbiterSatnet>().SetGroupName("BasicSim");
+	static TypeId tid = TypeId("ns3::ArbiterDhbpSat").SetParent<ArbiterSatnet>().SetGroupName("BasicSim");
 	return tid;
 }
 
-ArbiterDhpbSat::ArbiterDhpbSat(Ptr<Node> this_node, NodeContainer nodes,
+ArbiterDhbpSat::ArbiterDhbpSat(Ptr<Node> this_node, NodeContainer nodes,
 							   std::vector<std::tuple<int32_t, int32_t, int32_t>> next_hop_list, int64_t n_o,
 							   int64_t s_p_o, std::shared_ptr<std::vector<std::vector<int64_t>>> sdfs,
 							   std::shared_ptr<std::vector<std::mutex>> sdfsm,
@@ -41,7 +41,7 @@ ArbiterDhpbSat::ArbiterDhpbSat(Ptr<Node> this_node, NodeContainer nodes,
 	shared_data_for_satellites_mutex = sdfsm;
 }
 
-std::tuple<int32_t, int32_t, int32_t> ArbiterDhpbSat::DetermineInterface(int16_t destination_alpha,
+std::tuple<int32_t, int32_t, int32_t> ArbiterDhbpSat::DetermineInterface(int16_t destination_alpha,
 																		 int16_t destination_gamma,
 																		 int32_t source_node_id, int32_t target_node_id)
 {
@@ -57,17 +57,7 @@ std::tuple<int32_t, int32_t, int32_t> ArbiterDhpbSat::DetermineInterface(int16_t
 
 	int32_t current_distance =
 		neighbors.GetHopcount(NeighborCoordContainer::SELF, destination_alpha, destination_gamma);
-	// generate a list of all next hops that are closer to the final target, ideally going to a functional approach
-	// iterate through that list, up to 0, and check the shared state
-	// load balance as a function of those and the distance of the nodes from the target
-	//
-	// each satellite reports how full their queue is for that traffic flow
-	// when comparing, just look at that flow, compute the distance of that neighbor to the destination, and pick based
-	// on that make sure the next hop is "in the rectangle"
 
-	// the next hops are constrained under a grid+ topology, there is a small search space of the next few hops.
-	// see if the interfaces on the closer hops are central
-	// initializer list
 	typedef std::tuple<NeighborCoordContainer::Direction, int32_t, int64_t> distance_element;
 
 	auto distances = {
@@ -89,7 +79,7 @@ std::tuple<int32_t, int32_t, int32_t> ArbiterDhpbSat::DetermineInterface(int16_t
 							right_distance)};
 
 	std::vector<distance_element> thresholded_distances;
-	// the original DHPB has a dependence on knowing the destination and source satellites for making a space
+	// the original DHBP has a dependence on knowing the destination and source satellites for making a space
 	// restriction.
 	// this requires a packet to embed information about source satellite (2 bytes in starlink), and requires
 	// some inference about what the destination satellite could be ahead of time.
@@ -122,7 +112,7 @@ std::tuple<int32_t, int32_t, int32_t> ArbiterDhpbSat::DetermineInterface(int16_t
 	}
 }
 
-std::tuple<int32_t, int32_t, int32_t> ArbiterDhpbSat::ShortDecide(int16_t aa, int16_t ag, int16_t da, int16_t dg,
+std::tuple<int32_t, int32_t, int32_t> ArbiterDhbpSat::ShortDecide(int16_t aa, int16_t ag, int16_t da, int16_t dg,
 																  int32_t source_node_id, int32_t target_node_id)
 {
 	int16_t asc_alpha_distance = neighbors.GetAlphaModularDistance(NeighborCoordContainer::SELF, aa);
@@ -139,7 +129,7 @@ std::tuple<int32_t, int32_t, int32_t> ArbiterDhpbSat::ShortDecide(int16_t aa, in
 	}
 }
 
-std::tuple<int32_t, int32_t, int32_t> ArbiterDhpbSat::TopologySatelliteNetworkDecide(
+std::tuple<int32_t, int32_t, int32_t> ArbiterDhbpSat::TopologySatelliteNetworkDecide(
 	int32_t source_node_id, int32_t target_node_id, Ptr<const Packet> pkt, Ipv4Header const &ipHeader,
 	bool is_request_for_source_ip_so_no_next_header)
 {
@@ -163,7 +153,7 @@ std::tuple<int32_t, int32_t, int32_t> ArbiterDhpbSat::TopologySatelliteNetworkDe
 	return ShortDecide(aac, agc, dac, dgc, source_node_id, target_node_id);
 }
 
-void ArbiterDhpbSat::IncreaseQueue(int32_t source_node_id, int32_t target_node_id)
+void ArbiterDhbpSat::IncreaseQueue(int32_t source_node_id, int32_t target_node_id)
 {
 	int64_t spot = GetFlowMapping(source_node_id, target_node_id) % 1024;
 	std::lock_guard<std::mutex> guard(shared_data_for_satellites_mutex->at(m_node_id));
@@ -171,7 +161,7 @@ void ArbiterDhpbSat::IncreaseQueue(int32_t source_node_id, int32_t target_node_i
 	shared_data_for_satellites->at(m_node_id).at(spot) += 1;
 }
 
-void ArbiterDhpbSat::DecreaseQueue(int32_t source_node_id, int32_t target_node_id)
+void ArbiterDhbpSat::DecreaseQueue(int32_t source_node_id, int32_t target_node_id)
 {
 	int64_t spot = GetFlowMapping(source_node_id, target_node_id) % 1024;
 	std::lock_guard<std::mutex> guard(shared_data_for_satellites_mutex->at(m_node_id));
@@ -186,7 +176,7 @@ void ArbiterDhpbSat::DecreaseQueue(int32_t source_node_id, int32_t target_node_i
 	}
 }
 
-int64_t ArbiterDhpbSat::GetQueueSizeForFlow(int32_t neighbor_id, int32_t source_node_id, int32_t target_node_id)
+int64_t ArbiterDhbpSat::GetQueueSizeForFlow(int32_t neighbor_id, int32_t source_node_id, int32_t target_node_id)
 {
 	int64_t spot = GetFlowMapping(source_node_id, target_node_id) % 1024;
 	std::lock_guard<std::mutex> guard(shared_data_for_satellites_mutex->at(neighbor_id));
@@ -194,7 +184,7 @@ int64_t ArbiterDhpbSat::GetQueueSizeForFlow(int32_t neighbor_id, int32_t source_
 	return shared_data_for_satellites->at(neighbor_id).at(spot);
 }
 
-int64_t ArbiterDhpbSat::GetFlowMapping(int32_t source_node_id, int32_t target_node_id)
+int64_t ArbiterDhbpSat::GetFlowMapping(int32_t source_node_id, int32_t target_node_id)
 {
 	// bit interleaving, source first
 	int64_t interleaved = 0;
@@ -208,17 +198,17 @@ int64_t ArbiterDhpbSat::GetFlowMapping(int32_t source_node_id, int32_t target_no
 	return interleaved;
 }
 
-int32_t ArbiterDhpbSat::GSLNodeIdToGSLIndex(int32_t id)
+int32_t ArbiterDhbpSat::GSLNodeIdToGSLIndex(int32_t id)
 {
 	return id - num_orbits * num_satellites_per_orbit;
 }
 
-int32_t ArbiterDhpbSat::GSLIndexToGSLNodeId(int32_t id)
+int32_t ArbiterDhbpSat::GSLIndexToGSLNodeId(int32_t id)
 {
 	return num_orbits * num_satellites_per_orbit + id;
 }
 
-void ArbiterDhpbSat::SetSingleForwardState(int32_t target_node_id, int32_t next_node_id, int32_t own_if_id,
+void ArbiterDhbpSat::SetSingleForwardState(int32_t target_node_id, int32_t next_node_id, int32_t own_if_id,
 										   int32_t next_if_id)
 {
 	NS_ABORT_MSG_IF(next_node_id == -2 || own_if_id == -2 || next_if_id == -2, "Not permitted to set invalid (-2).");

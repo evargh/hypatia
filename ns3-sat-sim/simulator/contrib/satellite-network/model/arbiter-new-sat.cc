@@ -45,10 +45,19 @@ ArbiterNewSat::ArbiterNewSat(Ptr<Node> this_node, NodeContainer nodes,
 	shared_data_for_satellites->at(m_node_id) = 0;
 }
 
+float ArbiterNewSat::GetEstimatedPropagationDelay(int32_t horizontal_hops, int32_t vertical_hops)
+{
+	return INTER_ORBIT_PROPAGATION_DELAY_SECONDS * float(horizontal_hops) +
+		   INTRA_ORBIT_PROPAGATION_DELAY_SECONDS * float(vertical_hops);
+}
+
 std::vector<ArbiterNewSat::distance_element> ArbiterNewSat::PopulateDistances(int32_t current_hops,
 																			  int16_t destination_alpha,
 																			  int16_t destination_gamma)
 {
+	// get the hopcounts for each second-hop node and populate the distance element
+	// also need to know the approximate difference between intra-orbit and inter-orbit links
+
 	std::vector<distance_element> distances;
 	for (int neighbor_idx = 1; neighbor_idx < 5; neighbor_idx++)
 	{
@@ -87,14 +96,68 @@ std::vector<ArbiterNewSat::distance_element> ArbiterNewSat::PopulateDistances(in
 							(congestion_to_neighbor == 0 || congestion_to_neighbor == 1) &&
 								(neighbor_congestion_to_neighbor == 0 || neighbor_congestion_to_neighbor == 1),
 							"bitshift error");
+						int16_t horizontal_hops, vertical_hops;
+						std::tie(horizontal_hops, vertical_hops) =
+							neighbors.GetHopcountTuple(coords, destination_alpha, destination_gamma);
 
+						int16_t horizontal_hops_to_neighbor = 0, vertical_hops_to_neighbor = 0;
+						if (neighbor_idx == NeighborCoordContainer::LEFT ||
+							neighbor_idx == NeighborCoordContainer::RIGHT)
+						{
+							horizontal_hops_to_neighbor += 1;
+						}
+						if (neighbor_of_neighbor_idx == NeighborCoordContainer::LEFT ||
+							neighbor_of_neighbor_idx == NeighborCoordContainer::RIGHT)
+						{
+							horizontal_hops_to_neighbor += 1;
+						}
+						if (neighbor_idx == NeighborCoordContainer::UP || neighbor_idx == NeighborCoordContainer::DOWN)
+						{
+							vertical_hops_to_neighbor += 1;
+						}
+						if (neighbor_of_neighbor_idx == NeighborCoordContainer::UP ||
+							neighbor_of_neighbor_idx == NeighborCoordContainer::DOWN)
+						{
+							vertical_hops_to_neighbor += 1;
+						}
+
+						float metric_to_neighbor = 0;
+						if (congestion_to_neighbor + neighbor_congestion_to_neighbor == 0)
+						{
+							metric_to_neighbor =
+								GetEstimatedPropagationDelay(horizontal_hops_to_neighbor, vertical_hops_to_neighbor) +
+								2 * MINIMUM_FULLNESS_THRESHOLD * 1500.0 / float(LINK_BANDWIDTH);
+						}
+						else if (congestion_to_neighbor + neighbor_congestion_to_neighbor == 1)
+						{
+							metric_to_neighbor =
+								GetEstimatedPropagationDelay(horizontal_hops_to_neighbor, vertical_hops_to_neighbor) +
+								(LINK_QUEUE_SIZE + MINIMUM_FULLNESS_THRESHOLD) * 1500.0 / float(LINK_BANDWIDTH);
+						}
+						else if (congestion_to_neighbor + neighbor_congestion_to_neighbor == 2)
+						{
+							metric_to_neighbor =
+								GetEstimatedPropagationDelay(horizontal_hops_to_neighbor, vertical_hops_to_neighbor) +
+								2 * LINK_QUEUE_SIZE * 1500.0 / float(LINK_BANDWIDTH);
+						}
+						else
+						{
+							NS_ASSERT_MSG(false, "testing congestion failed");
+						}
+
+						float neighbor_metric_to_destination =
+							INTER_ORBIT_PROPAGATION_DELAY_SECONDS * float(horizontal_hops) +
+							INTRA_ORBIT_PROPAGATION_DELAY_SECONDS * float(vertical_hops);
+
+						// direction, direction, is in range, propagation delay to this neighbor based on hops +
+						// standing queue delay, propagation delay to destination based on hops
 						distance_element this_dist = std::make_tuple(
 							static_cast<NeighborCoordContainer::Direction>(neighbor_idx),
 							static_cast<NeighborCoordContainer::Direction>(neighbor_of_neighbor_idx),
 							//    use the fact that the gamma/alpha differentials are constant to get
 							//    the position of their neighbors
-							neighbor_in_range, neighbor_distance_to_target, neighbor_neighbor_distance_to_target,
-							congestion_to_neighbor, neighbor_congestion_to_neighbor);
+							neighbor_in_range, congestion_to_neighbor + neighbor_congestion_to_neighbor == 0,
+							metric_to_neighbor, neighbor_metric_to_destination);
 
 						distances.push_back(this_dist);
 					}
@@ -118,13 +181,8 @@ std::tuple<int32_t, int32_t, int32_t> ArbiterNewSat::DetermineInterface(int16_t 
 
 	std::vector<distance_element> distances = PopulateDistances(current_hops, destination_alpha, destination_gamma);
 
-	std::sort(distances.begin(), distances.end(), [](distance_element a, distance_element b) {
-		if (std::get<2>(a) && !std::get<2>(b))
-			return true;
-		if (std::get<3>(a) == std::get<3>(b))
-			return (std::get<4>(a)) < std::get<4>(b);
-		return std::get<3>(a) < std::get<3>(b);
-	});
+	// direction, direction, is in range, fastpath, propagation delay to this neighbor based on hops + standing queue
+	// delay, propagation delay to destination based on hops
 
 	std::vector<distance_element> very_close_distances;
 	std::copy_if(distances.begin(), distances.end(), std::back_inserter(very_close_distances),
@@ -132,57 +190,46 @@ std::tuple<int32_t, int32_t, int32_t> ArbiterNewSat::DetermineInterface(int16_t 
 
 	std::vector<distance_element> zero_congestion_distances;
 	std::copy_if(distances.begin(), distances.end(), std::back_inserter(zero_congestion_distances),
-				 [](distance_element i) { return std::get<5>(i) + std::get<6>(i) == 0; });
+				 [](distance_element i) { return std::get<3>(i); });
 
-	std::vector<distance_element> first_congestion_distances;
-	std::copy_if(distances.begin(), distances.end(), std::back_inserter(first_congestion_distances),
-				 [](distance_element i) { return std::get<5>(i) == 1 && std::get<6>(i) == 0; });
-
-	std::vector<distance_element> second_congestion_distances;
-	std::copy_if(distances.begin(), distances.end(), std::back_inserter(second_congestion_distances),
-				 [](distance_element i) { return std::get<5>(i) == 0 && std::get<6>(i) == 1; });
-
-	std::vector<distance_element> all_congestion_distances;
-	std::copy_if(distances.begin(), distances.end(), std::back_inserter(all_congestion_distances),
-				 [](distance_element i) { return std::get<5>(i) == 1 && std::get<6>(i) == 1; });
+	std::vector<distance_element> load_balancing_distances;
+	std::copy_if(distances.begin(), distances.end(), std::back_inserter(load_balancing_distances),
+				 [](distance_element i) { return !std::get<2>(i) && !std::get<3>(i); });
 
 	NS_ASSERT_MSG(distances.size() != 0, "no one to forward to");
 	NS_LOG_DEBUG(m_node_id << " num viable targets to " << target_node_id << ": " << distances.size());
 
-	Ptr<UniformRandomVariable> x = CreateObject<UniformRandomVariable>();
-	x->SetAttribute("Min", DoubleValue(0.0));
-
 	if (very_close_distances.size() != 0)
 	{
+		std::sort(very_close_distances.begin(), very_close_distances.end(), [](distance_element a, distance_element b) {
+			if (std::get<3>(a) && !std::get<3>(b))
+				return true;
+			return std::get<4>(a) + std::get<5>(a) < std::get<4>(b) + std::get<5>(b);
+		});
 		// at low congestion, be deterministic
 		auto if_index = m_neighbor_ids.at(std::get<0>(very_close_distances.at(0)) - 1);
 		return if_index;
 	}
 	if (zero_congestion_distances.size() != 0)
 	{
+		std::sort(zero_congestion_distances.begin(), zero_congestion_distances.end(),
+				  [](distance_element a, distance_element b) {
+					  return std::get<4>(a) + std::get<5>(a) < std::get<4>(b) + std::get<5>(b);
+				  });
 		// ditto
 		auto if_index = m_neighbor_ids.at(std::get<0>(zero_congestion_distances.at(0)) - 1);
 		return if_index;
 	}
-	if (second_congestion_distances.size() != 0)
+	if (load_balancing_distances.size() != 0)
 	{
-		// ditto
-		auto if_index = m_neighbor_ids.at(std::get<0>(second_congestion_distances.at(0)) - 1);
-		return if_index;
-	}
-	if (first_congestion_distances.size() != 0)
-	{
+		std::sort(load_balancing_distances.begin(), load_balancing_distances.end(),
+				  [](distance_element a, distance_element b) {
+					  return std::get<4>(a) + std::get<5>(a) < std::get<4>(b) + std::get<5>(b);
+				  });
 		// as congestion increases, load balance
 		NS_LOG_DEBUG(m_node_id << " IS LOAD BALANCING");
-		x->SetAttribute("Max", DoubleValue(first_congestion_distances.size() - 1));
-		auto if_index = m_neighbor_ids.at(std::get<0>(first_congestion_distances.at(x->GetInteger())) - 1);
-		return if_index;
-	}
-	if (all_congestion_distances.size() != 0)
-	{
-		NS_LOG_DEBUG(m_node_id << " IS LOAD BALANCING");
-		x->SetAttribute("Max", DoubleValue(all_congestion_distances.size() - 1));
-		auto if_index = m_neighbor_ids.at(std::get<0>(all_congestion_distances.at(x->GetInteger())) - 1);
+		// sort the list of load balancing distances by singular metric
+		auto if_index = m_neighbor_ids.at(std::get<0>(load_balancing_distances.at(0)) - 1);
 		return if_index;
 	}
 	NS_ASSERT_MSG(false, "interface check failed");
