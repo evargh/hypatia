@@ -7,22 +7,29 @@
 from collections import Counter, deque
 import json
 import argparse
+import sys
 
 packetdicts = {}
+
 
 def sort_by_time(item):
     return item[-1]
 
+
 parser = argparse.ArgumentParser()
-parser.add_argument('filename')
-parser.add_argument('orbits', type=int)
-parser.add_argument('satellites_per_orbit', type=int)
+parser.add_argument("filename")
+parser.add_argument("orbits", type=int)
+parser.add_argument("satellites_per_orbit", type=int)
 args = parser.parse_args()
 
 # string parsing is somewhat messy and inelegant
-with open(args.filename, 'r') as file:
+with open(args.filename, "r") as file:
     # the file is small enough that we can put it in memory as a queue
+    linecount = 0
     for line in file:
+        # if linecount > 3000:
+        #    break
+        # linecount += 1
         splitline = line.split(" -- ")
         # if the line is valid: somewhat hacky, but the only source of " -- " are my log lines for the net device transmitting and
         # receiving packets
@@ -34,9 +41,11 @@ with open(args.filename, 'r') as file:
                 if UID not in packetdicts:
                     packetdicts[UID] = []
                 # receive_tuple is the data structure that is ultimately queued
-                result = line.split(":")[1].strip()
-                info = line.split(":")[2].split(" -- ");
-                receive_tuple = 0;
+                dataset = line.split(":")
+                linktype = dataset[0].strip()
+                result = dataset[1].strip()
+                info = dataset[2].split(" -- ")
+                receive_tuple = 0
                 # messy way to parse from and to
                 fromspot = int(info[0].split(" ")[-1].strip())
                 tospot = int(info[1].split(" ")[-1].strip())
@@ -45,24 +54,39 @@ with open(args.filename, 'r') as file:
                 if result == "Receive()":
                     receive_tuple = ("Receive", fromspot, tospot, timestamp)
                 if result == "TransmitStart()":
-                    receive_tuple = ("TransmitISL", fromspot, tospot, timestamp + float(info[-1].split(" ")[-1]))
+                    receive_tuple = (
+                        "TransmitISL",
+                        fromspot,
+                        tospot,
+                        timestamp + float(info[-1].split(" ")[-1]),
+                    )
                 if result == "TransmitTo()":
-                    receive_tuple = ("TransmitGSL", fromspot, tospot, timestamp + float(info[-1].split(" ")[-1]))
-                packetdicts[UID].append(receive_tuple)
+                    receive_tuple = (
+                        "TransmitGSL",
+                        fromspot,
+                        tospot,
+                        timestamp + float(info[-1].split(" ")[-1]),
+                    )
+                if receive_tuple != 0:
+                    print(f"{UID}: {receive_tuple}")
+                    packetdicts[UID].append(receive_tuple)
 
 # timediffs is a dictionary, indexed by orbit, that stores a list of non-propagation delays for that orbit
 timediffs = {}
+
 
 def check_blank_deque(deq, fid):
     if fid not in deq or len(deq[fid]) == 0:
         return True
     return False
 
+
 def pop_appropriate_deque(deq, fid, key):
     try:
         return deq[fid].popleft()
     except KeyError:
         print(f"Investigate {fid} for {key}", file=sys.stderr)
+
 
 for key, values in packetdicts.items():
     values.sort(key=lambda item: item[3])
@@ -75,7 +99,7 @@ for key, values in packetdicts.items():
         timestamp = item[3]
         this_satellite = from_id
         if label == "TransmitGSL":
-            if(from_id >= int(args.orbits * args.satellites_per_orbit)):
+            if from_id >= int(args.orbits * args.satellites_per_orbit):
                 # a transmitGSL is preceded by either nothing or a receive
                 # if the first index is greater than 1584, a ground station is transmitting to a satellite
                 if to_id not in start_gsl_queues:
@@ -95,7 +119,7 @@ for key, values in packetdicts.items():
                         pop_appropriate_deque(receive_queues, from_id, key)
                     else:
                         pop_appropriate_deque(start_gsl_queues, from_id, key)
-        
+
         elif label == "TransmitISL":
             # a transmit is either preceded by a transmitgsl or a receive
             # receives match with transmitisl and transmitgsl--if the "to" in the receive message matches the "from" in the transmit, then its a match
@@ -106,7 +130,7 @@ for key, values in packetdicts.items():
                 minval = pop_appropriate_deque(receive_queues, from_id, key)
                 if minval is None:
                     sys.exit("Check stderr")
-                else:    
+                else:
                     if this_satellite not in timediffs:
                         timediffs[this_satellite] = []
                     timediffs[this_satellite].append(timestamp - minval)
@@ -121,7 +145,7 @@ for key, values in packetdicts.items():
                     minval = pop_appropriate_deque(receive_queues, from_id, key)
                     if minval is None:
                         sys.exit("Check stderr")
-                    else:    
+                    else:
                         if this_satellite not in timediffs:
                             timediffs[this_satellite] = []
                         timediffs[this_satellite].append(timestamp - minval)
@@ -134,9 +158,9 @@ for key, values in packetdicts.items():
                 receive_queues[to_id] = deque()
             receive_queues[to_id].append(timestamp)
 
-        #print(f"GSL: {start_gsl_queues}")
-        #print(f"Rec: {receive_queues}")
-                
+        # print(f"GSL: {start_gsl_queues}")
+        # print(f"Rec: {receive_queues}")
+
 
 accumulated_counters = {}
 for key in timediffs:
