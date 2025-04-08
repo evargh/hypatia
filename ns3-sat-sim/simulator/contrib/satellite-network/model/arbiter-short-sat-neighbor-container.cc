@@ -20,10 +20,19 @@ bool ArbiterShortSat::NeighborCoordContainer::VerifyInRange(Direction d, int16_t
 															int16_t destination_gamma)
 
 {
-	return ModularArithmeticHelper::GetModularDistance(CreateAlphaCell(std::get<0>(m_coords.at(d))), destination_alpha,
-													   m_alpha_base) <= ArbiterShortSat::CELL_SCALING_FACTOR &&
-		   ModularArithmeticHelper::GetModularDistance(CreateGammaCell(std::get<1>(m_coords.at(d))), destination_gamma,
-													   m_gamma_base) <= ArbiterShortSat::CELL_SCALING_FACTOR;
+	int16_t alpha_cell = CreateAlphaCell(std::get<0>(m_coords.at(d)));
+	int16_t gamma_cell = CreateGammaCell(std::get<1>(m_coords.at(d)));
+	return VerifyInRange(std::make_tuple(alpha_cell, gamma_cell), destination_alpha, destination_gamma);
+}
+
+bool ArbiterShortSat::NeighborCoordContainer::VerifyInRange(std::tuple<int16_t, int16_t> coords,
+															int16_t destination_alpha, int16_t destination_gamma)
+
+{
+	return ModularArithmeticHelper::GetModularDistance(std::get<0>(coords), destination_alpha, m_alpha_base) <=
+			   ArbiterShortSat::CELL_SCALING_FACTOR &&
+		   ModularArithmeticHelper::GetModularDistance(std::get<1>(coords), destination_gamma, m_gamma_base) <=
+			   ArbiterShortSat::CELL_SCALING_FACTOR;
 }
 
 void ArbiterShortSat::NeighborCoordContainer::UpdateCoords(double alpha, double gamma)
@@ -41,14 +50,15 @@ std::tuple<double, double> ArbiterShortSat::NeighborCoordContainer::TransformByD
 	switch (d)
 	{
 	case LEFT:
-		return std::make_tuple(std::fmod(alpha + (m_num_orbits - 1) * 360.0 / m_num_orbits, 360), gamma + m_lngd);
+		return std::make_tuple(std::fmod(alpha + (m_num_orbits - 1) * 360.0 / m_num_orbits, 360),
+							   std::fmod(gamma + m_lngd + 360, 360));
 	case DOWN:
 		return std::make_tuple(
 			alpha, std::fmod(gamma + (m_num_satellites_per_orbit - 1) * 360.0 / m_num_satellites_per_orbit, 360));
 	case UP:
 		return std::make_tuple(alpha, std::fmod(gamma + 360.0 / m_num_satellites_per_orbit, 360));
 	case RIGHT:
-		return std::make_tuple(std::fmod(alpha + 360.0 / m_num_orbits, 360), gamma + m_rngd);
+		return std::make_tuple(std::fmod(alpha + 360.0 / m_num_orbits, 360), std::fmod(gamma + m_rngd + 360, 360));
 	default:
 		NS_ASSERT_MSG(false, "supplied wrong direction to TransformByDirection");
 		return std::make_tuple(0, 0);
@@ -82,6 +92,7 @@ std::tuple<int16_t, int16_t> ArbiterShortSat::NeighborCoordContainer::GetHopcoun
 	// more approximate, since we don't have the underlying gamma
 	int16_t coordinate_alpha = std::get<0>(coords);
 	int16_t coordinate_gamma = std::get<1>(coords);
+
 	int16_t horizontal_distance = GetAlphaModularDistance(coordinate_alpha, destination_alpha);
 	int16_t horizontal_hops = horizontal_distance / ArbiterShortSat::CELL_SCALING_FACTOR;
 	int8_t alpha_direction = CheckIfAlphaIncrease(coordinate_alpha, destination_alpha);
@@ -95,14 +106,16 @@ std::tuple<int16_t, int16_t> ArbiterShortSat::NeighborCoordContainer::GetHopcoun
 		// this rounding
 		// the accumulated phase aliasing to something else isnt an issue for starlink unless you go over half the globe
 		double gamma_after_increase =
-			std::fmod(float(coordinate_gamma) * 360.0 / (m_gamma_base) + m_rngd * float(horizontal_hops), 360);
+			std::fmod(double(coordinate_gamma) * 360.0 / (m_gamma_base) + m_rngd * double(horizontal_hops) + 360, 360);
+		NS_ASSERT_MSG(0 <= gamma_after_increase && gamma_after_increase <= 360, "gamma was: " << gamma_after_increase);
 		return std::make_tuple(horizontal_distance,
 							   GetGammaModularDistance(CreateGammaCell(gamma_after_increase), destination_gamma));
 	}
 	else if (alpha_direction == -1)
 	{
 		double gamma_after_increase =
-			std::fmod(float(coordinate_gamma) * 360.0 / (m_gamma_base) + m_lngd * float(horizontal_hops), 360);
+			std::fmod(double(coordinate_gamma) * 360.0 / (m_gamma_base) + m_lngd * double(horizontal_hops) + 360, 360);
+		NS_ASSERT_MSG(0 <= gamma_after_increase && gamma_after_increase <= 360, "gamma was: " << gamma_after_increase);
 		return std::make_tuple(horizontal_distance,
 							   GetGammaModularDistance(CreateGammaCell(gamma_after_increase), destination_gamma));
 	}
@@ -192,6 +205,8 @@ std::tuple<int16_t, int16_t> ArbiterShortSat::NeighborCoordContainer::GetCoordsF
 	{
 		position = TransformByDirection(elem, std::get<0>(position), std::get<1>(position));
 	}
+	NS_ASSERT_MSG(0 <= std::get<0>(position) && std::get<0>(position) <= 360, "alpha off as " << std::get<0>(position));
+	NS_ASSERT_MSG(0 <= std::get<1>(position) && std::get<1>(position) <= 360, "gamma off as " << std::get<1>(position));
 	return std::make_tuple(CreateAlphaCell(std::get<0>(position)), CreateGammaCell(std::get<1>(position)));
 	// return m_coords.at(d);
 }

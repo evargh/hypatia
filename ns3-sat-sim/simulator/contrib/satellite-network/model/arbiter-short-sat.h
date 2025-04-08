@@ -82,9 +82,11 @@ class ArbiterShortSat : public ArbiterSatnet
 		NeighborCoordContainer(double lngd, double rngd, int64_t num_orbits, int64_t num_satellites_per_orbit);
 		void UpdateCoords(double alpha, double gamma);
 		bool VerifyInRange(Direction d, int16_t destination_alpha, int16_t destination_gamma);
-		bool VerifyInRange(std::vector<Direction> &d, int16_t destination_alpha, int16_t destination_gamma);
+		bool VerifyInRange(std::tuple<int16_t, int16_t> c, int16_t destination_alpha, int16_t destination_gamma);
+
 		int16_t GetAlphaModularDistance(Direction d, int16_t destination_alpha);
 		int16_t GetGammaModularDistance(Direction d, int16_t destination_gamma);
+
 		int8_t CheckIfAlphaIncrease(Direction d, int16_t destination_alpha);
 		int8_t CheckIfGammaIncrease(Direction d, int16_t destination_gamma);
 		int8_t CheckIfAlphaIncrease(int16_t source_alpha, int16_t destination_alpha);
