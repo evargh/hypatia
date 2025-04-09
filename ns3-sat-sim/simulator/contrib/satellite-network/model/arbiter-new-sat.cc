@@ -169,7 +169,7 @@ std::vector<ArbiterNewSat::distance_element> ArbiterNewSat::PopulateDistances(in
 	return distances;
 }
 
-void ArbiterNewSat::SetGSShortTable(std::vector<std::vector<std::tuple<double, double>>> table)
+void ArbiterNewSat::SetGSShortTable(std::vector<std::vector<std::tuple<int32_t, std::tuple<double, double>>>> table)
 {
 	m_other_table = table;
 }
@@ -253,18 +253,21 @@ std::tuple<int32_t, int32_t, int32_t> ArbiterNewSat::ShortDecide(
 	int16_t min_distance = -1;
 	for (int i = 0; i < adjacent_satellites.size(); i++)
 	{
-		if ((min_distance = -1) ||
-			neighbors.GetAlphaModularDistance(NeighborCoordContainer::SELF, std::get<0>(adjacent_satellites.at(i))) <
-				min_distance)
+		int16_t distance = neighbors.GetHopcount(NeighborCoordContainer::SELF, std::get<0>(adjacent_satellites.at(i)),
+												 std::get<1>(adjacent_satellites.at(i)));
+
+		if ((min_distance == -1) || distance < min_distance)
 		{
 			min_position = i;
-			min_distance =
-				neighbors.GetAlphaModularDistance(NeighborCoordContainer::SELF, std::get<0>(adjacent_satellites.at(i)));
+			min_distance = distance;
 		}
 	}
 
 	// if it requires fewer inter-orbit links to go to the ascending alpha, greedily do that
-	NS_ASSERT_MSG(min_distance != -1, "no minimum distance set");
+	if (min_distance == -1)
+	{
+		NS_ASSERT_MSG(min_distance != -1, "no minimum distance set");
+	}
 	return DetermineInterface(std::get<0>(adjacent_satellites.at(min_position)),
 							  std::get<1>(adjacent_satellites.at(min_position)), target_node_id);
 }
@@ -327,13 +330,13 @@ std::tuple<int32_t, int32_t, int32_t> ArbiterNewSat::TopologySatelliteNetworkDec
 	{
 		return m_next_hop_list[target_node_id];
 	}
-	std::vector<std::tuple<double, double>> adjacent_satellites =
+	std::vector<std::tuple<int32_t, std::tuple<double, double>>> adjacent_satellites =
 		m_other_table.at(target_node_id - num_orbits * num_satellites_per_orbit);
 	std::vector<std::tuple<int16_t, int16_t>> adjacent_satellites_cells;
 	for (auto elem : adjacent_satellites)
 	{
-		adjacent_satellites_cells.push_back(std::make_tuple(neighbors.CreateAlphaCell(std::get<0>(elem)),
-															neighbors.CreateGammaCell(std::get<1>(elem))));
+		adjacent_satellites_cells.push_back(std::make_tuple(neighbors.CreateAlphaCell(std::get<0>(std::get<1>(elem))),
+															neighbors.CreateGammaCell(std::get<1>(std::get<1>(elem)))));
 	}
 
 	return ShortDecide(adjacent_satellites_cells, target_node_id);

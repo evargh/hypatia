@@ -67,6 +67,7 @@ class ArbiterNewHelper
 	std::shared_ptr<std::vector<std::mutex>> shared_mutex_for_satellites;
 
 	std::vector<std::tuple<double, double>> satellite_positions_short;
+	std::vector<std::vector<std::tuple<int32_t, std::tuple<double, double>>>> adjacent_satellite_table;
 };
 
 } // namespace ns3

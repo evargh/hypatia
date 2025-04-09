@@ -58,6 +58,7 @@ ArbiterNewHelper::ArbiterNewHelper(Ptr<BasicSimulation> basicSimulation, NodeCon
 		m_satellites_per_orbit = parse_positive_int64(res[1]);
 		int64_t num_satellites = m_num_orbits * m_satellites_per_orbit;
 		satellite_positions_short.resize(num_satellites);
+		adjacent_satellite_table.resize(m_nodes.GetN() - m_satellites_per_orbit * m_num_orbits);
 
 		std::vector<int64_t> s = {-1};
 		s.resize(num_satellites, -1);
@@ -314,8 +315,6 @@ std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>> ArbiterNewHelper
 void ArbiterNewHelper::UpdateForwardingState(int64_t t)
 {
 
-	std::vector<std::vector<std::tuple<double, double>>> adjacent_satellite_table;
-	adjacent_satellite_table.resize(m_nodes.GetN() - m_satellites_per_orbit * m_num_orbits);
 	// Filename
 	std::ostringstream res;
 	res << m_basicSimulation->GetRunDir() << "/";
@@ -428,6 +427,21 @@ void ArbiterNewHelper::UpdateForwardingState(int64_t t)
 											1 + my_if_id,  // Skip the loop-back interface
 											1 + next_if_id // Skip the loop-back interface
 					);
+				if (next_hop_node_id == target_node_id)
+				{
+					adjacent_satellite_table.at(target_node_id - m_num_orbits * m_satellites_per_orbit)
+						.push_back(std::make_tuple(current_node_id, satellite_positions_short.at(current_node_id)));
+				}
+				if (next_hop_node_id == -1)
+				{
+					std::vector<std::tuple<int32_t, std::tuple<double, double>>> this_list =
+						adjacent_satellite_table.at(target_node_id - m_num_orbits * m_satellites_per_orbit);
+					this_list.erase(std::find_if(this_list.begin(), this_list.end(),
+												 [current_node_id](std::tuple<int32_t, std::tuple<double, double>> a) {
+													 return std::get<0>(a) == current_node_id;
+												 }));
+					adjacent_satellite_table.at(target_node_id - m_num_orbits * m_satellites_per_orbit) = this_list;
+				}
 			}
 			else
 			{
@@ -436,8 +450,6 @@ void ArbiterNewHelper::UpdateForwardingState(int64_t t)
 											1 + my_if_id,  // Skip the loop-back interface
 											1 + next_if_id // Skip the loop-back interface
 					);
-				adjacent_satellite_table.at(current_node_id - m_num_orbits * m_satellites_per_orbit)
-					.push_back(satellite_positions_short.at(next_hop_node_id));
 			}
 		}
 
