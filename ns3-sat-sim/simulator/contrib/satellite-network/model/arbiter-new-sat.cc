@@ -67,8 +67,8 @@ std::vector<ArbiterNewSat::distance_element> ArbiterNewSat::PopulateDistances(in
 		direction_sequence.resize(2);
 		direction_sequence.at(0) = static_cast<NeighborCoordContainer::Direction>(neighbor_idx);
 
-		int64_t neighbor_distance_to_target = neighbors.GetSquaredEuclideanModularDistance(
-			direction_sequence.at(0), destination_alpha, destination_gamma);
+		int64_t neighbor_distance_to_target =
+			neighbors.GetHopcount(direction_sequence.at(0), destination_alpha, destination_gamma);
 		bool neighbor_in_range =
 			neighbors.VerifyInRange(direction_sequence.at(0), destination_alpha, destination_gamma);
 
@@ -86,7 +86,7 @@ std::vector<ArbiterNewSat::distance_element> ArbiterNewSat::PopulateDistances(in
 					direction_sequence.at(1) = static_cast<NeighborCoordContainer::Direction>(neighbor_of_neighbor_idx);
 					std::tuple<int16_t, int16_t> coords = neighbors.GetCoordsFromSequence(direction_sequence);
 					int16_t neighbor_neighbor_distance_to_target =
-						neighbors.GetSquaredEuclideanModularDistance(coords, destination_alpha, destination_gamma);
+						neighbors.GetHopcount(coords, destination_alpha, destination_gamma);
 
 					if (neighbor_in_range || neighbor_neighbor_distance_to_target < neighbor_distance_to_target)
 					{
@@ -177,8 +177,7 @@ std::tuple<int32_t, int32_t, int32_t> ArbiterNewSat::DetermineInterface(int16_t 
 	{
 		return HandleClose(destination_alpha, destination_gamma, target_node_id);
 	}
-	int32_t current_hops = neighbors.GetSquaredEuclideanModularDistance(NeighborCoordContainer::SELF, destination_alpha,
-																		destination_gamma);
+	int32_t current_hops = neighbors.GetHopcount(NeighborCoordContainer::SELF, destination_alpha, destination_gamma);
 
 	std::vector<distance_element> distances = PopulateDistances(current_hops, destination_alpha, destination_gamma);
 

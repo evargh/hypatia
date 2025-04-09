@@ -176,9 +176,10 @@ int32_t ArbiterShortSat::NeighborCoordContainer::GetSquaredEuclideanModularDista
 																					int16_t destination_alpha,
 																					int16_t destination_gamma)
 {
-	return ModularArithmeticHelper::GetSquaredEuclideanModularDistance(
-		CreateAlphaCell(std::get<0>(m_coords.at(d))), CreateGammaCell(std::get<1>(m_coords.at(d))), destination_alpha,
-		destination_gamma, m_alpha_base, m_gamma_base);
+	int16_t alpha_cell = CreateAlphaCell(std::get<0>(m_coords.at(d)));
+	int16_t gamma_cell = CreateGammaCell(std::get<1>(m_coords.at(d)));
+	return GetSquaredEuclideanModularDistance(std::make_tuple(alpha_cell, gamma_cell), destination_alpha,
+											  destination_gamma);
 }
 
 int32_t ArbiterShortSat::NeighborCoordContainer::GetSquaredEuclideanModularDistance(std::tuple<int16_t, int16_t> c,
