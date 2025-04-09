@@ -67,8 +67,8 @@ std::vector<ArbiterNewSat::distance_element> ArbiterNewSat::PopulateDistances(in
 		direction_sequence.resize(2);
 		direction_sequence.at(0) = static_cast<NeighborCoordContainer::Direction>(neighbor_idx);
 
-		int64_t neighbor_distance_to_target = neighbors.GetSquaredEuclideanModularDistance(
-			direction_sequence.at(0), destination_alpha, destination_gamma);
+		int64_t neighbor_distance_to_target =
+			neighbors.GetHopcount(direction_sequence.at(0), destination_alpha, destination_gamma);
 		bool neighbor_in_range =
 			neighbors.VerifyInRange(direction_sequence.at(0), destination_alpha, destination_gamma);
 
@@ -86,7 +86,7 @@ std::vector<ArbiterNewSat::distance_element> ArbiterNewSat::PopulateDistances(in
 					direction_sequence.at(1) = static_cast<NeighborCoordContainer::Direction>(neighbor_of_neighbor_idx);
 					std::tuple<int16_t, int16_t> coords = neighbors.GetCoordsFromSequence(direction_sequence);
 					int16_t neighbor_neighbor_distance_to_target =
-						neighbors.GetSquaredEuclideanModularDistance(coords, destination_alpha, destination_gamma);
+						neighbors.GetHopcount(coords, destination_alpha, destination_gamma);
 
 					if (neighbor_in_range || neighbor_neighbor_distance_to_target < neighbor_distance_to_target)
 					{
@@ -169,6 +169,11 @@ std::vector<ArbiterNewSat::distance_element> ArbiterNewSat::PopulateDistances(in
 	return distances;
 }
 
+void ArbiterNewSat::SetGSShortTable(std::vector<std::vector<std::tuple<double, double>>> table)
+{
+	m_other_table = table;
+}
+
 std::tuple<int32_t, int32_t, int32_t> ArbiterNewSat::DetermineInterface(int16_t destination_alpha,
 																		int16_t destination_gamma,
 																		int32_t target_node_id)
@@ -177,8 +182,11 @@ std::tuple<int32_t, int32_t, int32_t> ArbiterNewSat::DetermineInterface(int16_t 
 	{
 		return HandleClose(destination_alpha, destination_gamma, target_node_id);
 	}
-	int32_t current_hops = neighbors.GetSquaredEuclideanModularDistance(NeighborCoordContainer::SELF, destination_alpha,
-																		destination_gamma);
+	int32_t current_hops = neighbors.GetHopcount(NeighborCoordContainer::SELF, destination_alpha, destination_gamma);
+	NS_LOG_DEBUG(m_node_id << " starting at: (" << std::get<0>(neighbors.GetCoords(NeighborCoordContainer::SELF))
+						   << ", " << std::get<1>(neighbors.GetCoords(NeighborCoordContainer::SELF)) << ") ");
+	NS_LOG_DEBUG("ending at: (" << destination_alpha << ", " << destination_gamma << ") " << " for " << target_node_id);
+	NS_LOG_DEBUG("hopcount: " << current_hops);
 
 	std::vector<distance_element> distances = PopulateDistances(current_hops, destination_alpha, destination_gamma);
 
@@ -238,17 +246,27 @@ std::tuple<int32_t, int32_t, int32_t> ArbiterNewSat::DetermineInterface(int16_t 
 	return if_index;
 }
 
-std::tuple<int32_t, int32_t, int32_t> ArbiterNewSat::ShortDecide(int16_t aa, int16_t ag, int16_t da, int16_t dg,
-																 int32_t target_node_id)
+std::tuple<int32_t, int32_t, int32_t> ArbiterNewSat::ShortDecide(
+	std::vector<std::tuple<int16_t, int16_t>> adjacent_satellites, int32_t target_node_id)
 {
-	int16_t asc_alpha_distance = neighbors.GetAlphaModularDistance(NeighborCoordContainer::SELF, aa);
-	int16_t desc_alpha_distance = neighbors.GetAlphaModularDistance(NeighborCoordContainer::SELF, da);
+	int min_position = 0;
+	int16_t min_distance = -1;
+	for (int i = 0; i < adjacent_satellites.size(); i++)
+	{
+		if ((min_distance = -1) ||
+			neighbors.GetAlphaModularDistance(NeighborCoordContainer::SELF, std::get<0>(adjacent_satellites.at(i))) <
+				min_distance)
+		{
+			min_position = i;
+			min_distance =
+				neighbors.GetAlphaModularDistance(NeighborCoordContainer::SELF, std::get<0>(adjacent_satellites.at(i)));
+		}
+	}
 
 	// if it requires fewer inter-orbit links to go to the ascending alpha, greedily do that
-	if (asc_alpha_distance <= desc_alpha_distance)
-		return DetermineInterface(aa, ag, target_node_id);
-	else
-		return DetermineInterface(da, dg, target_node_id);
+	NS_ASSERT_MSG(min_distance != -1, "no minimum distance set");
+	return DetermineInterface(std::get<0>(adjacent_satellites.at(min_position)),
+							  std::get<1>(adjacent_satellites.at(min_position)), target_node_id);
 }
 
 void ArbiterNewSat::SetInterfaceCongestionBits()
@@ -309,15 +327,16 @@ std::tuple<int32_t, int32_t, int32_t> ArbiterNewSat::TopologySatelliteNetworkDec
 	{
 		return m_next_hop_list[target_node_id];
 	}
-	double aa, ag, da, dg;
-	std::tie(aa, ag, da, dg) = m_other_table.at(target_node_id - num_orbits * num_satellites_per_orbit);
+	std::vector<std::tuple<double, double>> adjacent_satellites =
+		m_other_table.at(target_node_id - num_orbits * num_satellites_per_orbit);
+	std::vector<std::tuple<int16_t, int16_t>> adjacent_satellites_cells;
+	for (auto elem : adjacent_satellites)
+	{
+		adjacent_satellites_cells.push_back(std::make_tuple(neighbors.CreateAlphaCell(std::get<0>(elem)),
+															neighbors.CreateGammaCell(std::get<1>(elem))));
+	}
 
-	int16_t aac = neighbors.CreateAlphaCell(aa);
-	int16_t agc = neighbors.CreateGammaCell(ag);
-	int16_t dac = neighbors.CreateAlphaCell(da);
-	int16_t dgc = neighbors.CreateGammaCell(dg);
-
-	return ShortDecide(aac, agc, dac, dgc, target_node_id);
+	return ShortDecide(adjacent_satellites_cells, target_node_id);
 }
 
 void ArbiterNewSat::SetSingleForwardState(int32_t target_node_id, int32_t next_node_id, int32_t own_if_id,

@@ -151,14 +151,10 @@ std::tuple<int32_t, int32_t, int32_t> ArbiterShortSat::DetermineInterface(int16_
 		return HandleClose(destination_alpha, destination_gamma, target_node_id);
 	}
 
-	int32_t right_distance = neighbors.GetSquaredEuclideanModularDistance(NeighborCoordContainer::RIGHT,
-																		  destination_alpha, destination_gamma);
-	int32_t left_distance = neighbors.GetSquaredEuclideanModularDistance(NeighborCoordContainer::LEFT,
-																		 destination_alpha, destination_gamma);
-	int32_t up_distance =
-		neighbors.GetSquaredEuclideanModularDistance(NeighborCoordContainer::UP, destination_alpha, destination_gamma);
-	int32_t down_distance = neighbors.GetSquaredEuclideanModularDistance(NeighborCoordContainer::DOWN,
-																		 destination_alpha, destination_gamma);
+	int32_t right_distance = neighbors.GetHopcount(NeighborCoordContainer::RIGHT, destination_alpha, destination_gamma);
+	int32_t left_distance = neighbors.GetHopcount(NeighborCoordContainer::LEFT, destination_alpha, destination_gamma);
+	int32_t up_distance = neighbors.GetHopcount(NeighborCoordContainer::UP, destination_alpha, destination_gamma);
+	int32_t down_distance = neighbors.GetHopcount(NeighborCoordContainer::DOWN, destination_alpha, destination_gamma);
 
 	int32_t min_distance = std::min({right_distance, left_distance, up_distance, down_distance}, std::less<int32_t>());
 

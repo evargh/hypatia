@@ -50,44 +50,40 @@ std::tuple<int32_t, int32_t, int32_t> ArbiterDhbpSat::DetermineInterface(int16_t
 		return HandleClose(destination_alpha, destination_gamma, target_node_id);
 	}
 	// refactor to use the new functions later
-	int32_t right_distance = neighbors.GetHopcount(NeighborCoordContainer::RIGHT, destination_alpha, destination_gamma);
-	int32_t left_distance = neighbors.GetHopcount(NeighborCoordContainer::LEFT, destination_alpha, destination_gamma);
-	int32_t up_distance = neighbors.GetHopcount(NeighborCoordContainer::UP, destination_alpha, destination_gamma);
-	int32_t down_distance = neighbors.GetHopcount(NeighborCoordContainer::DOWN, destination_alpha, destination_gamma);
+	int32_t right_hops = neighbors.GetHopcount(NeighborCoordContainer::RIGHT, destination_alpha, destination_gamma);
+	int32_t left_hops = neighbors.GetHopcount(NeighborCoordContainer::LEFT, destination_alpha, destination_gamma);
+	int32_t up_hops = neighbors.GetHopcount(NeighborCoordContainer::UP, destination_alpha, destination_gamma);
+	int32_t down_hops = neighbors.GetHopcount(NeighborCoordContainer::DOWN, destination_alpha, destination_gamma);
 
-	int32_t current_distance =
-		neighbors.GetHopcount(NeighborCoordContainer::SELF, destination_alpha, destination_gamma);
+	int32_t current_hops = neighbors.GetHopcount(NeighborCoordContainer::SELF, destination_alpha, destination_gamma);
 
 	typedef std::tuple<NeighborCoordContainer::Direction, int32_t, int64_t> distance_element;
 
 	auto distances = {
-		std::make_tuple(NeighborCoordContainer::LEFT, left_distance,
+		std::make_tuple(NeighborCoordContainer::LEFT, left_hops,
 						GetQueueSizeForFlow(std::get<0>(m_neighbor_ids.at(NeighborCoordContainer::LEFT - 1)),
 											source_node_id, target_node_id) *
-							left_distance),
-		std::make_tuple(NeighborCoordContainer::DOWN, down_distance,
+							left_hops),
+		std::make_tuple(NeighborCoordContainer::DOWN, down_hops,
 						GetQueueSizeForFlow(std::get<0>(m_neighbor_ids.at(NeighborCoordContainer::DOWN - 1)),
 											source_node_id, target_node_id) *
-							down_distance),
-		std::make_tuple(NeighborCoordContainer::UP, up_distance,
+							down_hops),
+		std::make_tuple(NeighborCoordContainer::UP, up_hops,
 						GetQueueSizeForFlow(std::get<0>(m_neighbor_ids.at(NeighborCoordContainer::UP - 1)),
 											source_node_id, target_node_id) *
-							up_distance),
-		std::make_tuple(NeighborCoordContainer::RIGHT, right_distance,
+							up_hops),
+		std::make_tuple(NeighborCoordContainer::RIGHT, right_hops,
 						GetQueueSizeForFlow(std::get<0>(m_neighbor_ids.at(NeighborCoordContainer::RIGHT - 1)),
 											source_node_id, target_node_id) *
-							right_distance)};
+							right_hops)};
 
 	std::vector<distance_element> thresholded_distances;
 	// the original DHBP has a dependence on knowing the destination and source satellites for making a space
 	// restriction.
 	// this requires a packet to embed information about source satellite (2 bytes in starlink), and requires
 	// some inference about what the destination satellite could be ahead of time.
-	//
-	// instead of that, for now we restrict the space by only permitting the use of satellites that are geographically
-	// closer this also prevents loops in case the traffic is ever sparse
 	std::copy_if(distances.begin(), distances.end(), std::back_inserter(thresholded_distances),
-				 [current_distance](distance_element i) { return std::get<1>(i) <= current_distance; });
+				 [current_hops](distance_element i) { return std::get<1>(i) <= current_hops; });
 
 	// then pick the minimum
 	std::sort(thresholded_distances.begin(), thresholded_distances.end(),
@@ -107,7 +103,7 @@ std::tuple<int32_t, int32_t, int32_t> ArbiterDhbpSat::DetermineInterface(int16_t
 	}
 	else
 	{
-		NS_ASSERT_MSG(thresholded_distances.size() != 0, "something incorrect with determinining shortest path");
+		NS_ASSERT_MSG(thresholded_distances.size() != 0, "no viable paths");
 		return std::make_tuple(-2, -2, -2);
 	}
 }

@@ -57,6 +57,7 @@ ArbiterNewHelper::ArbiterNewHelper(Ptr<BasicSimulation> basicSimulation, NodeCon
 		m_num_orbits = parse_positive_int64(res[0]);
 		m_satellites_per_orbit = parse_positive_int64(res[1]);
 		int64_t num_satellites = m_num_orbits * m_satellites_per_orbit;
+		satellite_positions_short.resize(num_satellites);
 
 		std::vector<int64_t> s = {-1};
 		s.resize(num_satellites, -1);
@@ -76,7 +77,6 @@ ArbiterNewHelper::ArbiterNewHelper(Ptr<BasicSimulation> basicSimulation, NodeCon
 			std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>> neighbors_of_neighbors;
 			neighbors_of_neighbors.resize(4);
 			auto table = table_of_node.at(i);
-			// can memoize
 			for (int idx = 0; idx < 4; idx++)
 			{
 				neighbors_of_neighbors.at(idx) = table_of_node.at(std::get<0>(table.at(idx)));
@@ -110,17 +110,14 @@ ArbiterNewHelper::ArbiterNewHelper(Ptr<BasicSimulation> basicSimulation, NodeCon
 		parse_positive_int64(m_basicSimulation->GetConfigParamOrFail("dynamic_state_update_interval_ns"));
 	std::cout << "  > Forward state update interval: " << m_dynamicStateUpdateIntervalNs << "ns" << std::endl;
 	std::cout << "  > Perform first forwarding state load for t=0" << std::endl;
+	UpdateOrbitalParams(0);
+	basicSimulation->RegisterTimestamp("Loaded RAAN and anomaly into satellite routing algorithms");
+
 	UpdateForwardingState(0);
 	basicSimulation->RegisterTimestamp("Created initial single forwarding state");
 
 	SetCoordinateSkew();
 	basicSimulation->RegisterTimestamp("Extracted the geographic position of the first satellite");
-
-	UpdateOrbitalParams(0);
-	basicSimulation->RegisterTimestamp("Loaded RAAN and anomaly into satellite routing algorithms");
-
-	SetRoutingParams();
-	basicSimulation->RegisterTimestamp("Determined coordinates for Ground Stations");
 
 	std::cout << std::endl;
 }
@@ -230,29 +227,6 @@ void ArbiterNewHelper::SetCoordinateSkew()
 	m_coordinateSkew_deg = first_mm->GetSatellite()->GetGeographicPosition(first_mm->GetSatellite()->GetTleEpoch()).y;
 }
 
-void ArbiterNewHelper::SetRoutingParams()
-{
-
-	std::vector<std::tuple<double, double, double, double>> short_table;
-
-	for (uint32_t current_node_id = 0; current_node_id < m_nodes.GetN() - m_num_orbits * m_satellites_per_orbit;
-		 current_node_id++)
-	{
-		Ptr<MobilityModel> mm =
-			m_nodes.Get(current_node_id + m_num_orbits * m_satellites_per_orbit)->GetObject<MobilityModel>();
-		if (mm != nullptr)
-		{
-			std::tuple<double, double, double, double> pos = CartesianToShort(mm->GetPosition());
-
-			short_table.push_back(pos);
-		}
-	}
-	for (uint32_t current_node_id = 0; current_node_id < m_num_orbits * m_satellites_per_orbit; current_node_id++)
-	{
-		m_sat_arbiters.at(current_node_id)->SetGSShortTable(short_table);
-	}
-}
-
 void ArbiterNewHelper::UpdateOrbitalParams(int64_t t)
 {
 	// Filename
@@ -300,6 +274,7 @@ void ArbiterNewHelper::UpdateOrbitalParams(int64_t t)
 
 			NS_LOG_DEBUG(current_node_id << ": " << satellite_alpha << " " << satellite_gamma);
 			m_sat_arbiters.at(current_node_id)->SetShortParams(satellite_alpha, satellite_gamma);
+			satellite_positions_short.at(current_node_id) = std::make_tuple(satellite_alpha, satellite_gamma);
 		}
 	}
 	else
@@ -338,6 +313,9 @@ std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>> ArbiterNewHelper
 
 void ArbiterNewHelper::UpdateForwardingState(int64_t t)
 {
+
+	std::vector<std::vector<std::tuple<double, double>>> adjacent_satellite_table;
+	adjacent_satellite_table.resize(m_nodes.GetN() - m_satellites_per_orbit * m_num_orbits);
 	// Filename
 	std::ostringstream res;
 	res << m_basicSimulation->GetRunDir() << "/";
@@ -458,7 +436,14 @@ void ArbiterNewHelper::UpdateForwardingState(int64_t t)
 											1 + my_if_id,  // Skip the loop-back interface
 											1 + next_if_id // Skip the loop-back interface
 					);
+				adjacent_satellite_table.at(current_node_id - m_num_orbits * m_satellites_per_orbit)
+					.push_back(satellite_positions_short.at(next_hop_node_id));
 			}
+		}
+
+		for (int current_node_id = 0; current_node_id < m_num_orbits * m_satellites_per_orbit; current_node_id++)
+		{
+			m_sat_arbiters.at(current_node_id)->SetGSShortTable(adjacent_satellite_table);
 		}
 
 		// Close file

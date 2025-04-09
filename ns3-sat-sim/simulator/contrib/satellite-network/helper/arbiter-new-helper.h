@@ -46,7 +46,6 @@ class ArbiterNewHelper
 	double m_satelliteInclination;
 	void UpdateOrbitalParams(int64_t t);
 	void UpdateForwardingState(int64_t t);
-	void SetRoutingParams();
 	void SetCoordinateSkew();
 	std::vector<std::tuple<int32_t, int32_t, int32_t>> CreateOutboundInterfaceList(int32_t i);
 	std::tuple<double, double, double, double> CartesianToShort(Vector3D cartesian);
@@ -66,6 +65,8 @@ class ArbiterNewHelper
 	// the vector should be properly sized when used, which smells but will work for now
 	std::shared_ptr<std::vector<int64_t>> shared_data_for_satellites;
 	std::shared_ptr<std::vector<std::mutex>> shared_mutex_for_satellites;
+
+	std::vector<std::tuple<double, double>> satellite_positions_short;
 };
 
 } // namespace ns3

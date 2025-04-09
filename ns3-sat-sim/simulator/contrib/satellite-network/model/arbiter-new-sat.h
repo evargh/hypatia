@@ -63,8 +63,9 @@ class ArbiterNewSat : public ArbiterShortSat
 	// Updating of forward state
 	void SetSingleForwardState(int32_t target_node_id, int32_t next_node_id, int32_t own_if_id, int32_t next_if_id);
 
-	std::tuple<int32_t, int32_t, int32_t> ShortDecide(int16_t aa, int16_t ag, int16_t da, int16_t dg,
+	std::tuple<int32_t, int32_t, int32_t> ShortDecide(std::vector<std::tuple<int16_t, int16_t>> adjacent_satellites,
 													  int32_t target_node_id);
+	void SetGSShortTable(std::vector<std::vector<std::tuple<double, double>>> table);
 
 	void SetSharedState(int64_t val);
 	int64_t GetSharedState(size_t loc);
@@ -82,6 +83,7 @@ class ArbiterNewSat : public ArbiterShortSat
 	std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>> m_neighbor_neighbors;
 	std::shared_ptr<std::vector<int64_t>> shared_data_for_satellites;
 	std::shared_ptr<std::vector<std::mutex>> shared_data_for_satellites_mutex;
+	std::vector<std::vector<std::tuple<double, double>>> m_other_table;
 };
 
 } // namespace ns3
