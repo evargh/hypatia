@@ -54,7 +54,8 @@ float ArbiterNewSat::GetEstimatedPropagationDelay(int32_t horizontal_hops, int32
 
 std::vector<ArbiterNewSat::distance_element> ArbiterNewSat::PopulateDistances(int32_t current_hops,
 																			  int16_t destination_alpha,
-																			  int16_t destination_gamma)
+																			  int16_t destination_gamma,
+																			  int32_t target_node_id)
 {
 	// get the hopcounts for each second-hop node and populate the distance element
 	// also need to know the approximate difference between intra-orbit and inter-orbit links
@@ -69,12 +70,21 @@ std::vector<ArbiterNewSat::distance_element> ArbiterNewSat::PopulateDistances(in
 
 		int64_t neighbor_distance_to_target =
 			neighbors.GetHopcount(direction_sequence.at(0), destination_alpha, destination_gamma);
-		bool neighbor_in_range =
-			neighbors.VerifyInRange(direction_sequence.at(0), destination_alpha, destination_gamma);
 
-		if (neighbor_in_range || neighbor_distance_to_target < current_hops)
+		auto neighbor_id = std::get<0>(m_neighbor_ids.at(neighbor_idx - 1));
+		bool neighbor_is_dest = false;
+		std::vector<std::tuple<int32_t, std::tuple<double, double>>> adjacent_satellites =
+			m_other_table.at(target_node_id - num_orbits * num_satellites_per_orbit);
+		for (std::tuple<int32_t, std::tuple<double, double>> elem : adjacent_satellites)
 		{
-			auto neighbor_id = std::get<0>(m_neighbor_ids.at(neighbor_idx - 1));
+			if (neighbor_id == std::get<0>(elem))
+			{
+				neighbor_is_dest = true;
+			}
+		}
+
+		if (neighbor_is_dest || neighbor_distance_to_target < current_hops)
+		{
 			int64_t congestion_to_neighbor = (GetSharedState(m_node_id) >> (neighbor_idx - 1)) & 1;
 			for (int neighbor_of_neighbor_idx = 1; neighbor_of_neighbor_idx < 5; neighbor_of_neighbor_idx++)
 			{
@@ -88,7 +98,7 @@ std::vector<ArbiterNewSat::distance_element> ArbiterNewSat::PopulateDistances(in
 					int16_t neighbor_neighbor_distance_to_target =
 						neighbors.GetHopcount(coords, destination_alpha, destination_gamma);
 
-					if (neighbor_in_range || neighbor_neighbor_distance_to_target < neighbor_distance_to_target)
+					if (neighbor_is_dest || neighbor_neighbor_distance_to_target < neighbor_distance_to_target)
 					{
 						int64_t neighbor_congestion_to_neighbor =
 							(GetSharedState(neighbor_id) >> (neighbor_of_neighbor_idx - 1)) & 1;
@@ -157,7 +167,7 @@ std::vector<ArbiterNewSat::distance_element> ArbiterNewSat::PopulateDistances(in
 							static_cast<NeighborCoordContainer::Direction>(neighbor_of_neighbor_idx),
 							//    use the fact that the gamma/alpha differentials are constant to get
 							//    the position of their neighbors
-							neighbor_in_range, congestion_to_neighbor + neighbor_congestion_to_neighbor == 0,
+							neighbor_is_dest, congestion_to_neighbor + neighbor_congestion_to_neighbor == 0,
 							metric_to_neighbor, neighbor_metric_to_destination);
 
 						distances.push_back(this_dist);
@@ -178,17 +188,19 @@ std::tuple<int32_t, int32_t, int32_t> ArbiterNewSat::DetermineInterface(int16_t 
 																		int16_t destination_gamma,
 																		int32_t target_node_id)
 {
-	if (neighbors.VerifyInRange(NeighborCoordContainer::SELF, destination_alpha, destination_gamma))
-	{
-		return HandleClose(destination_alpha, destination_gamma, target_node_id);
-	}
+	/*
+	  if (neighbors.VerifyInRange(NeighborCoordContainer::SELF, destination_alpha, destination_gamma))
+	  {
+		  return HandleClose(destination_alpha, destination_gamma, target_node_id);
+	  }*/
 	int32_t current_hops = neighbors.GetHopcount(NeighborCoordContainer::SELF, destination_alpha, destination_gamma);
 	NS_LOG_DEBUG(m_node_id << " starting at: (" << std::get<0>(neighbors.GetCoords(NeighborCoordContainer::SELF))
 						   << ", " << std::get<1>(neighbors.GetCoords(NeighborCoordContainer::SELF)) << ") ");
 	NS_LOG_DEBUG("ending at: (" << destination_alpha << ", " << destination_gamma << ") " << " for " << target_node_id);
 	NS_LOG_DEBUG("hopcount: " << current_hops);
 
-	std::vector<distance_element> distances = PopulateDistances(current_hops, destination_alpha, destination_gamma);
+	std::vector<distance_element> distances =
+		PopulateDistances(current_hops, destination_alpha, destination_gamma, target_node_id);
 
 	// direction, direction, is in range, fastpath, propagation delay to this neighbor based on hops + standing queue
 	// delay, propagation delay to destination based on hops
@@ -326,9 +338,18 @@ std::tuple<int32_t, int32_t, int32_t> ArbiterNewSat::TopologySatelliteNetworkDec
 	bool is_request_for_source_ip_so_no_next_header)
 {
 	SetInterfaceCongestionBits();
+	if (source_node_id < num_orbits * num_satellites_per_orbit)
+	{
+		NS_LOG_DEBUG("dropped packet at " << m_node_id);
+	}
 	if (std::get<0>(m_next_hop_list[target_node_id]) >= num_orbits * num_satellites_per_orbit)
 	{
 		return m_next_hop_list[target_node_id];
+	}
+	if (target_node_id < num_orbits * num_satellites_per_orbit)
+	{
+		NS_LOG_DEBUG("dropped packet");
+		return std::make_tuple(-1, -1, -1);
 	}
 	std::vector<std::tuple<int32_t, std::tuple<double, double>>> adjacent_satellites =
 		m_other_table.at(target_node_id - num_orbits * num_satellites_per_orbit);

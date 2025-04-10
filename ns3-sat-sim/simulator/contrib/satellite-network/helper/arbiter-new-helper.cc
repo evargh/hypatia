@@ -314,7 +314,14 @@ std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>> ArbiterNewHelper
 
 void ArbiterNewHelper::UpdateForwardingState(int64_t t)
 {
-
+	for (std::vector<std::tuple<int32_t, std::tuple<double, double>>> &gs : adjacent_satellite_table)
+	{
+		for (std::tuple<int32_t, std::tuple<double, double>> &adjacent_satellite : gs)
+		{
+			adjacent_satellite = std::make_tuple(std::get<0>(adjacent_satellite),
+												 satellite_positions_short.at(std::get<0>(adjacent_satellite)));
+		}
+	}
 	// Filename
 	std::ostringstream res;
 	res << m_basicSimulation->GetRunDir() << "/";

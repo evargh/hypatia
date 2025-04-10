@@ -74,7 +74,7 @@ class ArbiterNewSat : public ArbiterShortSat
 	std::tuple<int32_t, int32_t, int32_t> DetermineInterface(int16_t destination_alpha, int16_t destination_gamma,
 															 int32_t target_node_id);
 	std::vector<distance_element> PopulateDistances(int32_t current_hops, int16_t destination_alpha,
-													int16_t destination_gamma);
+													int16_t destination_gamma, int32_t target_node_id);
 
 	void SetInterfaceCongestionBits();
 	float GetEstimatedPropagationDelay(int32_t horizontal_hops, int32_t vertical_hops);
