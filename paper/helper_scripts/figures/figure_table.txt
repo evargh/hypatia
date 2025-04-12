@@ -1,0 +1,31 @@
+2.1 (orbits around earth):
+Drawn in Inkscape.
+
+2.2 (Walker Delta example)
+Follow the guide in /hypatia/satviz/README.md, and run `visualize_constellation.py`. The default is currently the constellation used in the paper.
+
+2.3 (toroidal grid graph):
+Drawn in Inkscape.
+
+2.4 (toroidal grid graph shortest paths):
+Drawn in Inkscape.
+
+2.5 (changing physical paths):
+Drawn in Inkscape.
+
+3.1 (link length CDF):
+...
+have the two constellations generated--add steps
+...
+Set `NS_LOG="TopologySatelliteNetwork=level_debug"` in your environment.
+...
+go to the appropriate directories and run the right constellation for 1 second
+...
+Run `python3 parse_lengths.py <our console> > our_linklengths.txt`
+Run `python3 link_length_plot.py --constellation_linklengths our_linklengths.txt original_linklengths.txt`
+
+4.1 (edge utilization in toroidal and barabasi)
+Run `python3 generate_backbone_graphs.py --max_users_exponent 9 --num_satellites_per_orbit 22 --num_orbits 72 --percentile 0.95` to generate the data of 95th-percentile utilization
+Run `python3 plot_backbone_graphs.py --max_users_exponent 9 --percentile 0.95` to plot the data of 95th-percentile utilization.
+Repeat this process for with flags `--percentile 0.75` and `--percentile 0.5` for the other two plots.
+

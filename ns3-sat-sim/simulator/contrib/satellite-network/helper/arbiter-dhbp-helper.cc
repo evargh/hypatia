@@ -61,6 +61,15 @@ ArbiterDhbpHelper::ArbiterDhbpHelper(Ptr<BasicSimulation> basicSimulation, NodeC
 		throw std::runtime_error("File tles.txt could not be read.");
 	}
 	int64_t num_satellites = m_num_orbits * m_satellites_per_orbit;
+	satellite_positions_short.resize(num_satellites);
+	adjacent_satellite_table.resize(m_nodes.GetN() - num_satellites);
+	FlowVec sspf;
+	sspf.resize(m_nodes.GetN() - num_satellites);
+	for (auto &elem : sspf)
+	{
+		elem.resize(m_nodes.GetN() - num_satellites);
+	}
+	source_satellite_per_flow = std::unique_ptr<ArbiterDhbpHelper::FlowVec>(new ArbiterDhbpHelper::FlowVec(sspf));
 
 	std::vector<std::vector<int64_t>> stack_vector;
 	stack_vector.resize(num_satellites);
@@ -99,43 +108,19 @@ ArbiterDhbpHelper::ArbiterDhbpHelper(Ptr<BasicSimulation> basicSimulation, NodeC
 		parse_positive_int64(m_basicSimulation->GetConfigParamOrFail("dynamic_state_update_interval_ns"));
 	std::cout << "  > Forward state update interval: " << m_dynamicStateUpdateIntervalNs << "ns" << std::endl;
 	std::cout << "  > Perform first forwarding state load for t=0" << std::endl;
-	UpdateForwardingState(0);
-	basicSimulation->RegisterTimestamp("Create initial single forwarding state");
-	SetCoordinateSkew();
-	basicSimulation->RegisterTimestamp("Extracted the geographic position of the first satellite");
 
 	UpdateOrbitalParams(0);
 	basicSimulation->RegisterTimestamp("Loaded RAAN and anomaly into satellite routing algorithms");
 
-	SetRoutingParams();
-	basicSimulation->RegisterTimestamp("Determined coordinates for Ground Stations");
+	UpdateForwardingState(0);
+	basicSimulation->RegisterTimestamp("Create initial single forwarding state");
+
+	SetCoordinateSkew();
+	basicSimulation->RegisterTimestamp("Extracted the geographic position of the first satellite");
+
 	std::cout << std::endl;
 }
 
-void ArbiterDhbpHelper::SetRoutingParams()
-{
-
-	std::vector<std::tuple<double, double, double, double>> short_table;
-
-	for (uint32_t current_node_id = 0; current_node_id < m_nodes.GetN() - m_num_orbits * m_satellites_per_orbit;
-		 current_node_id++)
-	{
-		Ptr<MobilityModel> mm =
-			m_nodes.Get(current_node_id + m_num_orbits * m_satellites_per_orbit)->GetObject<MobilityModel>();
-		if (mm != nullptr)
-		{
-			std::tuple<double, double, double, double> pos = CartesianToShort(mm->GetPosition());
-			NS_LOG_DEBUG(current_node_id << ": " << std::get<0>(pos) << " " << std::get<1>(pos) << " "
-										 << std::get<2>(pos) << " " << std::get<3>(pos));
-
-			short_table.push_back(pos);
-		}
-	}
-	for (uint32_t current_node_id = 0; current_node_id < m_num_orbits * m_satellites_per_orbit; current_node_id++)
-	{
-		m_sat_arbiters.at(current_node_id)->SetGSShortTable(short_table);
-	}
-}
 std::vector<std::tuple<int32_t, int32_t, int32_t>> ArbiterDhbpHelper::CreateOutboundInterfaceList(int32_t i)
 {
 	std::vector<std::tuple<int32_t, int32_t, int32_t>> table;
@@ -300,6 +285,7 @@ void ArbiterDhbpHelper::UpdateOrbitalParams(int64_t t)
 			m_satelliteInclination = inclination;
 
 			m_sat_arbiters.at(current_node_id)->SetShortParams(satellite_alpha, satellite_gamma);
+			satellite_positions_short.at(current_node_id) = std::make_tuple(satellite_alpha, satellite_gamma);
 		}
 	}
 	else
@@ -324,6 +310,14 @@ void ArbiterDhbpHelper::UpdateOrbitalParams(int64_t t)
 void ArbiterDhbpHelper::UpdateForwardingState(int64_t t)
 {
 
+	for (std::vector<std::tuple<int32_t, std::tuple<double, double>>> &gs : adjacent_satellite_table)
+	{
+		for (std::tuple<int32_t, std::tuple<double, double>> &adjacent_satellite : gs)
+		{
+			adjacent_satellite = std::make_tuple(std::get<0>(adjacent_satellite),
+												 satellite_positions_short.at(std::get<0>(adjacent_satellite)));
+		}
+	}
 	// Filename
 	std::ostringstream res;
 	res << m_basicSimulation->GetRunDir() << "/";
@@ -436,6 +430,22 @@ void ArbiterDhbpHelper::UpdateForwardingState(int64_t t)
 											1 + my_if_id,  // Skip the loop-back interface
 											1 + next_if_id // Skip the loop-back interface
 					);
+				if (next_hop_node_id == target_node_id)
+				{
+
+					adjacent_satellite_table.at(target_node_id - m_num_orbits * m_satellites_per_orbit)
+						.push_back(std::make_tuple(current_node_id, satellite_positions_short.at(current_node_id)));
+				}
+				if (next_hop_node_id == -1)
+				{
+					std::vector<std::tuple<int32_t, std::tuple<double, double>>> this_list =
+						adjacent_satellite_table.at(target_node_id - m_num_orbits * m_satellites_per_orbit);
+					this_list.erase(std::find_if(this_list.begin(), this_list.end(),
+												 [current_node_id](std::tuple<int32_t, std::tuple<double, double>> a) {
+													 return std::get<0>(a) == current_node_id;
+												 }));
+					adjacent_satellite_table.at(target_node_id - m_num_orbits * m_satellites_per_orbit) = this_list;
+				}
 			}
 			else
 			{
@@ -444,9 +454,17 @@ void ArbiterDhbpHelper::UpdateForwardingState(int64_t t)
 											1 + my_if_id,  // Skip the loop-back interface
 											1 + next_if_id // Skip the loop-back interface
 					);
+				source_satellite_per_flow->at(current_node_id - m_num_orbits * m_satellites_per_orbit)
+					.at(target_node_id - m_num_orbits * m_satellites_per_orbit) =
+					std::make_tuple(next_hop_node_id, satellite_positions_short.at(next_hop_node_id));
 			}
 		}
 
+		for (int current_node_id = 0; current_node_id < m_num_orbits * m_satellites_per_orbit; current_node_id++)
+		{
+			m_sat_arbiters.at(current_node_id)->SetGSShortTable(adjacent_satellite_table);
+			m_sat_arbiters.at(current_node_id)->SetSourceSatelliteTable(source_satellite_per_flow.get());
+		}
 		// Close file
 		fstate_file.close();
 	}

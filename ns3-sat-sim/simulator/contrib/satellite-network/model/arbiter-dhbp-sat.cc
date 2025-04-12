@@ -41,15 +41,11 @@ ArbiterDhbpSat::ArbiterDhbpSat(Ptr<Node> this_node, NodeContainer nodes,
 	shared_data_for_satellites_mutex = sdfsm;
 }
 
-std::tuple<int32_t, int32_t, int32_t> ArbiterDhbpSat::DetermineInterface(int16_t destination_alpha,
+std::tuple<int32_t, int32_t, int32_t> ArbiterDhbpSat::DetermineInterface(int16_t source_alpha, int16_t source_gamma,
+																		 int16_t destination_alpha,
 																		 int16_t destination_gamma,
 																		 int32_t source_node_id, int32_t target_node_id)
 {
-	if (neighbors.VerifyInRange(NeighborCoordContainer::SELF, destination_alpha, destination_gamma))
-	{
-		return HandleClose(destination_alpha, destination_gamma, target_node_id);
-	}
-	// refactor to use the new functions later
 	int32_t right_hops = neighbors.GetHopcount(NeighborCoordContainer::RIGHT, destination_alpha, destination_gamma);
 	int32_t left_hops = neighbors.GetHopcount(NeighborCoordContainer::LEFT, destination_alpha, destination_gamma);
 	int32_t up_hops = neighbors.GetHopcount(NeighborCoordContainer::UP, destination_alpha, destination_gamma);
@@ -57,9 +53,7 @@ std::tuple<int32_t, int32_t, int32_t> ArbiterDhbpSat::DetermineInterface(int16_t
 
 	int32_t current_hops = neighbors.GetHopcount(NeighborCoordContainer::SELF, destination_alpha, destination_gamma);
 
-	typedef std::tuple<NeighborCoordContainer::Direction, int32_t, int64_t> distance_element;
-
-	auto distances = {
+	std::vector<ArbiterDhbpSat::distance_element> distances = {
 		std::make_tuple(NeighborCoordContainer::LEFT, left_hops,
 						GetQueueSizeForFlow(std::get<0>(m_neighbor_ids.at(NeighborCoordContainer::LEFT - 1)),
 											source_node_id, target_node_id) *
@@ -77,24 +71,44 @@ std::tuple<int32_t, int32_t, int32_t> ArbiterDhbpSat::DetermineInterface(int16_t
 											source_node_id, target_node_id) *
 							right_hops)};
 
-	std::vector<distance_element> thresholded_distances;
-	// the original DHBP has a dependence on knowing the destination and source satellites for making a space
-	// restriction.
-	// this requires a packet to embed information about source satellite (2 bytes in starlink), and requires
-	// some inference about what the destination satellite could be ahead of time.
-	std::copy_if(distances.begin(), distances.end(), std::back_inserter(thresholded_distances),
-				 [current_hops](distance_element i) { return std::get<1>(i) <= current_hops; });
+	std::vector<ArbiterDhbpSat::distance_element> thresholded_distances;
+
+	// in order to be in the rectangle, you need to be closer in hopcount than the source you select is
+	// similar reasoning to INNER's viable paths
+	if (!OPTIMIZED)
+	{
+		std::tuple<int16_t, int16_t> source_tuple = std::make_tuple(source_alpha, source_gamma);
+		int32_t source_hops_to_destination = neighbors.GetHopcount(source_tuple, destination_alpha, destination_gamma);
+		for (auto elem : distances)
+		{
+			if (std::get<1>(elem) <= source_hops_to_destination)
+			{
+				thresholded_distances.push_back(elem);
+			}
+		}
+	}
+	else
+	{
+		for (auto elem : distances)
+		{
+			if (std::get<1>(elem) <= current_hops)
+			{
+				thresholded_distances.push_back(elem);
+			}
+		}
+	}
 
 	// then pick the minimum
 	std::sort(thresholded_distances.begin(), thresholded_distances.end(),
-			  [](distance_element a, distance_element b) { return std::get<2>(a) < std::get<2>(b); });
-	NS_LOG_DEBUG(m_node_id << " num viable targets to " << target_node_id << ": " << thresholded_distances.size());
-	// consider which interface to use here, can be more complex than this
-	for (auto elem : thresholded_distances)
+			  [](ArbiterDhbpSat::distance_element a, ArbiterDhbpSat::distance_element b) {
+				  return std::get<2>(a) < std::get<2>(b);
+			  });
+	// NS_LOG_DEBUG(m_node_id << " num viable targets to " << target_node_id << ": " << thresholded_distances.size());
+	//  consider which interface to use here, can be more complex than this
+	/*for (auto elem : thresholded_distances)
 	{
-		NS_LOG_DEBUG("neighbor: " << std::get<0>(elem) << " distance: " << std::get<1>(elem)
-								  << " queue: " << std::get<2>(elem));
-	}
+		NS_LOG_DEBUG("neighbor: " << std::get<0>(elem) << " queue: " << std::get<2>(elem));
+	}*/
 
 	if (thresholded_distances.size() > 0)
 	{
@@ -103,26 +117,88 @@ std::tuple<int32_t, int32_t, int32_t> ArbiterDhbpSat::DetermineInterface(int16_t
 	}
 	else
 	{
-		NS_ASSERT_MSG(thresholded_distances.size() != 0, "no viable paths");
-		return std::make_tuple(-2, -2, -2);
+		NS_LOG_DEBUG("no viable paths, dropping");
+		return std::make_tuple(-1, -1, -1);
 	}
 }
 
-std::tuple<int32_t, int32_t, int32_t> ArbiterDhbpSat::ShortDecide(int16_t aa, int16_t ag, int16_t da, int16_t dg,
-																  int32_t source_node_id, int32_t target_node_id)
+std::tuple<int32_t, std::tuple<int16_t, int16_t>> ArbiterDhbpSat::ExtractClosestTuple(
+	std::vector<std::tuple<int32_t, std::tuple<int16_t, int16_t>>> adjacent_satellites,
+	std::tuple<int16_t, int16_t> coords)
 {
-	int16_t asc_alpha_distance = neighbors.GetAlphaModularDistance(NeighborCoordContainer::SELF, aa);
-	int16_t desc_alpha_distance = neighbors.GetAlphaModularDistance(NeighborCoordContainer::SELF, da);
+	int best_position = -1;
+	int16_t min_distance = -1;
+	for (int i = 0; i < adjacent_satellites.size(); i++)
+	{
+		int16_t adjacent_alpha = std::get<0>(std::get<1>(adjacent_satellites.at(i)));
+		int16_t adjacent_gamma = std::get<1>(std::get<1>(adjacent_satellites.at(i)));
+		int16_t distance = neighbors.GetHopcount(coords, adjacent_alpha, adjacent_gamma);
 
-	// if it requires fewer inter-orbit links to go to the ascending alpha, greedily do that
-	if (asc_alpha_distance <= desc_alpha_distance)
-	{
-		return DetermineInterface(aa, ag, source_node_id, target_node_id);
+		if ((min_distance == -1) || distance < min_distance)
+		{
+			best_position = i;
+			min_distance = distance;
+		}
 	}
-	else
+	NS_ASSERT_MSG(best_position != -1, "did not find closest/furthest satellites");
+	return adjacent_satellites.at(best_position);
+}
+/*
+std::tuple<int32_t, std::tuple<int16_t, int16_t>> ArbiterDhbpSat::ExtractClosestTupleCreatingRectangle(
+	std::vector<std::tuple<int32_t, std::tuple<int16_t, int16_t>>> adjacent_satellites,
+	std::tuple<int16_t, int16_t> destination_coords, std::tuple<int16_t, int16_t> my_coords)
+{
+	int best_position = -1;
+	int16_t min_distance = -1;
+	int16_t destination_alpha = std::get<0>(destination_coords);
+	int16_t destination_gamma = std::get<1>(destination_coords);
+	int16_t my_distance_from_destination = neighbors.GetHopcount(my_coords, destination_alpha, destination_gamma);
+	for (int i = 0; i < adjacent_satellites.size(); i++)
 	{
-		return DetermineInterface(da, dg, source_node_id, target_node_id);
+		int16_t source_alpha = std::get<0>(std::get<1>(adjacent_satellites.at(i)));
+		int16_t source_gamma = std::get<1>(std::get<1>(adjacent_satellites.at(i)));
+		int16_t distance = neighbors.GetHopcount(my_coords, source_alpha, source_gamma);
+
+		if ((min_distance == -1) || distance < min_distance)
+		{
+			// if the distance looks good, make sure your hopcount from the destination is less than or equal to the
+			// source's hopcount from the destination
+			int16_t source_distance_from_destination =
+				neighbors.GetHopcount(destination_coords, source_alpha, source_gamma);
+
+			if (source_distance_from_destination >=
+				my_distance_from_destination - ArbiterShortSat::CELL_SCALING_FACTOR / 2)
+			{
+				best_position = i;
+				min_distance = distance;
+			}
+		}
 	}
+	NS_ASSERT_MSG(best_position != -1, "did not find closest/furthest satellites");
+	return adjacent_satellites.at(best_position);
+}
+*/
+
+std::tuple<int32_t, int32_t, int32_t> ArbiterDhbpSat::ShortDecide(
+	std::tuple<int32_t, std::tuple<int16_t, int16_t>> source_satellite_data,
+	std::tuple<int32_t, std::tuple<int16_t, int16_t>> destination_satellite_data, int32_t source_node_id,
+	int32_t target_node_id)
+{
+	return DetermineInterface(std::get<0>(std::get<1>(source_satellite_data)),
+							  std::get<1>(std::get<1>(source_satellite_data)),
+							  std::get<0>(std::get<1>(destination_satellite_data)),
+							  std::get<1>(std::get<1>(destination_satellite_data)), source_node_id, target_node_id);
+}
+
+void ArbiterDhbpSat::SetGSShortTable(std::vector<std::vector<std::tuple<int32_t, std::tuple<double, double>>>> table)
+{
+	m_other_table = table;
+}
+
+void ArbiterDhbpSat::SetSourceSatelliteTable(
+	std::vector<std::vector<std::tuple<int32_t, std::tuple<double, double>>>> *table)
+{
+	source_satellite_per_flow = table;
 }
 
 std::tuple<int32_t, int32_t, int32_t> ArbiterDhbpSat::TopologySatelliteNetworkDecide(
@@ -138,15 +214,25 @@ std::tuple<int32_t, int32_t, int32_t> ArbiterDhbpSat::TopologySatelliteNetworkDe
 	{
 		return m_next_hop_list[target_node_id];
 	}
-	double aa, ag, da, dg;
-	std::tie(aa, ag, da, dg) = m_other_table.at(target_node_id - num_orbits * num_satellites_per_orbit);
 
-	int16_t aac = neighbors.CreateAlphaCell(aa);
-	int16_t agc = neighbors.CreateGammaCell(ag);
-	int16_t dac = neighbors.CreateAlphaCell(da);
-	int16_t dgc = neighbors.CreateGammaCell(dg);
+	std::tuple<int32_t, std::tuple<double, double>> source_satellite_data =
+		source_satellite_per_flow->at(source_node_id - num_orbits * num_satellites_per_orbit)
+			.at(target_node_id - num_orbits * num_satellites_per_orbit);
+	std::tuple<int32_t, std::tuple<double, double>> destination_satellite_data =
+		source_satellite_per_flow->at(target_node_id - num_orbits * num_satellites_per_orbit)
+			.at(source_node_id - num_orbits * num_satellites_per_orbit);
 
-	return ShortDecide(aac, agc, dac, dgc, source_node_id, target_node_id);
+	std::tuple<int32_t, std::tuple<int16_t, int16_t>> source_satellite_cell =
+		std::make_tuple(std::get<0>(source_satellite_data),
+						std::make_tuple(neighbors.CreateAlphaCell(std::get<0>(std::get<1>(source_satellite_data))),
+										neighbors.CreateGammaCell(std::get<1>(std::get<1>(source_satellite_data)))));
+
+	std::tuple<int32_t, std::tuple<int16_t, int16_t>> destination_satellite_cell = std::make_tuple(
+		std::get<0>(destination_satellite_data),
+		std::make_tuple(neighbors.CreateAlphaCell(std::get<0>(std::get<1>(destination_satellite_data))),
+						neighbors.CreateGammaCell(std::get<1>(std::get<1>(destination_satellite_data)))));
+
+	return ShortDecide(source_satellite_cell, destination_satellite_cell, source_node_id, target_node_id);
 }
 
 void ArbiterDhbpSat::IncreaseQueue(int32_t source_node_id, int32_t target_node_id)

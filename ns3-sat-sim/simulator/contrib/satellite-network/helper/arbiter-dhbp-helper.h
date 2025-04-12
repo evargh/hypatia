@@ -21,6 +21,7 @@
 #define ARBITER_DHBP_HELPER
 
 #include <mutex>
+#include <memory>
 #include "ns3/ipv4-routing-helper.h"
 #include "ns3/basic-simulation.h"
 #include "ns3/topology-satellite-network.h"
@@ -40,13 +41,13 @@ class ArbiterDhbpHelper
 	const int32_t APPROXIMATE_EARTH_RADIUS_M = 6371000;
 
 	ArbiterDhbpHelper(Ptr<BasicSimulation> basicSimulation, NodeContainer nodes);
+	typedef std::vector<std::vector<std::tuple<int32_t, std::tuple<double, double>>>> FlowVec;
 
   private:
 	std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>> InitialEmptyForwardingState();
 	double m_satelliteInclination;
 	void UpdateOrbitalParams(int64_t t);
 	void UpdateForwardingState(int64_t t);
-	void SetRoutingParams();
 	void SetCoordinateSkew();
 	std::vector<std::tuple<int32_t, int32_t, int32_t>> CreateOutboundInterfaceList(int32_t i);
 	std::tuple<double, double, double, double> CartesianToShort(Vector3D cartesian);
@@ -56,6 +57,9 @@ class ArbiterDhbpHelper
 	NodeContainer m_nodes;
 	double m_coordinateSkew_deg;
 	int64_t m_dynamicStateUpdateIntervalNs;
+
+	int64_t m_num_orbits;
+	int64_t m_satellites_per_orbit;
 	std::vector<Ptr<ArbiterDhbpSat>> m_sat_arbiters;
 	std::vector<Ptr<ArbiterSingleForward>> m_gs_arbiters;
 	std::vector<std::tuple<double, double, double, double>> m_other_table;
@@ -63,8 +67,9 @@ class ArbiterDhbpHelper
 	std::shared_ptr<std::vector<std::vector<int64_t>>> shared_data_for_satellites;
 	std::shared_ptr<std::vector<std::mutex>> shared_mutex_for_satellites;
 
-	int64_t m_num_orbits;
-	int64_t m_satellites_per_orbit;
+	std::vector<std::tuple<double, double>> satellite_positions_short;
+	FlowVec adjacent_satellite_table;
+	std::unique_ptr<FlowVec> source_satellite_per_flow;
 };
 
 } // namespace ns3

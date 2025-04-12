@@ -92,10 +92,6 @@ class ArbiterShortSat : public ArbiterSatnet
 		int8_t CheckIfAlphaIncrease(int16_t source_alpha, int16_t destination_alpha);
 		int8_t CheckIfGammaIncrease(int16_t source_gamma, int16_t destination_gamma);
 
-		int32_t GetSquaredEuclideanModularDistance(Direction d, int16_t destination_alpha, int16_t destination_gamma);
-		int32_t GetSquaredEuclideanModularDistance(std::tuple<int16_t, int16_t> c, int16_t destination_alpha,
-												   int16_t destination_gamma);
-
 		int16_t GetHopcount(Direction d, int16_t destination_alpha, int16_t destination_gamma);
 		std::tuple<int16_t, int16_t> GetHopcountTuple(Direction d, int16_t destination_alpha,
 													  int16_t destination_gamma);

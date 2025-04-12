@@ -60,6 +60,24 @@ std::vector<ArbiterNewSat::distance_element> ArbiterNewSat::PopulateDistances(in
 	// get the hopcounts for each second-hop node and populate the distance element
 	// also need to know the approximate difference between intra-orbit and inter-orbit links
 
+	// separate the process:
+	//  create a list of viable paths
+	//  a path is viable if it always gets closer to the destination, or if a node on the way is a destination
+	// have a design parameter n
+	// create a vector of distances
+	// at the start, iterate through all neighbors
+	//    if a neighbor is a destination or further from the destination, add it to the path or dont consider it for
+	//    future consideration, respectively if it is closer but not a destination, explore its neighbors
+	//
+	//
+	// go through each neighbor, and run a function where you pass it some data:
+	//  previous hop's distance to target
+	//  neighbors of the previous node
+	//
+	// when done, return a vector of these paths
+	// then, for each path, iterate through nodes, calculate cost, and at the end calculate the estimated propagation
+	// delay
+
 	std::vector<distance_element> distances;
 	for (int neighbor_idx = 1; neighbor_idx < 5; neighbor_idx++)
 	{
