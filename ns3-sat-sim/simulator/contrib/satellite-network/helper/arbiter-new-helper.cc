@@ -72,23 +72,19 @@ ArbiterNewHelper::ArbiterNewHelper(Ptr<BasicSimulation> basicSimulation, NodeCon
 
 	double left_neighbor_gamma_difference = 360.0 / (2 * m_satellites_per_orbit);
 	double right_neighbor_gamma_difference = -360.0 / (2 * m_satellites_per_orbit);
-	std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>> table_of_node;
+	std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>> ton;
 	for (int32_t i = 0; i < num_satellites; i++)
 	{
-		table_of_node.push_back(CreateOutboundInterfaceList(i));
+		ton.push_back(CreateOutboundInterfaceList(i));
 	}
+	table_of_node = std::unique_ptr<std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>>>(
+		new std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>>(ton));
 	for (int32_t i = 0; i < num_satellites; i++)
 	{
-		std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>> neighbors_of_neighbors;
-		neighbors_of_neighbors.resize(4);
-		auto table = table_of_node.at(i);
-		for (int idx = 0; idx < 4; idx++)
-		{
-			neighbors_of_neighbors.at(idx) = table_of_node.at(std::get<0>(table.at(idx)));
-		}
+		auto table = table_of_node->at(i);
 		Ptr<ArbiterNewSat> arbiter = CreateObject<ArbiterNewSat>(
 			m_nodes.Get(i), m_nodes, initial_forwarding_state[i], m_num_orbits, m_satellites_per_orbit,
-			shared_data_for_satellites, shared_mutex_for_satellites, table, neighbors_of_neighbors,
+			shared_data_for_satellites, shared_mutex_for_satellites, table_of_node.get(), table,
 			left_neighbor_gamma_difference, right_neighbor_gamma_difference);
 		m_sat_arbiters.push_back(arbiter);
 		m_nodes.Get(i)->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4ArbiterRouting>()->SetArbiter(arbiter);

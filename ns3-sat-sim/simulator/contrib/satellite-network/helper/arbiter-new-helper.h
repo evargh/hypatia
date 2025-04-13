@@ -65,6 +65,7 @@ class ArbiterNewHelper
 	// the vector should be properly sized when used, which smells but will work for now
 	std::shared_ptr<std::vector<int64_t>> shared_data_for_satellites;
 	std::shared_ptr<std::vector<std::mutex>> shared_mutex_for_satellites;
+	std::unique_ptr<std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>>> table_of_node;
 
 	std::vector<std::tuple<double, double>> satellite_positions_short;
 	std::vector<std::vector<std::tuple<int32_t, std::tuple<double, double>>>> adjacent_satellite_table;
