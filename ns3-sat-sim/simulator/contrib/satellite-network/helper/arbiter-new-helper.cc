@@ -43,6 +43,11 @@ ArbiterNewHelper::ArbiterNewHelper(Ptr<BasicSimulation> basicSimulation, NodeCon
 	res << m_basicSimulation->GetConfigParamOrFail("satellite_network_dir") << "/tles.txt";
 	std::string tle_filename = res.str();
 
+	int64_t isl_queue_size_packets =
+		parse_positive_int64(m_basicSimulation->GetConfigParamOrFail("isl_max_queue_size_pkts"));
+	double link_bandwidth_mbps =
+		parse_positive_double(m_basicSimulation->GetConfigParamOrFail("isl_data_rate_megabit_per_s"));
+
 	if (!file_exists(tle_filename))
 	{
 		throw std::runtime_error("File tles.txt does not exist.");
@@ -82,10 +87,11 @@ ArbiterNewHelper::ArbiterNewHelper(Ptr<BasicSimulation> basicSimulation, NodeCon
 	for (int32_t i = 0; i < num_satellites; i++)
 	{
 		auto table = table_of_node->at(i);
-		Ptr<ArbiterNewSat> arbiter = CreateObject<ArbiterNewSat>(
-			m_nodes.Get(i), m_nodes, initial_forwarding_state[i], m_num_orbits, m_satellites_per_orbit,
-			shared_data_for_satellites, shared_mutex_for_satellites, table_of_node.get(), table,
-			left_neighbor_gamma_difference, right_neighbor_gamma_difference);
+		Ptr<ArbiterNewSat> arbiter =
+			CreateObject<ArbiterNewSat>(m_nodes.Get(i), m_nodes, initial_forwarding_state[i], m_num_orbits,
+										m_satellites_per_orbit, shared_data_for_satellites, shared_mutex_for_satellites,
+										table_of_node.get(), table, left_neighbor_gamma_difference,
+										right_neighbor_gamma_difference, isl_queue_size_packets, link_bandwidth_mbps);
 		m_sat_arbiters.push_back(arbiter);
 		m_nodes.Get(i)->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4ArbiterRouting>()->SetArbiter(arbiter);
 	}

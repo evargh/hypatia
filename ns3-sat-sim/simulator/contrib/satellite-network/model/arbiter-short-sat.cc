@@ -146,47 +146,55 @@ std::tuple<int32_t, int32_t, int32_t> ArbiterShortSat::DetermineInterface(int16_
 	// if its left and below, both left and down may be valid. if both are, do left
 	// if its right and below, both down and right may be valid. if both are, do right
 
-	if (neighbors.VerifyInRange(NeighborCoordContainer::SELF, destination_alpha, destination_gamma))
-	{
-		return HandleClose(destination_alpha, destination_gamma, target_node_id);
-	}
+	int32_t right_hops = neighbors.GetHopcount(NeighborCoordContainer::RIGHT, destination_alpha, destination_gamma);
+	int32_t left_hops = neighbors.GetHopcount(NeighborCoordContainer::LEFT, destination_alpha, destination_gamma);
+	int32_t up_hops = neighbors.GetHopcount(NeighborCoordContainer::UP, destination_alpha, destination_gamma);
+	int32_t down_hops = neighbors.GetHopcount(NeighborCoordContainer::DOWN, destination_alpha, destination_gamma);
 
-	int32_t right_distance = neighbors.GetHopcount(NeighborCoordContainer::RIGHT, destination_alpha, destination_gamma);
-	int32_t left_distance = neighbors.GetHopcount(NeighborCoordContainer::LEFT, destination_alpha, destination_gamma);
-	int32_t up_distance = neighbors.GetHopcount(NeighborCoordContainer::UP, destination_alpha, destination_gamma);
-	int32_t down_distance = neighbors.GetHopcount(NeighborCoordContainer::DOWN, destination_alpha, destination_gamma);
+	int32_t min_hops = std::min({right_hops, left_hops, up_hops, down_hops}, std::less<int32_t>());
 
-	int32_t min_distance = std::min({right_distance, left_distance, up_distance, down_distance}, std::less<int32_t>());
-
-	if (min_distance == right_distance)
+	if (min_hops == right_hops)
 		return m_neighbor_ids[3];
-	if (min_distance == left_distance)
+	if (min_hops == left_hops)
 		return m_neighbor_ids[0];
-	if (min_distance == up_distance)
+	if (min_hops == up_hops)
 		return m_neighbor_ids[2];
-	if (min_distance == down_distance)
+	if (min_hops == down_hops)
 		return m_neighbor_ids[1];
 
 	NS_ASSERT_MSG(false, "something incorrect with determinining shortest path");
 	return std::make_tuple(-2, -2, -2);
 }
 
-void ArbiterShortSat::SetGSShortTable(std::vector<std::tuple<double, double, double, double>> table)
+void ArbiterShortSat::SetGSShortTable(std::vector<std::vector<std::tuple<int32_t, std::tuple<double, double>>>> table)
 {
 	m_other_table = table;
 }
 
-std::tuple<int32_t, int32_t, int32_t> ArbiterShortSat::ShortDecide(int16_t aa, int16_t ag, int16_t da, int16_t dg,
-																   int32_t target_node_id)
+std::tuple<int32_t, int32_t, int32_t> ArbiterShortSat::ShortDecide(
+	std::vector<std::tuple<int16_t, int16_t>> adjacent_satellites, int32_t target_node_id)
 {
-	int16_t asc_alpha_distance = neighbors.GetAlphaModularDistance(NeighborCoordContainer::SELF, aa);
-	int16_t desc_alpha_distance = neighbors.GetAlphaModularDistance(NeighborCoordContainer::SELF, da);
+	int min_position = 0;
+	int16_t min_distance = -1;
+	for (int i = 0; i < adjacent_satellites.size(); i++)
+	{
+		int16_t distance = neighbors.GetHopcount(NeighborCoordContainer::SELF, std::get<0>(adjacent_satellites.at(i)),
+												 std::get<1>(adjacent_satellites.at(i)));
+
+		if ((min_distance == -1) || distance < min_distance)
+		{
+			min_position = i;
+			min_distance = distance;
+		}
+	}
 
 	// if it requires fewer inter-orbit links to go to the ascending alpha, greedily do that
-	if (asc_alpha_distance <= desc_alpha_distance)
-		return DetermineInterface(aa, ag, target_node_id);
-	else
-		return DetermineInterface(da, dg, target_node_id);
+	if (min_distance == -1)
+	{
+		NS_ASSERT_MSG(min_distance != -1, "no minimum distance set");
+	}
+	return DetermineInterface(std::get<0>(adjacent_satellites.at(min_position)),
+							  std::get<1>(adjacent_satellites.at(min_position)), target_node_id);
 }
 
 std::tuple<int32_t, int32_t, int32_t> ArbiterShortSat::TopologySatelliteNetworkDecide(
@@ -197,16 +205,17 @@ std::tuple<int32_t, int32_t, int32_t> ArbiterShortSat::TopologySatelliteNetworkD
 	{
 		return m_next_hop_list[target_node_id];
 	}
-	double aa, ag, da, dg;
-	std::tie(aa, ag, da, dg) = m_other_table.at(target_node_id - num_orbits * num_satellites_per_orbit);
 
-	int16_t aac = neighbors.CreateAlphaCell(aa);
-	int16_t agc = neighbors.CreateGammaCell(ag);
-	int16_t dac = neighbors.CreateAlphaCell(da);
-	int16_t dgc = neighbors.CreateGammaCell(dg);
+	std::vector<std::tuple<int32_t, std::tuple<double, double>>> adjacent_satellites =
+		m_other_table.at(target_node_id - num_orbits * num_satellites_per_orbit);
+	std::vector<std::tuple<int16_t, int16_t>> adjacent_satellites_cells;
+	for (auto elem : adjacent_satellites)
+	{
+		adjacent_satellites_cells.push_back(std::make_tuple(neighbors.CreateAlphaCell(std::get<0>(std::get<1>(elem))),
+															neighbors.CreateGammaCell(std::get<1>(std::get<1>(elem)))));
+	}
 
-	NS_LOG_DEBUG(aac << " " << agc << " " << dac << " " << dgc);
-	return ShortDecide(aac, agc, dac, dgc, target_node_id);
+	return ShortDecide(adjacent_satellites_cells, target_node_id);
 }
 
 void ArbiterShortSat::SetSingleForwardState(int32_t target_node_id, int32_t next_node_id, int32_t own_if_id,

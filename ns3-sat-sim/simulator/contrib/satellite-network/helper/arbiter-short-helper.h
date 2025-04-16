@@ -47,7 +47,6 @@ class ArbiterShortHelper
 	void UpdateOrbitalParams(int64_t t);
 	void UpdateForwardingState(int64_t t);
 	void UpdateCentralityState(int64_t t);
-	void SetRoutingParams();
 	void SetCoordinateSkew();
 	std::vector<std::tuple<int32_t, int32_t, int32_t>> CreateOutboundInterfaceList(int32_t i);
 	std::tuple<double, double, double, double> CartesianToShort(Vector3D cartesian);
@@ -63,6 +62,9 @@ class ArbiterShortHelper
 	std::vector<Ptr<ArbiterShortSat>> m_sat_arbiters;
 	std::vector<Ptr<ArbiterSingleForward>> m_gs_arbiters;
 	std::vector<std::tuple<double, double, double, double>> m_other_table;
+
+	std::vector<std::tuple<double, double>> satellite_positions_short;
+	std::vector<std::vector<std::tuple<int32_t, std::tuple<double, double>>>> adjacent_satellite_table;
 };
 
 } // namespace ns3

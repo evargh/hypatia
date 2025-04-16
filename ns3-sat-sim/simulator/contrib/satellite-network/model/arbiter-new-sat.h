@@ -36,10 +36,9 @@ class ArbiterNewSat : public ArbiterShortSat
 {
   public:
 	static const int16_t EXPLORATION_DEPTH = 2;
-	static const int32_t MINIMUM_FULLNESS_THRESHOLD = 30;
 	static const int64_t MINIMUM_FULLNESS_INTERVAL_NS = 100000000;
-	static const int32_t LINK_QUEUE_SIZE = 120;
-	static const int64_t LINK_BANDWIDTH = 10000000;
+	static constexpr double MINIMUM_FULLNESS_RATIO = 0.25;
+
 	static constexpr double INTER_ORBIT_PROPAGATION_DELAY_SECONDS = 0.003;
 	static constexpr double INTRA_ORBIT_PROPAGATION_DELAY_SECONDS = 0.007;
 
@@ -61,7 +60,8 @@ class ArbiterNewSat : public ArbiterShortSat
 				  std::shared_ptr<std::vector<int64_t>> sdfs, std::shared_ptr<std::vector<std::mutex>> sdfsm,
 				  std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>> *ton,
 
-				  std::vector<std::tuple<int32_t, int32_t, int32_t>> neighbor_ids, double lngd, double rngd);
+				  std::vector<std::tuple<int32_t, int32_t, int32_t>> neighbor_ids, double lngd, double rngd,
+				  int64_t qsize, double bw);
 
 	// Single forward next-hop implementation
 	std::tuple<int32_t, int32_t, int32_t> TopologySatelliteNetworkDecide(
@@ -101,6 +101,9 @@ class ArbiterNewSat : public ArbiterShortSat
 	std::shared_ptr<std::vector<std::mutex>> shared_data_for_satellites_mutex;
 	std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>> *table_of_node;
 	std::vector<std::vector<std::tuple<int32_t, std::tuple<double, double>>>> m_other_table;
+
+	int64_t m_link_queue_size_packets;
+	double m_link_bandwidth_mbps;
 };
 
 } // namespace ns3

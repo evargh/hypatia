@@ -34,7 +34,9 @@ ArbiterNewSat::ArbiterNewSat(Ptr<Node> this_node, NodeContainer nodes,
 							 int64_t s_p_o, std::shared_ptr<std::vector<int64_t>> sdfs,
 							 std::shared_ptr<std::vector<std::mutex>> sdfsm,
 							 std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>> *ton,
-							 std::vector<std::tuple<int32_t, int32_t, int32_t>> neighbor_ids, double lngd, double rngd)
+
+							 std::vector<std::tuple<int32_t, int32_t, int32_t>> neighbor_ids, double lngd, double rngd,
+							 int64_t qsize, double bw)
 	: ArbiterShortSat(this_node, nodes, next_hop_list, n_o, s_p_o, neighbor_ids, lngd, rngd)
 {
 	shared_data_for_satellites = sdfs;
@@ -42,6 +44,9 @@ ArbiterNewSat::ArbiterNewSat(Ptr<Node> this_node, NodeContainer nodes,
 	table_of_node = ton;
 	std::lock_guard<std::mutex> guard(shared_data_for_satellites_mutex->at(m_node_id));
 	shared_data_for_satellites->at(m_node_id) = 0;
+
+	m_link_queue_size_packets = qsize;
+	m_link_bandwidth_mbps = bw;
 }
 
 double ArbiterNewSat::GetEstimatedPropagationDelay(int32_t horizontal_hops, int32_t vertical_hops)
@@ -98,9 +103,10 @@ double ArbiterNewSat::GetEstimatedCongestionDelay(std::vector<int32_t> *node_seq
 	{
 		total_num_congested_nodes += (GetSharedState(node_sequence->at(i)) >> (direction_sequence->at(i) - 1)) & 1;
 	}
-	return (LINK_QUEUE_SIZE * total_num_congested_nodes +
-			MINIMUM_FULLNESS_THRESHOLD * (direction_sequence->size() - total_num_congested_nodes)) *
-		   1500.0 / double(LINK_BANDWIDTH);
+	return (m_link_queue_size_packets * total_num_congested_nodes +
+			ArbiterNewSat::MINIMUM_FULLNESS_RATIO * m_link_queue_size_packets *
+				(direction_sequence->size() - total_num_congested_nodes)) *
+		   1500.0 / double(m_link_bandwidth_mbps * 1000000);
 }
 
 std::vector<ArbiterNewSat::path_element> ArbiterNewSat::CreateViablePaths(int32_t start_node_id,
@@ -216,8 +222,8 @@ std::tuple<int32_t, int32_t, int32_t> ArbiterNewSat::DetermineInterface(int16_t 
 	std::vector<path_element> paths =
 		CreateViablePaths(m_node_id, EXPLORATION_DEPTH, destination_alpha, destination_gamma, target_node_id);
 
-	// direction, direction, is in range, fastpath, propagation delay to this neighbor based on hops + standing queue
-	// delay, propagation delay to destination based on hops
+	// direction, direction, is in range, fastpath, propagation delay to this neighbor based on hops + standing
+	// queue delay, propagation delay to destination based on hops
 
 	NS_ASSERT_MSG(paths.size() != 0, "no one to forward to");
 	NS_LOG_DEBUG(m_node_id << " num viable targets to " << target_node_id << ": " << paths.size());
@@ -269,7 +275,7 @@ void ArbiterNewSat::SetInterfaceCongestionBits()
 		Ptr<NetDevice> outgoing_if = m_nodes.Get(m_node_id)->GetObject<Ipv4>()->GetNetDevice(outgoing_if_id);
 		NS_ASSERT_MSG(outgoing_if != 0, "No NetDevice on Interface");
 		auto num_packets = outgoing_if->GetObject<PointToPointLaserNetDevice>()->GetQueue()->GetNPackets();
-		bool under_target = num_packets < ArbiterNewSat::MINIMUM_FULLNESS_THRESHOLD;
+		bool under_target = num_packets < ArbiterNewSat::MINIMUM_FULLNESS_RATIO * m_link_queue_size_packets;
 
 		int64_t current_congestion = GetSharedState(m_node_id);
 		int64_t this_interface_congestion_flag = (current_congestion >> (outgoing_if_id - 1)) & 1;

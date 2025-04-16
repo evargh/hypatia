@@ -143,41 +143,6 @@ std::tuple<int32_t, std::tuple<int16_t, int16_t>> ArbiterDhbpSat::ExtractClosest
 	NS_ASSERT_MSG(best_position != -1, "did not find closest/furthest satellites");
 	return adjacent_satellites.at(best_position);
 }
-/*
-std::tuple<int32_t, std::tuple<int16_t, int16_t>> ArbiterDhbpSat::ExtractClosestTupleCreatingRectangle(
-	std::vector<std::tuple<int32_t, std::tuple<int16_t, int16_t>>> adjacent_satellites,
-	std::tuple<int16_t, int16_t> destination_coords, std::tuple<int16_t, int16_t> my_coords)
-{
-	int best_position = -1;
-	int16_t min_distance = -1;
-	int16_t destination_alpha = std::get<0>(destination_coords);
-	int16_t destination_gamma = std::get<1>(destination_coords);
-	int16_t my_distance_from_destination = neighbors.GetHopcount(my_coords, destination_alpha, destination_gamma);
-	for (int i = 0; i < adjacent_satellites.size(); i++)
-	{
-		int16_t source_alpha = std::get<0>(std::get<1>(adjacent_satellites.at(i)));
-		int16_t source_gamma = std::get<1>(std::get<1>(adjacent_satellites.at(i)));
-		int16_t distance = neighbors.GetHopcount(my_coords, source_alpha, source_gamma);
-
-		if ((min_distance == -1) || distance < min_distance)
-		{
-			// if the distance looks good, make sure your hopcount from the destination is less than or equal to the
-			// source's hopcount from the destination
-			int16_t source_distance_from_destination =
-				neighbors.GetHopcount(destination_coords, source_alpha, source_gamma);
-
-			if (source_distance_from_destination >=
-				my_distance_from_destination - ArbiterShortSat::CELL_SCALING_FACTOR / 2)
-			{
-				best_position = i;
-				min_distance = distance;
-			}
-		}
-	}
-	NS_ASSERT_MSG(best_position != -1, "did not find closest/furthest satellites");
-	return adjacent_satellites.at(best_position);
-}
-*/
 
 std::tuple<int32_t, int32_t, int32_t> ArbiterDhbpSat::ShortDecide(
 	std::tuple<int32_t, std::tuple<int16_t, int16_t>> source_satellite_data,
