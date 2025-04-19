@@ -1,3 +1,24 @@
+prep:
+in order to generate the figures you see in the thesis, you need to run the following commands:
+you need to generate our constellation
+you need to generate the original constellation
+
+you need to run your tests with the following flags:
+gslchannel
+pointtopointlasernetdevice
+gslnetdevce
+
+logging increases the runtime significantly (i would think its a disk access/batching issue, but im not 100% sure)
+run these overnight for the five algorithms presented. so five days or so
+
+make sure to disable the tcp sack in the optimizer
+
+dhbp had 43983901 transmits, so 4 times that messages
+and      43983347 receives
+351868992 communicated to neighbors
+
+assuming two bytes for identifying the flow, approximately 0.655 gibibytes of overhead data
+
 2.1 (orbits around earth):
 Drawn in Inkscape.
 
@@ -28,4 +49,8 @@ Run `python3 link_length_plot.py --constellation_linklengths our_linklengths.txt
 Run `python3 generate_backbone_graphs.py --max_users_exponent 9 --num_satellites_per_orbit 22 --num_orbits 72 --percentile 0.95` to generate the data of 95th-percentile utilization
 Run `python3 plot_backbone_graphs.py --max_users_exponent 9 --percentile 0.95` to plot the data of 95th-percentile utilization.
 Repeat this process for with flags `--percentile 0.75` and `--percentile 0.5` for the other two plots.
+
+big classes of figures:
+all the tails:
+get the isl files of the runs you want
 

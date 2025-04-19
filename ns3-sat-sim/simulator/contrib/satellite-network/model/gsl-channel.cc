@@ -85,8 +85,8 @@ bool GSLChannel::TransmitTo(Ptr<const Packet> p, Ptr<GSLNetDevice> srcNetDevice,
 
 	// Calculate delay
 	Time delay = this->GetDelay(senderMobility, receiverMobility);
-	NS_LOG_DEBUG("From " << srcNetDevice->GetNode()->GetId() << " -- To " << destNetDevice->GetNode()->GetId()
-						 << " -- UID is  " << p->GetUid() << " -- Delay is " << delay.GetSeconds());
+	/*NS_LOG_DEBUG("From " << srcNetDevice->GetNode()->GetId() << " -- To " << destNetDevice->GetNode()->GetId()
+						 << " -- UID is  " << p->GetUid() << " -- Delay is " << delay.GetSeconds());*/
 
 	// Distributed mode is not enabled
 	NS_ABORT_MSG_UNLESS(isSameSystem, "MPI distributed mode is currently not supported by the GSL channel.");

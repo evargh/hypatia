@@ -213,11 +213,11 @@ std::tuple<int32_t, int32_t, int32_t> ArbiterNewSat::DetermineInterface(int16_t 
 	  {
 		  return HandleClose(destination_alpha, destination_gamma, target_node_id);
 	  }*/
-	int32_t current_hops = neighbors.GetHopcount(NeighborCoordContainer::SELF, destination_alpha, destination_gamma);
-	NS_LOG_DEBUG(m_node_id << " starting at: (" << std::get<0>(neighbors.GetCoords(NeighborCoordContainer::SELF))
-						   << ", " << std::get<1>(neighbors.GetCoords(NeighborCoordContainer::SELF)) << ") ");
-	NS_LOG_DEBUG("ending at: (" << destination_alpha << ", " << destination_gamma << ") " << " for " << target_node_id);
-	NS_LOG_DEBUG("hopcount: " << current_hops);
+	// int32_t current_hops = neighbors.GetHopcount(NeighborCoordContainer::SELF, destination_alpha, destination_gamma);
+	// NS_LOG_DEBUG(m_node_id << " starting at: (" << std::get<0>(neighbors.GetCoords(NeighborCoordContainer::SELF))
+	//					   << ", " << std::get<1>(neighbors.GetCoords(NeighborCoordContainer::SELF)) << ") ");
+	// NS_LOG_DEBUG("ending at: (" << destination_alpha << ", " << destination_gamma << ") " << " for " <<
+	// target_node_id); NS_LOG_DEBUG("hopcount: " << current_hops);
 
 	std::vector<path_element> paths =
 		CreateViablePaths(m_node_id, EXPLORATION_DEPTH, destination_alpha, destination_gamma, target_node_id);
@@ -226,7 +226,7 @@ std::tuple<int32_t, int32_t, int32_t> ArbiterNewSat::DetermineInterface(int16_t 
 	// queue delay, propagation delay to destination based on hops
 
 	NS_ASSERT_MSG(paths.size() != 0, "no one to forward to");
-	NS_LOG_DEBUG(m_node_id << " num viable targets to " << target_node_id << ": " << paths.size());
+	// NS_LOG_DEBUG(m_node_id << " num viable targets to " << target_node_id << ": " << paths.size());
 
 	std::sort(paths.begin(), paths.end(), [](path_element a, path_element b) {
 		return std::get<4>(a) + std::get<5>(a) < std::get<4>(b) + std::get<5>(b);

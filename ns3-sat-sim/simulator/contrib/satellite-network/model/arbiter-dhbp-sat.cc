@@ -122,28 +122,6 @@ std::tuple<int32_t, int32_t, int32_t> ArbiterDhbpSat::DetermineInterface(int16_t
 	}
 }
 
-std::tuple<int32_t, std::tuple<int16_t, int16_t>> ArbiterDhbpSat::ExtractClosestTuple(
-	std::vector<std::tuple<int32_t, std::tuple<int16_t, int16_t>>> adjacent_satellites,
-	std::tuple<int16_t, int16_t> coords)
-{
-	int best_position = -1;
-	int16_t min_distance = -1;
-	for (int i = 0; i < adjacent_satellites.size(); i++)
-	{
-		int16_t adjacent_alpha = std::get<0>(std::get<1>(adjacent_satellites.at(i)));
-		int16_t adjacent_gamma = std::get<1>(std::get<1>(adjacent_satellites.at(i)));
-		int16_t distance = neighbors.GetHopcount(coords, adjacent_alpha, adjacent_gamma);
-
-		if ((min_distance == -1) || distance < min_distance)
-		{
-			best_position = i;
-			min_distance = distance;
-		}
-	}
-	NS_ASSERT_MSG(best_position != -1, "did not find closest/furthest satellites");
-	return adjacent_satellites.at(best_position);
-}
-
 std::tuple<int32_t, int32_t, int32_t> ArbiterDhbpSat::ShortDecide(
 	std::tuple<int32_t, std::tuple<int16_t, int16_t>> source_satellite_data,
 	std::tuple<int32_t, std::tuple<int16_t, int16_t>> destination_satellite_data, int32_t source_node_id,
@@ -243,16 +221,6 @@ int64_t ArbiterDhbpSat::GetFlowMapping(int32_t source_node_id, int32_t target_no
 		interleaved |= (dest_masked_at_i << (i + 1));
 	}
 	return interleaved;
-}
-
-int32_t ArbiterDhbpSat::GSLNodeIdToGSLIndex(int32_t id)
-{
-	return id - num_orbits * num_satellites_per_orbit;
-}
-
-int32_t ArbiterDhbpSat::GSLIndexToGSLNodeId(int32_t id)
-{
-	return num_orbits * num_satellites_per_orbit + id;
 }
 
 void ArbiterDhbpSat::SetSingleForwardState(int32_t target_node_id, int32_t next_node_id, int32_t own_if_id,

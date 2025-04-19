@@ -17,8 +17,8 @@
  * Author: Simon               2020
  */
 
-#ifndef ARBITER_DHBP_SAT_H
-#define ARBITER_DHBP_SAT_H
+#ifndef ARBITER_ELB_SAT_H
+#define ARBITER_ELB_SAT_H
 
 #include "ns3/abort.h"
 #include "ns3/arbiter-short-sat.h"
@@ -33,20 +33,23 @@
 namespace ns3
 {
 
-class ArbiterDhbpSat : public ArbiterShortSat
+class ArbiterElbSat : public ArbiterShortSat
 {
   public:
 	static TypeId GetTypeId(void);
-	const bool OPTIMIZED = true;
 
-	typedef std::tuple<NeighborCoordContainer::Direction, int32_t, int64_t> distance_element;
+	static constexpr double ELB_THETA_S = 0.2;
+	static constexpr double MAX_PROPAGATION_DELAY_SECONDS = 0.007;
+
+	typedef std::tuple<NeighborCoordContainer::Direction, int32_t, std::tuple<int8_t, double>> distance_element;
 
 	// Constructor for single forward next-hop forwarding state
-	ArbiterDhbpSat(Ptr<Node> this_node, NodeContainer nodes,
-				   std::vector<std::tuple<int32_t, int32_t, int32_t>> next_hop_list, int64_t n_o, int64_t s_p_o,
-				   std::shared_ptr<std::vector<std::vector<int64_t>>> sdfs,
-				   std::shared_ptr<std::vector<std::mutex>> sdfsm,
-				   std::vector<std::tuple<int32_t, int32_t, int32_t>> neighbor_ids, double lngd, double rngd);
+	ArbiterElbSat(Ptr<Node> this_node, NodeContainer nodes,
+				  std::vector<std::tuple<int32_t, int32_t, int32_t>> next_hop_list, int64_t n_o, int64_t s_p_o,
+				  std::shared_ptr<std::vector<std::tuple<int8_t, double>>> sdfs,
+				  std::shared_ptr<std::vector<std::mutex>> sdfsm,
+				  std::vector<std::tuple<int32_t, int32_t, int32_t>> neighbor_ids, double lngd, double rngd,
+				  int64_t isl_qsize, int64_t gsl_qsize, int64_t elb_update_interval);
 
 	// Single forward next-hop implementation
 	std::tuple<int32_t, int32_t, int32_t> TopologySatelliteNetworkDecide(
@@ -64,23 +67,41 @@ class ArbiterDhbpSat : public ArbiterShortSat
 	void SetGSShortTable(std::vector<std::vector<std::tuple<int32_t, std::tuple<double, double>>>> table);
 	void SetSourceSatelliteTable(std::vector<std::vector<std::tuple<int32_t, std::tuple<double, double>>>> *table);
 
-	void IncreaseQueue(int32_t source_node_id, int32_t target_node_id);
-	void DecreaseQueue(int32_t source_node_id, int32_t target_node_id);
-	int64_t GetQueueSizeForFlow(int32_t neighbor_id, int32_t source_node_id, int32_t target_node_id);
+	void SetSharedState(std::tuple<int8_t, double> val);
+	std::tuple<int8_t, double> GetSharedState(size_t loc);
+
+	void IncrementTxCounter(uint32_t interface_id);
+	void IncrementRxCounter(uint32_t interface_id);
+
+	void UpdateELBState();
 
   private:
 	std::tuple<int32_t, int32_t, int32_t> DetermineInterface(int16_t source_alpha, int16_t source_gamma,
 															 int16_t destination_alpha, int16_t destination_gamma,
 															 int32_t source_node_id, int32_t target_node_id);
 
-	int64_t GetFlowMapping(int32_t source_node_id, int32_t target_node_id);
+	std::tuple<int32_t, std::tuple<int16_t, int16_t>> ExtractClosestTuple(
+		std::vector<std::tuple<int32_t, std::tuple<int16_t, int16_t>>> adjacent_satellites,
+		std::tuple<int16_t, int16_t> coords);
 
-	std::shared_ptr<std::vector<std::vector<int64_t>>> shared_data_for_satellites;
+	void FlushCounters();
+
+	std::shared_ptr<std::vector<std::tuple<int8_t, double>>> shared_data_for_satellites;
 	std::shared_ptr<std::vector<std::mutex>> shared_data_for_satellites_mutex;
 	std::vector<std::vector<std::tuple<int32_t, std::tuple<double, double>>>> m_other_table;
 	std::vector<std::vector<std::tuple<int32_t, std::tuple<double, double>>>> *source_satellite_per_flow;
+
+	int64_t m_isl_queue_size_packets, m_gsl_queue_size_packets;
+	double elb_update_interval_s;
+
+	std::vector<std::set<int32_t>> interface_head_uids;
+	std::vector<std::tuple<double, double, double>> interface_ingress_egress_counters;
+	int32_t m_o_counter, m_is_counter, m_it_counter;
+	Ptr<UniformRandomVariable> chi_compare;
+
+	bool m_changed;
 };
 
 } // namespace ns3
 
-#endif // ARBITER_DHBP_SAT_H
+#endif // ARBITER_ELB_SAT_H

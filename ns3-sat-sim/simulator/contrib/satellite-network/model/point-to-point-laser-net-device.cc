@@ -34,7 +34,9 @@
 #include "point-to-point-laser-net-device.h"
 #include "point-to-point-laser-channel.h"
 #include "ns3/arbiter-dhbp-sat.h"
+#include "ns3/arbiter-elb-sat.h"
 #include "ns3/ipv4-arbiter-routing.h"
+#include "ns3/source-interface-tag.h"
 
 namespace ns3
 {
@@ -242,8 +244,14 @@ bool PointToPointLaserNetDevice::TransmitStart(Ptr<Packet> p)
 	NS_LOG_LOGIC("Schedule TransmitCompleteEvent in " << txCompleteTime.GetSeconds() << "sec");
 	Simulator::Schedule(txCompleteTime, &PointToPointLaserNetDevice::TransmitComplete, this);
 
-	bool result = m_channel->TransmitStart(p, this, m_destination_node, txTime);
 	Ptr<Arbiter> arb = m_node->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4ArbiterRouting>()->GetArbiter();
+	if (arb->GetInstanceTypeId() == TypeId::LookupByName("ns3::ArbiterElbSat"))
+	{
+		// increment the counter that marks the amount of received satellite traffic
+		Ptr<ArbiterElbSat> arb_elb = DynamicCast<ArbiterElbSat>(arb);
+		arb_elb->IncrementTxCounter(m_ifIndex);
+	}
+	bool result = m_channel->TransmitStart(p, this, m_destination_node, txTime);
 	if (result == false)
 	{
 		// result is always true anyway, so there should be no drop
@@ -264,6 +272,7 @@ bool PointToPointLaserNetDevice::TransmitStart(Ptr<Packet> p)
 			arb_dhbp->DecreaseQueue(src, dest);
 		}
 	}
+
 	NS_LOG_DEBUG("From " << m_node->GetId() << " -- To " << m_destination_node->GetId() << " -- UID is " << p->GetUid()
 						 << " -- Delay is " << txCompleteTime.GetSeconds());
 	return result;
@@ -531,6 +540,13 @@ bool PointToPointLaserNetDevice::Send(Ptr<Packet> packet, const Address &dest, u
 		return false;
 	}
 
+	Ptr<Arbiter> arb = m_node->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4ArbiterRouting>()->GetArbiter();
+	if (arb->GetInstanceTypeId() == TypeId::LookupByName("ns3::ArbiterElbSat"))
+	{
+		// increment the counter that marks the amount of received satellite traffic
+		Ptr<ArbiterElbSat> arb_elb = DynamicCast<ArbiterElbSat>(arb);
+		arb_elb->IncrementRxCounter(m_ifIndex - 1);
+	}
 	//
 	// Stick a point to point protocol header on the packet in preparation for
 	// shoving it out the door.
