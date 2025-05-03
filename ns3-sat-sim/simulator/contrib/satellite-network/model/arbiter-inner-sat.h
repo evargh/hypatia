@@ -17,8 +17,8 @@
  * Author: Simon               2020
  */
 
-#ifndef ARBITER_NEW_SAT_H
-#define ARBITER_NEW_SAT_H
+#ifndef ARBITER_INNER_SAT_H
+#define ARBITER_INNER_SAT_H
 
 #include "ns3/abort.h"
 #include "ns3/arbiter-short-sat.h"
@@ -32,7 +32,7 @@
 namespace ns3
 {
 
-class ArbiterNewSat : public ArbiterShortSat
+class ArbiterInnerSat : public ArbiterShortSat
 {
   public:
 	static const int16_t EXPLORATION_DEPTH = 2;
@@ -55,13 +55,13 @@ class ArbiterNewSat : public ArbiterShortSat
 	static TypeId GetTypeId(void);
 
 	// Constructor for single forward next-hop forwarding state
-	ArbiterNewSat(Ptr<Node> this_node, NodeContainer nodes,
-				  std::vector<std::tuple<int32_t, int32_t, int32_t>> next_hop_list, int64_t n_o, int64_t s_p_o,
-				  std::shared_ptr<std::vector<int64_t>> sdfs, std::shared_ptr<std::vector<std::mutex>> sdfsm,
-				  std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>> *ton,
+	ArbiterInnerSat(Ptr<Node> this_node, NodeContainer nodes,
+					std::vector<std::tuple<int32_t, int32_t, int32_t>> next_hop_list, int64_t n_o, int64_t s_p_o,
+					std::shared_ptr<std::vector<int64_t>> sdfs, std::shared_ptr<std::vector<std::mutex>> sdfsm,
+					std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>> *ton,
 
-				  std::vector<std::tuple<int32_t, int32_t, int32_t>> neighbor_ids, double lngd, double rngd,
-				  int64_t qsize, double bw);
+					std::vector<std::tuple<int32_t, int32_t, int32_t>> neighbor_ids, double lngd, double rngd,
+					int64_t qsize, double bw);
 
 	// Single forward next-hop implementation
 	std::tuple<int32_t, int32_t, int32_t> TopologySatelliteNetworkDecide(
@@ -108,4 +108,4 @@ class ArbiterNewSat : public ArbiterShortSat
 
 } // namespace ns3
 
-#endif // ARBITER_NEW_SAT_H
+#endif // ARBITER_INNER_SAT_H

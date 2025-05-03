@@ -4,6 +4,11 @@ import json
 import random
 from collections import Counter
 import argparse
+import os
+
+import matplotlib.pyplot as plt
+from matplotlib import colormaps
+from matplotlib.colors import Normalize
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--max_users_exponent")
@@ -118,12 +123,16 @@ def generate_satellite_toroid(num_satellites_per_orbit, num_orbits, gs_num, seed
 
 
 # odd numbers can come out of this due to the randomness of how networkx selects one possible shortest path
+# we can also note that the toroidal graph has a much longer "average shortest path," I think this is the underlying reason for
+# why toroidal graphs have worse utilization
 def calculate_leaf_shortest_paths(G, leaves):
+    path_lengths = []
     significant_edges = []
     for source in leaves:
         targets = [i for i in leaves if i is not source]
         for target in targets:
             path = nx.shortest_path(G, source, target)
+            path_lengths.append(len(path))
             for i in range(len(path) - 1):
                 first_idx = min(path[i], path[i + 1])
                 last_idx = max(path[i], path[i + 1])
@@ -176,7 +185,6 @@ def generate_data(
         2 * k - 2
     ) + k
 
-    print(BA_node_count)
     while ground_stations <= 2**max_power:
         toroid_max_edge = []
         power_law_max_edge = []
@@ -207,9 +215,11 @@ def generate_data(
                     )
                 ],
             )
+            print(f"toroid: {sum(list(toroid_edges.values()))}")
             toroid_edges = list(toroid_edges.values()) + [0] * (
                 toroidgraph.number_of_edges() - len(list(toroid_edges.values()))
             )
+            print(f"pl: {sum(list(power_law_edges.values()))}")
             power_law_edges = list(power_law_edges.values()) + [0] * (
                 power_law_graph.number_of_edges() - len(list(power_law_edges.values()))
             )
@@ -238,11 +248,12 @@ def generate_data(
     generate_data(num_satellites_per_orbit, num_orbits, 2, max_power, percentile)
 )
 
-with open(f"{int(percentile * 100)}_percentile/toroid_average.json", "w+") as f:
+os.makedirs(os.path.dirname(f"{int(percentile * 100)}_percentile2/"), exist_ok=True)
+with open(f"{int(percentile * 100)}_percentile2/toroid_average.json", "w+") as f:
     json.dump(toroid_average_max, f)
-with open(f"{int(percentile * 100)}_percentile/power_law_average.json", "w+") as f:
+with open(f"{int(percentile * 100)}_percentile2/power_law_average.json", "w+") as f:
     json.dump(power_law_average_max, f)
-with open(f"{int(percentile * 100)}_percentile/toroid_stdev.json", "w+") as f:
+with open(f"{int(percentile * 100)}_percentile2/toroid_stdev.json", "w+") as f:
     json.dump(toroid_stdev, f)
-with open(f"{int(percentile * 100)}_percentile/power_law_stdev.json", "w+") as f:
+with open(f"{int(percentile * 100)}_percentile2/power_law_stdev.json", "w+") as f:
     json.dump(power_law_stdev, f)

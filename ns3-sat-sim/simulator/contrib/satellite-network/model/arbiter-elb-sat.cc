@@ -279,14 +279,14 @@ void ArbiterElbSat::UpdateELBState()
 						   return std::max(double(std::get<0>(x)) + double(std::get<1>(x)) - double(std::get<2>(x)),
 										   0.0);
 					   });
-		for (int i = 0; i < i_minus_o_per_interface.size(); i++)
+		/*for (int i = 0; i < i_minus_o_per_interface.size(); i++)
 		{
 			NS_LOG_DEBUG("i minus o really " << std::get<0>(interface_ingress_egress_counters.at(i)) +
 													std::get<1>(interface_ingress_egress_counters.at(i)) -
 													std::get<2>(interface_ingress_egress_counters.at(i))
 											 << ": " << i_minus_o_per_interface.at(i));
-		}
-
+		}*/
+		std::tuple<int8_t, double> current_state = GetSharedState(m_node_id);
 		std::vector<double> queue_fullness_ratios, betas, alphas;
 		queue_fullness_ratios.resize(5);
 		betas.resize(5);
@@ -316,17 +316,15 @@ void ArbiterElbSat::UpdateELBState()
 			{
 				level_two_congestion = true;
 				problem_interface = i;
-				NS_LOG_DEBUG("level two congestion detected");
 			}
 			else if (queue_fullness_ratios.at(i) > alphas.at(i))
 			{
 				level_one_congestion = true;
-				NS_LOG_DEBUG("level one congestion detected");
 			}
-			NS_LOG_DEBUG(m_node_id << " interface " << i << ": " << " i minus o: " << i_minus_o_per_interface.at(i)
+			/*NS_LOG_DEBUG(m_node_id << " interface " << i << ": " << " i minus o: " << i_minus_o_per_interface.at(i)
 								   << " queue occupancy: " << queue_occupancies.at(i) << " qf ratio: "
 								   << queue_fullness_ratios.at(i) << " delta d inverse: " << delta_d_inverse
-								   << " beta: " << betas.at(i) << " alpha: " << alphas.at(i));
+								   << " beta: " << betas.at(i) << " alpha: " << alphas.at(i));*/
 		}
 		// the other terms can be directly plugged in to the formula
 		if (level_two_congestion)
@@ -342,16 +340,24 @@ void ArbiterElbSat::UpdateELBState()
 				std::get<1>(interface_ingress_egress_counters.at(problem_interface));
 			double chi = std::min(
 				std::max(0.0, isnew / std::get<0>(interface_ingress_egress_counters.at(problem_interface))), 1.0);
-			NS_LOG_DEBUG("chi is " << chi);
+			// NS_LOG_DEBUG("chi is " << chi);
+			NS_LOG_DEBUG("congestion change to beta (chi changed)");
 			SetSharedState(std::make_tuple(2, chi));
 		}
 		else if (level_one_congestion)
 		{
-			NS_LOG_DEBUG("alpha was reached");
+			if (std::get<0>(current_state) != 1)
+			{
+				NS_LOG_DEBUG("congestion change to alpha");
+			}
 			SetSharedState(std::make_tuple(1, 0));
 		}
 		else
 		{
+			if (std::get<0>(current_state) != 0)
+			{
+				NS_LOG_DEBUG("congestion change to uncongested");
+			}
 			SetSharedState(std::make_tuple(0, 0));
 		}
 

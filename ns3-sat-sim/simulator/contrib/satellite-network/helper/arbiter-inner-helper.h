@@ -17,29 +17,29 @@
  * Author: Simon               2020
  */
 
-#ifndef ARBITER_NEW_HELPER
-#define ARBITER_NEW_HELPER
+#ifndef ARBITER_INNER_HELPER
+#define ARBITER_INNER_HELPER
 
 #include <mutex>
 #include "ns3/ipv4-routing-helper.h"
 #include "ns3/basic-simulation.h"
 #include "ns3/topology-satellite-network.h"
 #include "ns3/ipv4-arbiter-routing.h"
-#include "ns3/arbiter-new-sat.h"
+#include "ns3/arbiter-inner-sat.h"
 #include "ns3/arbiter-single-forward.h"
 #include "ns3/abort.h"
 
 namespace ns3
 {
 
-class ArbiterNewHelper
+class ArbiterInnerHelper
 {
   public:
 	// APPROXIMATE WGS72 VALUES
 	const double EARTH_ORBIT_TIME_NS = 86400000000000;
 	const int32_t APPROXIMATE_EARTH_RADIUS_M = 6371000;
 
-	ArbiterNewHelper(Ptr<BasicSimulation> basicSimulation, NodeContainer nodes);
+	ArbiterInnerHelper(Ptr<BasicSimulation> basicSimulation, NodeContainer nodes);
 
   private:
 	std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>> InitialEmptyForwardingState();
@@ -58,7 +58,7 @@ class ArbiterNewHelper
 
 	int64_t m_num_orbits;
 	int64_t m_satellites_per_orbit;
-	std::vector<Ptr<ArbiterNewSat>> m_sat_arbiters;
+	std::vector<Ptr<ArbiterInnerSat>> m_sat_arbiters;
 	std::vector<Ptr<ArbiterSingleForward>> m_gs_arbiters;
 	std::vector<std::tuple<double, double, double, double>> m_other_table;
 
@@ -73,4 +73,4 @@ class ArbiterNewHelper
 
 } // namespace ns3
 
-#endif /* ARBITER_NEW_HELPER */
+#endif /* ARBITER_INNER_HELPER */

@@ -28,9 +28,11 @@ def plot_data(
     )
     plt.xticks(range(0, max_power), [2**i for i in range(1, max_power + 1)])
     plt.xlabel("# Stubs Connected to Backbone")
-    plt.ylabel("# Flows Through Edge with 95th-Percentile Utilization")
+    plt.ylabel(
+        f"# Flows Through Edge with {int(percentile * 100)}th-Percentile Utilization"
+    )
     plt.title(
-        "95th-Percentile Edge Congestion in Toroidal and \n Barabási–Albert Power-Law Backbone "
+        f"{int(percentile * 100)}th-Percentile Edge Congestion in Toroidal and \n Barabási–Albert Power-Law Backbone "
     )
     plt.legend()
     plt.savefig(f"{int(percentile * 100)}_utilization_in_two_graphs.png")

@@ -199,9 +199,11 @@ def generate_data(
             toroid_edges = list(toroid_edges.values()) + [0] * (
                 toroidgraph.number_of_edges() - len(list(toroid_edges.values()))
             )
+            print(toroid_edges)
             power_law_edges = list(power_law_edges.values()) + [0] * (
                 power_law_graph.number_of_edges() - len(list(power_law_edges.values()))
             )
+            print(power_law_edges)
 
             # print(int(percentile * len(power_law_edges)))
             access_percentile_toroid = sorted(toroid_edges)[

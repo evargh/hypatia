@@ -39,7 +39,7 @@
 #include "ns3/arbiter-single-forward-helper.h"
 #include "ns3/arbiter-dhbp-helper.h"
 #include "ns3/arbiter-short-helper.h"
-#include "ns3/arbiter-new-helper.h"
+#include "ns3/arbiter-inner-helper.h"
 #include "ns3/arbiter-elb-helper.h"
 #include "ns3/ipv4-arbiter-routing-helper.h"
 #include "ns3/gsl-if-bandwidth-helper.h"
@@ -193,7 +193,7 @@ int main(int argc, char *argv[])
 	{
 		topology = CreateObject<TopologySatelliteNetwork>(basicSimulation, Ipv4ArbiterRoutingHelper(),
 														  PointToPointLaserHelper(), GSLHelper());
-		ArbiterNewHelper arbiterHelper(basicSimulation, topology->GetNodes());
+		ArbiterInnerHelper arbiterHelper(basicSimulation, topology->GetNodes());
 		// weird scope thing, just move everything into here
 		GslIfBandwidthHelper gslIfBandwidthHelper(basicSimulation, topology->GetNodes());
 

@@ -17,15 +17,15 @@
  * Author: Simon               2020
  */
 
-#include "arbiter-new-helper.h"
+#include "arbiter-inner-helper.h"
 
 namespace ns3
 {
-NS_LOG_COMPONENT_DEFINE("ArbiterNewHelper");
+NS_LOG_COMPONENT_DEFINE("ArbiterInnerHelper");
 
-ArbiterNewHelper::ArbiterNewHelper(Ptr<BasicSimulation> basicSimulation, NodeContainer nodes)
+ArbiterInnerHelper::ArbiterInnerHelper(Ptr<BasicSimulation> basicSimulation, NodeContainer nodes)
 {
-	std::cout << "SETUP NEW ROUTING" << std::endl;
+	std::cout << "SETUP INNER ROUTING" << std::endl;
 	m_basicSimulation = basicSimulation;
 	m_nodes = nodes;
 
@@ -87,11 +87,11 @@ ArbiterNewHelper::ArbiterNewHelper(Ptr<BasicSimulation> basicSimulation, NodeCon
 	for (int32_t i = 0; i < num_satellites; i++)
 	{
 		auto table = table_of_node->at(i);
-		Ptr<ArbiterNewSat> arbiter =
-			CreateObject<ArbiterNewSat>(m_nodes.Get(i), m_nodes, initial_forwarding_state[i], m_num_orbits,
-										m_satellites_per_orbit, shared_data_for_satellites, shared_mutex_for_satellites,
-										table_of_node.get(), table, left_neighbor_gamma_difference,
-										right_neighbor_gamma_difference, isl_queue_size_packets, link_bandwidth_mbps);
+		Ptr<ArbiterInnerSat> arbiter = CreateObject<ArbiterInnerSat>(
+			m_nodes.Get(i), m_nodes, initial_forwarding_state[i], m_num_orbits, m_satellites_per_orbit,
+			shared_data_for_satellites, shared_mutex_for_satellites, table_of_node.get(), table,
+			left_neighbor_gamma_difference, right_neighbor_gamma_difference, isl_queue_size_packets,
+			link_bandwidth_mbps);
 		m_sat_arbiters.push_back(arbiter);
 		m_nodes.Get(i)->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4ArbiterRouting>()->SetArbiter(arbiter);
 	}
@@ -122,7 +122,7 @@ ArbiterNewHelper::ArbiterNewHelper(Ptr<BasicSimulation> basicSimulation, NodeCon
 	std::cout << std::endl;
 }
 
-std::vector<std::tuple<int32_t, int32_t, int32_t>> ArbiterNewHelper::CreateOutboundInterfaceList(int32_t i)
+std::vector<std::tuple<int32_t, int32_t, int32_t>> ArbiterInnerHelper::CreateOutboundInterfaceList(int32_t i)
 {
 	std::vector<std::tuple<int32_t, int32_t, int32_t>> table;
 	table.resize(4);
@@ -161,9 +161,9 @@ std::vector<std::tuple<int32_t, int32_t, int32_t>> ArbiterNewHelper::CreateOutbo
 	return table;
 }
 
-std::tuple<double, double, double, double> ArbiterNewHelper::CartesianToShort(Vector3D cartesian)
+std::tuple<double, double, double, double> ArbiterInnerHelper::CartesianToShort(Vector3D cartesian)
 {
-	Vector2D latlon = Vector2D(std::asin(cartesian.z / ArbiterNewHelper::APPROXIMATE_EARTH_RADIUS_M) * 180.0 / pi,
+	Vector2D latlon = Vector2D(std::asin(cartesian.z / ArbiterInnerHelper::APPROXIMATE_EARTH_RADIUS_M) * 180.0 / pi,
 							   std::atan2(cartesian.y, cartesian.x) * 180.0 / pi);
 
 	// use the formulas given in the paper:
@@ -214,7 +214,7 @@ std::tuple<double, double, double, double> ArbiterNewHelper::CartesianToShort(Ve
 	}
 }
 
-void ArbiterNewHelper::SetCoordinateSkew()
+void ArbiterInnerHelper::SetCoordinateSkew()
 {
 	// because satgenpy generates tles such that the RAAN is always 0 and the inclination is always 0 for hte first
 	// satellite, we can use that here to if the method of TLE generation changes, this will have to change. we
@@ -227,7 +227,7 @@ void ArbiterNewHelper::SetCoordinateSkew()
 	m_coordinateSkew_deg = first_mm->GetSatellite()->GetGeographicPosition(first_mm->GetSatellite()->GetTleEpoch()).y;
 }
 
-void ArbiterNewHelper::UpdateOrbitalParams(int64_t t)
+void ArbiterInnerHelper::UpdateOrbitalParams(int64_t t)
 {
 	// Filename
 	std::ostringstream res;
@@ -290,13 +290,13 @@ void ArbiterNewHelper::UpdateOrbitalParams(int64_t t)
 		int64_t next_update_ns = t + m_dynamicStateUpdateIntervalNs;
 		if (next_update_ns < m_basicSimulation->GetSimulationEndTimeNs())
 		{
-			Simulator::Schedule(NanoSeconds(m_dynamicStateUpdateIntervalNs), &ArbiterNewHelper::UpdateOrbitalParams,
+			Simulator::Schedule(NanoSeconds(m_dynamicStateUpdateIntervalNs), &ArbiterInnerHelper::UpdateOrbitalParams,
 								this, next_update_ns);
 		}
 	}
 }
 
-std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>> ArbiterNewHelper::InitialEmptyForwardingState()
+std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>> ArbiterInnerHelper::InitialEmptyForwardingState()
 {
 	std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>> initial_forwarding_state;
 	for (size_t i = 0; i < m_nodes.GetN(); i++)
@@ -311,7 +311,7 @@ std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>> ArbiterNewHelper
 	return initial_forwarding_state;
 }
 
-void ArbiterNewHelper::UpdateForwardingState(int64_t t)
+void ArbiterInnerHelper::UpdateForwardingState(int64_t t)
 {
 	for (std::vector<std::tuple<int32_t, std::tuple<double, double>>> &gs : adjacent_satellite_table)
 	{
@@ -482,7 +482,7 @@ void ArbiterNewHelper::UpdateForwardingState(int64_t t)
 		int64_t next_update_ns = t + m_dynamicStateUpdateIntervalNs;
 		if (next_update_ns < m_basicSimulation->GetSimulationEndTimeNs())
 		{
-			Simulator::Schedule(NanoSeconds(m_dynamicStateUpdateIntervalNs), &ArbiterNewHelper::UpdateForwardingState,
+			Simulator::Schedule(NanoSeconds(m_dynamicStateUpdateIntervalNs), &ArbiterInnerHelper::UpdateForwardingState,
 								this, next_update_ns);
 		}
 	}
