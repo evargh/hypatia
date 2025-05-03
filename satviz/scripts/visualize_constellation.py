@@ -26,6 +26,7 @@
 # from astropy.time import Time
 # from extractor import CZMLExtractor
 import math
+
 try:
     from . import util
 except (ImportError, SystemError):
@@ -33,7 +34,7 @@ except (ImportError, SystemError):
 
 # Generate static visualizations for entire constellation (multiple shells).
 
-EARTH_RADIUS = 6378135.0 # WGS72 value; taken from https://geographiclib.sourceforge.io/html/NET/NETGeographicLib_8h_source.html
+EARTH_RADIUS = 6378135.0  # WGS72 value; taken from https://geographiclib.sourceforge.io/html/NET/NETGeographicLib_8h_source.html
 
 # CONSTELLATION GENERATION GENERAL CONSTANTS
 ECCENTRICITY = 0.0000001  # Circular orbits are zero, but pyephem does not permit 0, so lowest possible value
@@ -43,14 +44,14 @@ EPOCH = "2000-01-01 00:00:00"
 
 # Shell wise color codes
 # COLOR = [[255, 0, 0, 200], [32, 128, 46, 200], [0, 0, 255, 200], [245, 66, 242, 200], [245, 126, 66, 200]]
-COLOR = ['CRIMSON', 'FORESTGREEN', 'DODGERBLUE', 'PERU', 'BLUEVIOLET', 'DARKMAGENTA']
+COLOR = ["CRIMSON", "FORESTGREEN", "DODGERBLUE", "PERU", "BLUEVIOLET", "DARKMAGENTA"]
 # CONSTELLATION SPECIFIC PARAMETERS
 
-
+"""
 # STARLINK
-NAME = "Telesat"
+NAME = "Starlink"
 
-SHELL_CNTR = 5
+SHELL_CNTR = 1
 
 MEAN_MOTION_REV_PER_DAY = [None]*SHELL_CNTR
 ALTITUDE_M = [None]*SHELL_CNTR
@@ -99,20 +100,20 @@ NUM_SATS_PER_ORB[4] = 75
 INCLINATION_DEGREE[4] = 70
 BASE_ID[4] = 3959
 ORB_WISE_IDS[4] = []
-
-
 """
+
+
 # TELESAT
 NAME = "Telesat"
-SHELL_CNTR = 2
+SHELL_CNTR = 1
 
-MEAN_MOTION_REV_PER_DAY = [None]*SHELL_CNTR
-ALTITUDE_M = [None]*SHELL_CNTR
-NUM_ORBS = [None]*SHELL_CNTR
-NUM_SATS_PER_ORB = [None]*SHELL_CNTR
-INCLINATION_DEGREE = [None]*SHELL_CNTR
-BASE_ID = [None]*SHELL_CNTR
-ORB_WISE_IDS = [None]*SHELL_CNTR
+MEAN_MOTION_REV_PER_DAY = [None] * SHELL_CNTR
+ALTITUDE_M = [None] * SHELL_CNTR
+NUM_ORBS = [None] * SHELL_CNTR
+NUM_SATS_PER_ORB = [None] * SHELL_CNTR
+INCLINATION_DEGREE = [None] * SHELL_CNTR
+BASE_ID = [None] * SHELL_CNTR
+ORB_WISE_IDS = [None] * SHELL_CNTR
 
 MEAN_MOTION_REV_PER_DAY[0] = 13.66  # Altitude ~1015 km
 ALTITUDE_M[0] = 1015000  # Altitude ~1015 km
@@ -121,16 +122,15 @@ NUM_SATS_PER_ORB[0] = 13
 INCLINATION_DEGREE[0] = 98.98
 BASE_ID[0] = 0
 ORB_WISE_IDS[0] = []
-
-MEAN_MOTION_REV_PER_DAY[1] = 12.84  # Altitude ~1325 km
-ALTITUDE_M[1] = 1325000  # Altitude ~1325 km
-NUM_ORBS[1] = 40
-NUM_SATS_PER_ORB[1] = 33
-INCLINATION_DEGREE[1] = 50.88
-BASE_ID[1] = 351
-ORB_WISE_IDS[1] = []
 """
-
+MEAN_MOTION_REV_PER_DAY[0] = 12.84  # Altitude ~1325 km
+ALTITUDE_M[0] = 1325000  # Altitude ~1325 km
+NUM_ORBS[0] = 40
+NUM_SATS_PER_ORB[0] = 33
+INCLINATION_DEGREE[0] = 50.88
+BASE_ID[0] = 351
+ORB_WISE_IDS[0] = []
+"""
 """
 # KUIPER
 NAME = "kuiper"
@@ -207,30 +207,45 @@ def generate_satellite_trajectories():
             ECCENTRICITY,
             ARG_OF_PERIGEE_DEGREE,
             MEAN_MOTION_REV_PER_DAY[i],
-            ALTITUDE_M[i]
+            ALTITUDE_M[i],
         )
         for j in range(len(sat_objs)):
             sat_objs[j]["sat_obj"].compute(EPOCH)
-            viz_string += "var redSphere = viewer.entities.add({name : '', position: Cesium.Cartesian3.fromDegrees(" \
-                          + str(math.degrees(sat_objs[j]["sat_obj"].sublong)) + ", " \
-                          + str(math.degrees(sat_objs[j]["sat_obj"].sublat)) + ", " + str(
-                sat_objs[j]["alt_km"] * 1000) + "), " \
-                          + "ellipsoid : {radii : new Cesium.Cartesian3(30000.0, 30000.0, 30000.0), " \
-                          + "material : Cesium.Color.BLACK.withAlpha(1),}});\n"
+            viz_string += (
+                "var redSphere = viewer.entities.add({name : '', position: Cesium.Cartesian3.fromDegrees("
+                + str(math.degrees(sat_objs[j]["sat_obj"].sublong))
+                + ", "
+                + str(math.degrees(sat_objs[j]["sat_obj"].sublat))
+                + ", "
+                + str(sat_objs[j]["alt_km"] * 1000)
+                + "), "
+                + "ellipsoid : {radii : new Cesium.Cartesian3(30000.0, 30000.0, 30000.0), "
+                + "material : Cesium.Color.BLACK.withAlpha(1),}});\n"
+            )
         orbit_links = util.find_orbit_links(sat_objs, NUM_ORBS[i], NUM_SATS_PER_ORB[i])
         for key in orbit_links:
             sat1 = orbit_links[key]["sat1"]
             sat2 = orbit_links[key]["sat2"]
-            viz_string += "viewer.entities.add({name : '', polyline: { positions: Cesium.Cartesian3.fromDegreesArrayHeights([" \
-                          + str(math.degrees(sat_objs[sat1]["sat_obj"].sublong)) + "," \
-                          + str(math.degrees(sat_objs[sat1]["sat_obj"].sublat)) + "," \
-                          + str(sat_objs[sat1]["alt_km"] * 1000) + "," \
-                          + str(math.degrees(sat_objs[sat2]["sat_obj"].sublong)) + "," \
-                          + str(math.degrees(sat_objs[sat2]["sat_obj"].sublat)) + "," \
-                          + str(sat_objs[sat2]["alt_km"] * 1000) + "]), " \
-                          + "width: 0.5, arcType: Cesium.ArcType.NONE, " \
-                          + "material: new Cesium.PolylineOutlineMaterialProperty({ " \
-                          + "color: Cesium.Color."+COLOR[i]+".withAlpha(0.4), outlineWidth: 0, outlineColor: Cesium.Color.BLACK})}});"
+            viz_string += (
+                "viewer.entities.add({name : '', polyline: { positions: Cesium.Cartesian3.fromDegreesArrayHeights(["
+                + str(math.degrees(sat_objs[sat1]["sat_obj"].sublong))
+                + ","
+                + str(math.degrees(sat_objs[sat1]["sat_obj"].sublat))
+                + ","
+                + str(sat_objs[sat1]["alt_km"] * 1000)
+                + ","
+                + str(math.degrees(sat_objs[sat2]["sat_obj"].sublong))
+                + ","
+                + str(math.degrees(sat_objs[sat2]["sat_obj"].sublat))
+                + ","
+                + str(sat_objs[sat2]["alt_km"] * 1000)
+                + "]), "
+                + "width: 0.5, arcType: Cesium.ArcType.NONE, "
+                + "material: new Cesium.PolylineOutlineMaterialProperty({ "
+                + "color: Cesium.Color."
+                + COLOR[i]
+                + ".withAlpha(0.4), outlineWidth: 0, outlineColor: Cesium.Color.BLACK})}});"
+            )
     return viz_string
 
 
@@ -239,11 +254,11 @@ def write_viz_files():
     Writes JSON and TML files to the output folder
     :return: None
     """
-    writer_html = open(OUT_HTML_FILE, 'w')
-    with open(topFile, 'r') as fi:
+    writer_html = open(OUT_HTML_FILE, "w")
+    with open(topFile, "r") as fi:
         writer_html.write(fi.read())
     writer_html.write(viz_string)
-    with open(bottomFile, 'r') as fb:
+    with open(bottomFile, "r") as fb:
         writer_html.write(fb.read())
     writer_html.close()
 

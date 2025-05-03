@@ -37,6 +37,9 @@ class ArbiterDhbpSat : public ArbiterShortSat
 {
   public:
 	static TypeId GetTypeId(void);
+	const bool OPTIMIZED = true;
+
+	typedef std::tuple<NeighborCoordContainer::Direction, int32_t, int64_t> distance_element;
 
 	// Constructor for single forward next-hop forwarding state
 	ArbiterDhbpSat(Ptr<Node> this_node, NodeContainer nodes,
@@ -53,27 +56,29 @@ class ArbiterDhbpSat : public ArbiterShortSat
 	// Updating of forward state
 	void SetSingleForwardState(int32_t target_node_id, int32_t next_node_id, int32_t own_if_id, int32_t next_if_id);
 
-	std::tuple<int32_t, int32_t, int32_t> ShortDecide(int16_t aa, int16_t ag, int16_t da, int16_t dg,
-													  int32_t source_node_id, int32_t target_node_id);
+	std::tuple<int32_t, int32_t, int32_t> ShortDecide(
+		std::tuple<int32_t, std::tuple<int16_t, int16_t>> source_satellite_data,
+		std::tuple<int32_t, std::tuple<int16_t, int16_t>> destination_satellite_data, int32_t source_node_id,
+		int32_t target_node_id);
+
+	void SetGSShortTable(std::vector<std::vector<std::tuple<int32_t, std::tuple<double, double>>>> table);
+	void SetSourceSatelliteTable(std::vector<std::vector<std::tuple<int32_t, std::tuple<double, double>>>> *table);
 
 	void IncreaseQueue(int32_t source_node_id, int32_t target_node_id);
 	void DecreaseQueue(int32_t source_node_id, int32_t target_node_id);
 	int64_t GetQueueSizeForFlow(int32_t neighbor_id, int32_t source_node_id, int32_t target_node_id);
 
   private:
-	std::tuple<int32_t, int32_t, int32_t> DetermineInterface(int16_t destination_alpha, int16_t destination_gamma,
+	std::tuple<int32_t, int32_t, int32_t> DetermineInterface(int16_t source_alpha, int16_t source_gamma,
+															 int16_t destination_alpha, int16_t destination_gamma,
 															 int32_t source_node_id, int32_t target_node_id);
 
-	// std::tuple<int8_t, int8_t, int8_t, int8_t> CompareSourceDest(int16_t source_alpha, int16_t source_gamma,
-	//															 int16_t destination_alpha, int16_t destination_gamma);
-	// bool CheckIfInRectangle(NeighborCoordContainer::Direction d, int16_t source_alpha, int16_t source_gamma,
-	//						int16_t destination_alpha, int16_t destination_gamma);
-	int32_t GSLNodeIdToGSLIndex(int32_t id);
-	int32_t GSLIndexToGSLNodeId(int32_t id);
 	int64_t GetFlowMapping(int32_t source_node_id, int32_t target_node_id);
 
 	std::shared_ptr<std::vector<std::vector<int64_t>>> shared_data_for_satellites;
 	std::shared_ptr<std::vector<std::mutex>> shared_data_for_satellites_mutex;
+	std::vector<std::vector<std::tuple<int32_t, std::tuple<double, double>>>> m_other_table;
+	std::vector<std::vector<std::tuple<int32_t, std::tuple<double, double>>>> *source_satellite_per_flow;
 };
 
 } // namespace ns3

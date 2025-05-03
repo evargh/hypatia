@@ -60,10 +60,10 @@ class ArbiterShortSat : public ArbiterSatnet
 	// Static routing table
 	std::string StringReprOfForwardingState();
 
-	std::tuple<int32_t, int32_t, int32_t> ShortDecide(int16_t aa, int16_t ag, int16_t da, int16_t dg,
+	std::tuple<int32_t, int32_t, int32_t> ShortDecide(std::vector<std::tuple<int16_t, int16_t>> adjacent_satellites,
 													  int32_t target_node_id);
 
-	void SetGSShortTable(std::vector<std::tuple<double, double, double, double>> table);
+	void SetGSShortTable(std::vector<std::vector<std::tuple<int32_t, std::tuple<double, double>>>> table);
 
   protected:
 	class NeighborCoordContainer
@@ -91,10 +91,6 @@ class ArbiterShortSat : public ArbiterSatnet
 		int8_t CheckIfGammaIncrease(Direction d, int16_t destination_gamma);
 		int8_t CheckIfAlphaIncrease(int16_t source_alpha, int16_t destination_alpha);
 		int8_t CheckIfGammaIncrease(int16_t source_gamma, int16_t destination_gamma);
-
-		int32_t GetSquaredEuclideanModularDistance(Direction d, int16_t destination_alpha, int16_t destination_gamma);
-		int32_t GetSquaredEuclideanModularDistance(std::tuple<int16_t, int16_t> c, int16_t destination_alpha,
-												   int16_t destination_gamma);
 
 		int16_t GetHopcount(Direction d, int16_t destination_alpha, int16_t destination_gamma);
 		std::tuple<int16_t, int16_t> GetHopcountTuple(Direction d, int16_t destination_alpha,
@@ -130,7 +126,7 @@ class ArbiterShortSat : public ArbiterSatnet
 
 	std::vector<std::tuple<int32_t, int32_t, int32_t>> m_next_hop_list;
 
-	std::vector<std::tuple<double, double, double, double>> m_other_table;
+	std::vector<std::vector<std::tuple<int32_t, std::tuple<double, double>>>> m_other_table;
 	std::vector<std::tuple<int32_t, int32_t, int32_t>> m_neighbor_ids;
 
 	int64_t num_orbits;

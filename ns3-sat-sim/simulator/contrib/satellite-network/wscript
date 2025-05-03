@@ -13,16 +13,18 @@ def build(bld):
         'model/arbiter-satnet.cc',
         'model/arbiter-single-forward.cc',
 	      'model/arbiter-dhbp-sat.cc',
+	      'model/arbiter-elb-sat.cc',
         'model/arbiter-short-sat.cc',
         'model/arbiter-short-sat-neighbor-container.cc',
-        'model/arbiter-new-sat.cc',
+        'model/arbiter-inner-sat.cc',
 
         'helper/gsl-helper.cc',
         'helper/point-to-point-laser-helper.cc',
         'helper/arbiter-single-forward-helper.cc',
 	      'helper/arbiter-dhbp-helper.cc',
+	      'helper/arbiter-elb-helper.cc',
         'helper/arbiter-short-helper.cc',
-        'helper/arbiter-new-helper.cc',
+        'helper/arbiter-inner-helper.cc',
         'helper/gsl-if-bandwidth-helper.cc',
         ]
 
@@ -44,16 +46,18 @@ def build(bld):
         'model/arbiter-satnet.h',
         'model/arbiter-single-forward.h',
 	      'model/arbiter-dhbp-sat.h',
+	      'model/arbiter-elb-sat.h',
         'model/arbiter-short-sat.h',
-        'model/arbiter-new-sat.h',
+        'model/arbiter-inner-sat.h',
         'model/modular-arithmetic-helper.h',
 
         'helper/gsl-helper.h',
         'helper/point-to-point-laser-helper.h',
         'helper/arbiter-single-forward-helper.h',
 	      'helper/arbiter-dhbp-helper.h',
+	      'helper/arbiter-elb-helper.h',
         'helper/arbiter-short-helper.h',
-        'helper/arbiter-new-helper.h',
+        'helper/arbiter-inner-helper.h',
         'helper/gsl-if-bandwidth-helper.h',
         ]
 

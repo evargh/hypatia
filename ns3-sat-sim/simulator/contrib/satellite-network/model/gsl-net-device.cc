@@ -34,7 +34,9 @@
 #include "gsl-net-device.h"
 #include "gsl-channel.h"
 #include "ns3/arbiter-dhbp-sat.h"
+#include "ns3/arbiter-elb-sat.h"
 #include "ns3/ipv4-arbiter-routing.h"
+#include "ns3/source-interface-tag.h"
 
 namespace ns3
 {
@@ -228,11 +230,19 @@ bool GSLNetDevice::TransmitStart(Ptr<Packet> p, const Address dest)
 	NS_LOG_LOGIC("Schedule TransmitCompleteEvent in " << txCompleteTime.GetSeconds() << "sec");
 	Simulator::Schedule(txCompleteTime, &GSLNetDevice::TransmitComplete, this, dest);
 
+	Ptr<Arbiter> arb = m_node->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4ArbiterRouting>()->GetArbiter();
+	if (arb->GetInstanceTypeId() == TypeId::LookupByName("ns3::ArbiterElbSat"))
+	{
+		// if this is an ELB arbiter transmitting, its losing traffic
+		// increment the counter that marks the amount of sent traffic
+		Ptr<ArbiterElbSat> arb_elb = DynamicCast<ArbiterElbSat>(arb);
+		arb_elb->IncrementTxCounter(m_ifIndex - 1);
+	}
 	// copied code from point to point net device. need to make a parent class that these can inherit from
 	bool result = m_channel->TransmitStart(p, this, dest, txTime);
-	Ptr<Arbiter> arb = m_node->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4ArbiterRouting>()->GetArbiter();
 	if (result == false)
 	{
+		NS_LOG_DEBUG("dropped");
 		m_phyTxDropTrace(p);
 	}
 	else if (arb->GetInstanceTypeId() == TypeId::LookupByName("ns3::ArbiterDhbpSat"))
@@ -250,8 +260,8 @@ bool GSLNetDevice::TransmitStart(Ptr<Packet> p, const Address dest)
 			arb_dhbp->DecreaseQueue(src, dest);
 		}
 	}
-	NS_LOG_DEBUG("From " << m_node->GetId() << " -- UID is " << p->GetUid() << " -- Delay is "
-						 << txCompleteTime.GetSeconds());
+	/*NS_LOG_DEBUG("From " << m_node->GetId() << " -- UID is " << p->GetUid() << " -- Delay is "
+						 << txCompleteTime.GetSeconds());*/
 
 	NS_LOG_FUNCTION(this << " done");
 	return result;
@@ -502,6 +512,14 @@ bool GSLNetDevice::Send(Ptr<Packet> packet, const Address &dest, uint16_t protoc
 		return false;
 	}
 
+	Ptr<Arbiter> arb = m_node->GetObject<Ipv4>()->GetRoutingProtocol()->GetObject<Ipv4ArbiterRouting>()->GetArbiter();
+	if (arb->GetInstanceTypeId() == TypeId::LookupByName("ns3::ArbiterElbSat"))
+	{
+		// increment the counter that marks the amount of received satellite traffic
+		Ptr<ArbiterElbSat> arb_elb = DynamicCast<ArbiterElbSat>(arb);
+		Ptr<Packet> p_cpy = packet->Copy();
+		arb_elb->IncrementRxCounter(m_ifIndex - 1);
+	}
 	//
 	// Stick a point to point protocol header on the packet in preparation for
 	// shoving it out the door.

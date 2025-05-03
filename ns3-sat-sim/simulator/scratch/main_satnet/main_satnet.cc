@@ -39,7 +39,8 @@
 #include "ns3/arbiter-single-forward-helper.h"
 #include "ns3/arbiter-dhbp-helper.h"
 #include "ns3/arbiter-short-helper.h"
-#include "ns3/arbiter-new-helper.h"
+#include "ns3/arbiter-inner-helper.h"
+#include "ns3/arbiter-elb-helper.h"
 #include "ns3/ipv4-arbiter-routing-helper.h"
 #include "ns3/gsl-if-bandwidth-helper.h"
 #include "ns3/point-to-point-laser-helper.h"
@@ -49,7 +50,7 @@ using namespace ns3;
 
 int main(int argc, char *argv[])
 {
-	int routing_algorithm = 3;
+	int routing_algorithm = 4;
 
 	// No buffering of printf
 	setbuf(stdout, nullptr);
@@ -74,7 +75,7 @@ int main(int argc, char *argv[])
 					   StringValue("ns3::" + basicSimulation->GetConfigParamOrFail("tcp_socket_type")));
 
 	// Optimize TCP
-	// TcpOptimizer::OptimizeBasic(basicSimulation);
+	TcpOptimizer::OptimizeBasic(basicSimulation);
 
 	// TODO: should probably downcast the arbiter pointer safely here, haven't tested
 	Ptr<TopologySatelliteNetwork> topology;
@@ -192,7 +193,44 @@ int main(int argc, char *argv[])
 	{
 		topology = CreateObject<TopologySatelliteNetwork>(basicSimulation, Ipv4ArbiterRoutingHelper(),
 														  PointToPointLaserHelper(), GSLHelper());
-		ArbiterNewHelper arbiterHelper(basicSimulation, topology->GetNodes());
+		ArbiterInnerHelper arbiterHelper(basicSimulation, topology->GetNodes());
+		// weird scope thing, just move everything into here
+		GslIfBandwidthHelper gslIfBandwidthHelper(basicSimulation, topology->GetNodes());
+
+		// Schedule flows
+		TcpFlowScheduler tcpFlowScheduler(basicSimulation, topology); // Requires enable_tcp_flow_scheduler=true
+
+		// Schedule UDP bursts
+		UdpBurstScheduler udpBurstScheduler(basicSimulation, topology); // Requires enable_udp_burst_scheduler=true
+
+		// Schedule pings
+		PingmeshScheduler pingmeshScheduler(basicSimulation, topology); // Requires enable_pingmesh_scheduler=true
+
+		// Run simulation
+		basicSimulation->Run();
+
+		// Write flow results
+		tcpFlowScheduler.WriteResults();
+
+		// Write UDP burst results
+		udpBurstScheduler.WriteResults();
+
+		// Write pingmesh results
+		pingmeshScheduler.WriteResults();
+
+		// Collect utilization statistics
+		topology->CollectUtilizationStatistics();
+
+		// Finalize the simulation
+		basicSimulation->Finalize();
+
+		return 0;
+	}
+	if (routing_algorithm == 4)
+	{
+		topology = CreateObject<TopologySatelliteNetwork>(basicSimulation, Ipv4ArbiterRoutingHelper(),
+														  PointToPointLaserHelper(), GSLHelper());
+		ArbiterElbHelper arbiterHelper(basicSimulation, topology->GetNodes());
 		// weird scope thing, just move everything into here
 		GslIfBandwidthHelper gslIfBandwidthHelper(basicSimulation, topology->GetNodes());
 

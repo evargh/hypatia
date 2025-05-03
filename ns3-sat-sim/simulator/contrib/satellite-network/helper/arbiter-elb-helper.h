@@ -17,36 +17,39 @@
  * Author: Simon               2020
  */
 
-#ifndef ARBITER_NEW_HELPER
-#define ARBITER_NEW_HELPER
+#ifndef ARBITER_ELB_HELPER
+#define ARBITER_ELB_HELPER
 
 #include <mutex>
+#include <memory>
 #include "ns3/ipv4-routing-helper.h"
 #include "ns3/basic-simulation.h"
 #include "ns3/topology-satellite-network.h"
 #include "ns3/ipv4-arbiter-routing.h"
-#include "ns3/arbiter-new-sat.h"
+#include "ns3/arbiter-elb-sat.h"
 #include "ns3/arbiter-single-forward.h"
 #include "ns3/abort.h"
 
 namespace ns3
 {
 
-class ArbiterNewHelper
+class ArbiterElbHelper
 {
   public:
 	// APPROXIMATE WGS72 VALUES
 	const double EARTH_ORBIT_TIME_NS = 86400000000000;
 	const int32_t APPROXIMATE_EARTH_RADIUS_M = 6371000;
+	const int64_t ELB_UPDATE_INTERVAL_NS = 10000000;
 
-	ArbiterNewHelper(Ptr<BasicSimulation> basicSimulation, NodeContainer nodes);
+	ArbiterElbHelper(Ptr<BasicSimulation> basicSimulation, NodeContainer nodes);
+	typedef std::vector<std::vector<std::tuple<int32_t, std::tuple<double, double>>>> FlowVec;
 
   private:
 	std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>> InitialEmptyForwardingState();
 	double m_satelliteInclination;
 	void UpdateOrbitalParams(int64_t t);
+	void UpdateBusyLevels(int16_t t);
 	void UpdateForwardingState(int64_t t);
-	void SetRoutingParams();
 	void SetCoordinateSkew();
 	std::vector<std::tuple<int32_t, int32_t, int32_t>> CreateOutboundInterfaceList(int32_t i);
 	std::tuple<double, double, double, double> CartesianToShort(Vector3D cartesian);
@@ -59,15 +62,18 @@ class ArbiterNewHelper
 
 	int64_t m_num_orbits;
 	int64_t m_satellites_per_orbit;
-	std::vector<Ptr<ArbiterNewSat>> m_sat_arbiters;
+	std::vector<Ptr<ArbiterElbSat>> m_sat_arbiters;
 	std::vector<Ptr<ArbiterSingleForward>> m_gs_arbiters;
 	std::vector<std::tuple<double, double, double, double>> m_other_table;
 
-	// the vector should be properly sized when used, which smells but will work for now
-	std::shared_ptr<std::vector<int64_t>> shared_data_for_satellites;
+	std::shared_ptr<std::vector<std::tuple<int8_t, double>>> shared_data_for_satellites;
 	std::shared_ptr<std::vector<std::mutex>> shared_mutex_for_satellites;
+
+	std::vector<std::tuple<double, double>> satellite_positions_short;
+	FlowVec adjacent_satellite_table;
+	std::unique_ptr<FlowVec> source_satellite_per_flow;
 };
 
 } // namespace ns3
 
-#endif /* ARBITER_NEW_HELPER */
+#endif /* ARBITER_DHBP_HELPER */
