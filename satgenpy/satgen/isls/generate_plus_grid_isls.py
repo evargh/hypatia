@@ -36,9 +36,12 @@ def generate_plus_grid_isls(
     :param output_filename_isls     Output filename
     :param n_orbits:                Number of orbits
     :param n_sats_per_orbit:        Number of satellites per orbit
-    :param isl_shift:               ISL shift between orbits (e.g., if satellite id in orbit is X,
+    :param even_isl_shift:          ISL shift between orbits (e.g., if satellite id in orbit is X,
+                                    does it also connect to the satellite at X in the adjacent orbit)
+    :param odd_isl_shift:           ISL shift between orbits (e.g., if satellite id in orbit is X,
                                     does it also connect to the satellite at X in the adjacent orbit)
     :param idx_offset:              Index offset (e.g., if you have multiple shells)
+    :param phased                   Whether or not phases were generated for TLEs
     """
 
     if n_orbits < 3 or n_sats_per_orbit < 3:
@@ -49,6 +52,7 @@ def generate_plus_grid_isls(
         for j in range(n_sats_per_orbit):
             sat = i * n_sats_per_orbit + j
 
+            # Link to the next in the orbit
             if phased:
                 sat_same_orbit = i * n_sats_per_orbit + ((j + 1) % n_sats_per_orbit)
 
@@ -84,23 +88,18 @@ def generate_plus_grid_isls(
                             idx_offset + max(sat, sat_adjacent_orbit),
                         )
                     )
-
             else:
-                # Link to the next in the orbit
                 sat_same_orbit = i * n_sats_per_orbit + ((j + 1) % n_sats_per_orbit)
+                # the adjacent orbit is the one on the right
                 sat_adjacent_orbit = ((i + 1) % n_orbits) * n_sats_per_orbit + (
                     (j + even_isl_shift) % n_sats_per_orbit
                 )
-
-                # Same orbit
                 list_isls.append(
                     (
                         idx_offset + min(sat, sat_same_orbit),
                         idx_offset + max(sat, sat_same_orbit),
                     )
                 )
-
-                # Adjacent orbit
                 list_isls.append(
                     (
                         idx_offset + min(sat, sat_adjacent_orbit),

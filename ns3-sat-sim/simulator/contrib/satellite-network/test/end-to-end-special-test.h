@@ -140,14 +140,14 @@ class EndToEndSpecialTestCase : public TestCase
 			fstate_file.open(dyn_state_dir + "/fstate_" + std::to_string(i) + ".txt");
 			if (i == 0)
 			{
-				fstate_file << "3,5,0,0,1,0" << std::endl;
-				fstate_file << "0,5,1,0,0,0" << std::endl;
-				fstate_file << "1,5,5,1,0,0" << std::endl;
-				fstate_file << "3,6,1,1,1,0" << std::endl;
-				fstate_file << "1,6,6,2,0,0" << std::endl;
-				fstate_file << "4,5,1,0,1,0" << std::endl;
-				fstate_file << "4,6,2,0,0,0" << std::endl;
-				fstate_file << "2,6,6,0,0,0" << std::endl;
+				fstate_file << "3,5,0,0,1" << std::endl;
+				fstate_file << "0,5,1,0,0" << std::endl;
+				fstate_file << "1,5,5,1,0" << std::endl;
+				fstate_file << "3,6,1,1,1" << std::endl;
+				fstate_file << "1,6,6,2,0" << std::endl;
+				fstate_file << "4,5,1,0,1" << std::endl;
+				fstate_file << "4,6,2,0,0" << std::endl;
+				fstate_file << "2,6,6,0,0" << std::endl;
 			}
 			//            } else if (i == 1600000000) {
 			//

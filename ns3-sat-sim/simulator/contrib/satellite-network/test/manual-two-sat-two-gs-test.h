@@ -1359,21 +1359,21 @@ class ManualTwoSatTwoGsChangingForwardingTest : public ManualTwoSatTwoGsTest
 		std::ofstream fstate_file;
 
 		fstate_file.open(temp_dir + "/network_state/fstate_0.txt");
-		fstate_file << "2,3,0,0,1,0" << std::endl;
-		fstate_file << "0,3,1,0,0,0" << std::endl;
-		fstate_file << "1,3,3,1,0,0" << std::endl;
+		fstate_file << "2,3,0,0,1" << std::endl;
+		fstate_file << "0,3,1,0,0" << std::endl;
+		fstate_file << "1,3,3,1,0" << std::endl;
 		fstate_file.close();
 
 		fstate_file.open(temp_dir + "/network_state/fstate_1000000000.txt");
-		fstate_file << "0,3,-1,-1,-1,0" << std::endl;
+		fstate_file << "0,3,-1,-1,-1" << std::endl;
 		fstate_file.close();
 
 		fstate_file.open(temp_dir + "/network_state/fstate_2000000000.txt");
-		fstate_file << "0,3,3,1,0,0" << std::endl;
+		fstate_file << "0,3,3,1,0" << std::endl;
 		fstate_file.close();
 
 		fstate_file.open(temp_dir + "/network_state/fstate_3000000000.txt");
-		fstate_file << "2,3,1,0,1,0" << std::endl;
+		fstate_file << "2,3,1,0,1" << std::endl;
 		fstate_file.close();
 
 		// Load basic simulation environment
@@ -1511,21 +1511,21 @@ class ManualTwoSatTwoGsChangingRateTest : public ManualTwoSatTwoGsTest
 		std::ofstream fstate_file;
 
 		fstate_file.open(temp_dir + "/network_state/fstate_0.txt");
-		fstate_file << "2,3,0,0,1,0" << std::endl;
-		fstate_file << "0,3,1,0,0,0" << std::endl;
-		fstate_file << "1,3,3,1,0,0" << std::endl;
+		fstate_file << "2,3,0,0,1" << std::endl;
+		fstate_file << "0,3,1,0,0" << std::endl;
+		fstate_file << "1,3,3,1,0" << std::endl;
 		fstate_file.close();
 
 		fstate_file.open(temp_dir + "/network_state/fstate_1000000000.txt");
-		fstate_file << "0,3,-1,-1,-1,0" << std::endl;
+		fstate_file << "0,3,-1,-1,-1" << std::endl;
 		fstate_file.close();
 
 		fstate_file.open(temp_dir + "/network_state/fstate_2000000000.txt");
-		fstate_file << "0,3,3,1,0,0" << std::endl;
+		fstate_file << "0,3,3,1,0" << std::endl;
 		fstate_file.close();
 
 		fstate_file.open(temp_dir + "/network_state/fstate_3000000000.txt");
-		fstate_file << "2,3,1,0,1,0" << std::endl;
+		fstate_file << "2,3,1,0,1" << std::endl;
 		fstate_file.close();
 
 		// Interface bandwidth files

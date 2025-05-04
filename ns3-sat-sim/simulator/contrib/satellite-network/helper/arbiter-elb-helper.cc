@@ -345,7 +345,7 @@ void ArbiterElbHelper::UpdateForwardingState(int64_t t)
 		{
 			// Split on ,
 			// not mentioned, but this is from exputil
-			std::vector<std::string> comma_split = split_string(line, ",", 6);
+			std::vector<std::string> comma_split = split_string(line, ",", 5);
 
 			// Retrieve identifiers
 			int64_t current_node_id = parse_positive_int64(comma_split[0]);

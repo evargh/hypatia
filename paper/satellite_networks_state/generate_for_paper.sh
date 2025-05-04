@@ -98,36 +98,3 @@ fi
 if [ "${id}" = "14" ]; then
   python3 main_25x25.py 200 1000 algorithm_free_one_only_over_isls ${num_threads}
 fi
-
-# DHPB small network test with ISLs
-if [ "${id}" = "15" ]; then
-  python3 main_small_550.py 200 50 isls_plus_grid ground_stations_top_100 algorithm_free_one_only_over_isls ${num_threads}
-fi
-if [ "${id}" = "16" ]; then
-  python3 main_small_550.py 200 100 isls_plus_grid ground_stations_top_100 algorithm_free_one_only_over_isls ${num_threads}
-fi
-if [ "${id}" = "17" ]; then
-  python3 main_small_550.py 200 1000 isls_plus_grid ground_stations_top_100 algorithm_free_one_only_over_isls ${num_threads}
-fi
-
-# Bigger starlink network test with ISLs
-if [ "${id}" = "18" ]; then
-  python3 main_starlink_0p75_550.py 200 50 isls_plus_grid ground_stations_top_100 algorithm_free_one_only_over_isls ${num_threads}
-fi
-if [ "${id}" = "19" ]; then
-  python3 main_starlink_0p75_550.py 200 100 isls_plus_grid ground_stations_top_100 algorithm_free_one_only_over_isls ${num_threads}
-fi
-if [ "${id}" = "20" ]; then
-  python3 main_starlink_0p75_550.py 200 1000 isls_plus_grid ground_stations_top_100 algorithm_free_one_only_over_isls ${num_threads}
-fi
-
-# Smaller starlink network test with ISLs
-if [ "${id}" = "21" ]; then
-  python3 main_starlink_1p25_550.py 200 50 isls_plus_grid ground_stations_top_100 algorithm_free_one_only_over_isls ${num_threads}
-fi
-if [ "${id}" = "22" ]; then
-  python3 main_starlink_1p25_550.py 200 100 isls_plus_grid ground_stations_top_100 algorithm_free_one_only_over_isls ${num_threads}
-fi
-if [ "${id}" = "23" ]; then
-  python3 main_starlink_1p25_550.py 200 1000 isls_plus_grid ground_stations_top_100 algorithm_free_one_only_over_isls ${num_threads}
-fi

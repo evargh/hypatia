@@ -28,7 +28,6 @@ import exputil
 
 
 class TestIsls(unittest.TestCase):
-
     def test_isls_empty(self):
         satgen.generate_empty_isls("isls_empty.txt.tmp")
         isls_list = satgen.read_isls("isls_empty.txt.tmp", 0)
@@ -40,7 +39,9 @@ class TestIsls(unittest.TestCase):
             num_orbits = values[0]
             num_sat_per_orbit = values[1]
             isl_shift = values[2]
-            satgen.generate_plus_grid_isls("isls.txt.tmp", num_orbits, num_sat_per_orbit, isl_shift)
+            satgen.generate_plus_grid_isls(
+                "isls.txt.tmp", num_orbits, num_sat_per_orbit, isl_shift, isl_shift
+            )
             isls_list = satgen.read_isls("isls.txt.tmp", num_orbits * num_sat_per_orbit)
             os.remove("isls.txt.tmp")
             self.assertEqual(len(isls_list), num_orbits * num_sat_per_orbit * 2)
@@ -49,18 +50,26 @@ class TestIsls(unittest.TestCase):
                 orbit_of_i = int(floor(i / float(num_sat_per_orbit)))
 
                 # Links in same orbit
-                neighbor_1 = orbit_of_i * num_sat_per_orbit + (i + num_sat_per_orbit + 1) % num_sat_per_orbit
-                neighbor_2 = orbit_of_i * num_sat_per_orbit + (i + num_sat_per_orbit - 1) % num_sat_per_orbit
+                neighbor_1 = (
+                    orbit_of_i * num_sat_per_orbit
+                    + (i + num_sat_per_orbit + 1) % num_sat_per_orbit
+                )
+                neighbor_2 = (
+                    orbit_of_i * num_sat_per_orbit
+                    + (i + num_sat_per_orbit - 1) % num_sat_per_orbit
+                )
 
                 # Links to different orbits
                 neighbor_3 = (
-                    ((orbit_of_i + num_orbits - 1) % num_orbits)
-                    * num_sat_per_orbit + (i + num_sat_per_orbit - isl_shift) % num_sat_per_orbit
-                )
+                    (orbit_of_i + num_orbits - 1) % num_orbits
+                ) * num_sat_per_orbit + (
+                    i + num_sat_per_orbit - isl_shift
+                ) % num_sat_per_orbit
                 neighbor_4 = (
-                    ((orbit_of_i + num_orbits + 1) % num_orbits)
-                    * num_sat_per_orbit + (i + num_sat_per_orbit + isl_shift) % num_sat_per_orbit
-                )
+                    (orbit_of_i + num_orbits + 1) % num_orbits
+                ) * num_sat_per_orbit + (
+                    i + num_sat_per_orbit + isl_shift
+                ) % num_sat_per_orbit
 
                 # All of them must be present
                 self.assertTrue((min(i, neighbor_1), max(i, neighbor_1)) in isls_list)
@@ -70,19 +79,19 @@ class TestIsls(unittest.TestCase):
 
     def test_isls_plus_grid_invalid(self):
         try:
-            satgen.generate_plus_grid_isls("isls.txt.tmp", 2, 2, 0)
+            satgen.generate_plus_grid_isls("isls.txt.tmp", 2, 2, 0, 0)
             self.fail()
         except ValueError:
             self.assertTrue(True)
 
         try:
-            satgen.generate_plus_grid_isls("isls.txt.tmp", 3, 2, 0)
+            satgen.generate_plus_grid_isls("isls.txt.tmp", 3, 2, 0, 0)
             self.fail()
         except ValueError:
             self.assertTrue(True)
 
         try:
-            satgen.generate_plus_grid_isls("isls.txt.tmp", 1, 1, 0)
+            satgen.generate_plus_grid_isls("isls.txt.tmp", 1, 1, 0, 0)
             self.fail()
         except ValueError:
             self.assertTrue(True)
@@ -91,10 +100,7 @@ class TestIsls(unittest.TestCase):
         local_shell = exputil.LocalShell()
 
         # Invalid left index
-        local_shell.write_file(
-            "isls.txt.tmp",
-            "2 3\n5 6\n9 0"
-        )
+        local_shell.write_file("isls.txt.tmp", "2 3\n5 6\n9 0")
         try:
             satgen.read_isls("isls.txt.tmp", 9)
             self.fail()
@@ -103,10 +109,7 @@ class TestIsls(unittest.TestCase):
         os.remove("isls.txt.tmp")
 
         # Invalid right index
-        local_shell.write_file(
-            "isls.txt.tmp",
-            "2 3\n5 6\n6 9\n3 99"
-        )
+        local_shell.write_file("isls.txt.tmp", "2 3\n5 6\n6 9\n3 99")
         try:
             satgen.read_isls("isls.txt.tmp", 50)
             self.fail()
@@ -115,10 +118,7 @@ class TestIsls(unittest.TestCase):
         os.remove("isls.txt.tmp")
 
         # Invalid left index
-        local_shell.write_file(
-            "isls.txt.tmp",
-            "2 3\n5 6\n6 8\n-3 3"
-        )
+        local_shell.write_file("isls.txt.tmp", "2 3\n5 6\n6 8\n-3 3")
         try:
             satgen.read_isls("isls.txt.tmp", 50)
             self.fail()
@@ -127,10 +127,7 @@ class TestIsls(unittest.TestCase):
         os.remove("isls.txt.tmp")
 
         # Invalid right index
-        local_shell.write_file(
-            "isls.txt.tmp",
-            "2 3\n5 6\n1 -3\n6 8"
-        )
+        local_shell.write_file("isls.txt.tmp", "2 3\n5 6\n1 -3\n6 8")
         try:
             satgen.read_isls("isls.txt.tmp", 50)
             self.fail()
@@ -139,10 +136,7 @@ class TestIsls(unittest.TestCase):
         os.remove("isls.txt.tmp")
 
         # Left is larger than right
-        local_shell.write_file(
-            "isls.txt.tmp",
-            "6 5"
-        )
+        local_shell.write_file("isls.txt.tmp", "6 5")
         try:
             satgen.read_isls("isls.txt.tmp", 10)
             self.fail()
@@ -151,10 +145,7 @@ class TestIsls(unittest.TestCase):
         os.remove("isls.txt.tmp")
 
         # Left is equal to right
-        local_shell.write_file(
-            "isls.txt.tmp",
-            "5 5"
-        )
+        local_shell.write_file("isls.txt.tmp", "5 5")
         try:
             satgen.read_isls("isls.txt.tmp", 10)
             self.fail()
@@ -163,10 +154,7 @@ class TestIsls(unittest.TestCase):
         os.remove("isls.txt.tmp")
 
         # Duplicate
-        local_shell.write_file(
-            "isls.txt.tmp",
-            "2 3\n5 6\n3 9\n5 6\n2 9"
-        )
+        local_shell.write_file("isls.txt.tmp", "2 3\n5 6\n3 9\n5 6\n2 9")
         try:
             satgen.read_isls("isls.txt.tmp", 10)
             self.fail()
