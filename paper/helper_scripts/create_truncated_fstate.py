@@ -1,8 +1,6 @@
 import csv
 import argparse
 
-props = []
-
 parser = argparse.ArgumentParser()
 parser.add_argument("fstate_dir")
 parser.add_argument("num_satellites")
