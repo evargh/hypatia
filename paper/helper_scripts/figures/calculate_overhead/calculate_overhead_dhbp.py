@@ -30,5 +30,5 @@ gsl_overhead_data_bytes = 4 * (gsl_trx * 1)
 
 total_overhead_kb = (isl_overhead_data_bytes + gsl_overhead_data_bytes) / 1000
 ratio = total_overhead_kb / total_traffic_kb
-print(total_overhead_kb)
-print(total_overhead_kb / total_traffic_kb)
+print(f"{total_overhead_kb} kb")
+print(f"ratio: {total_overhead_kb / total_traffic_kb}")

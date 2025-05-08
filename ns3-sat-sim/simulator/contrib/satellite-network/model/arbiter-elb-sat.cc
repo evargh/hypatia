@@ -46,7 +46,6 @@ ArbiterElbSat::ArbiterElbSat(Ptr<Node> this_node, NodeContainer nodes,
 	chi_compare->SetAttribute("Min", DoubleValue(0.0));
 	chi_compare->SetAttribute("Max", DoubleValue(1.0));
 
-	interface_head_uids.resize(5);
 	interface_ingress_egress_counters.resize(5);
 }
 
@@ -226,6 +225,10 @@ std::tuple<int32_t, int32_t, int32_t> ArbiterElbSat::TopologySatelliteNetworkDec
 		return m_next_hop_list[target_node_id];
 	}
 
+	// this should be replaced with ExtractClosestTuple, which considers nodes that are closest to this node. Instead,
+	// these functions consider the first and last nodes that would be used when forwarding traffic on the shortest path
+	// between the source and destination ground stations. While I think this can be replaced, I don't believe it should
+	// change the results significantly
 	std::tuple<int32_t, std::tuple<double, double>> source_satellite_data =
 		source_satellite_per_flow->at(source_node_id - num_orbits * num_satellites_per_orbit)
 			.at(target_node_id - num_orbits * num_satellites_per_orbit);
@@ -258,7 +261,7 @@ void ArbiterElbSat::UpdateELBState()
 		// implementation decision: ELB assumes that satellites just have one queue shared by all of their interfaces
 		// we can model this by iterating over all net devices attached to the node
 		uint32_t num_interfaces = m_nodes.Get(m_node_id)->GetObject<Ipv4>()->GetNInterfaces();
-		// 0 is loopback, so skip that
+		// 0 is loopback, so skip that. Store the number of packets in each queue
 		for (int i = 1; i < num_interfaces; i++)
 		{
 			Ptr<NetDevice> outgoing_if = m_nodes.Get(m_node_id)->GetObject<Ipv4>()->GetNetDevice(i);
@@ -272,6 +275,7 @@ void ArbiterElbSat::UpdateELBState()
 				queue_occupancies.at(i - 1) = outgoing_if->GetObject<GSLNetDevice>()->GetQueue()->GetNPackets();
 			}
 		}
+		// store the change in traffic on that interface
 		std::vector<double> i_minus_o_per_interface;
 		i_minus_o_per_interface.reserve(5);
 		std::transform(interface_ingress_egress_counters.begin(), interface_ingress_egress_counters.end(),
@@ -279,13 +283,6 @@ void ArbiterElbSat::UpdateELBState()
 						   return std::max(double(std::get<0>(x)) + double(std::get<1>(x)) - double(std::get<2>(x)),
 										   0.0);
 					   });
-		/*for (int i = 0; i < i_minus_o_per_interface.size(); i++)
-		{
-			NS_LOG_DEBUG("i minus o really " << std::get<0>(interface_ingress_egress_counters.at(i)) +
-													std::get<1>(interface_ingress_egress_counters.at(i)) -
-													std::get<2>(interface_ingress_egress_counters.at(i))
-											 << ": " << i_minus_o_per_interface.at(i));
-		}*/
 		std::tuple<int8_t, double> current_state = GetSharedState(m_node_id);
 		std::vector<double> queue_fullness_ratios, betas, alphas;
 		queue_fullness_ratios.resize(5);
@@ -296,12 +293,14 @@ void ArbiterElbSat::UpdateELBState()
 		int32_t problem_interface = -1;
 		for (int i = 0; i < queue_occupancies.size(); i++)
 		{
+			// these calculations are covered in the paper
 			queue_fullness_ratios.at(i) = double(queue_occupancies.at(i)) / queue_capacities.at(i);
-			// uncaught divide byzero error in case the queue capacity is equal to the queue occupancy
+			// divide by zero error in case the queue capacity is equal to the queue occupancy
 			// in that case, just set it to 1
 			double delta_d_inverse = 0;
 			if (queue_capacities.at(i) != queue_occupancies.at(i))
 			{
+				// 1320 refers to the number of bytes in an average-size packet, as defined by the paper specs
 				delta_d_inverse =
 					double(i_minus_o_per_interface.at(i)) / ((queue_capacities.at(i) - queue_occupancies.at(i)) * 1320);
 			}
@@ -334,6 +333,10 @@ void ArbiterElbSat::UpdateELBState()
 										ArbiterElbSat::MAX_PROPAGATION_DELAY_SECONDS *
 											(i_minus_o_per_interface.at(problem_interface)) / 1320.0);
 
+			// TODO: this is the part of the code that doesn't make sense to me regarding correctness. The number of
+			// traffic received by the terrestrial interface isn't considered in this equation, instead, the value at
+			// interface ingress egress counters is always 0. this makes Is_new larger than it should be, meaning that
+			// chi is larger than it should be, meaning that the amount of load balancing is less than it should be
 			double isnew =
 				1320.0 * (qtbsa - queue_capacities.at(problem_interface) * alphas.at(problem_interface)) / ELB_THETA_S +
 				std::get<2>(interface_ingress_egress_counters.at(problem_interface)) -
@@ -378,7 +381,12 @@ void ArbiterElbSat::IncrementTxCounter(uint32_t interface_id)
 
 void ArbiterElbSat::IncrementRxCounter(uint32_t interface_id)
 {
-	// increment
+	// TODO: depending on whether the interface is for a GSL or ISL, a different index in the tuple is incremented. This
+	// was done for legacy reasons, but now has become a technical debt. I STRONGLY RECOMMEND reivewing how this affects
+	// the correctness of the `UpdateELBState` function. When reviewing the logs, it appeared correct, but this
+	// documentation was not preserved
+	// While the current implementation is reasonably performant, I encourage an evaluation of its correctness with
+	// fresh eyes, since some technical debt has built up due to a quick implementation
 	if (interface_id == 4)
 	{
 		std::get<1>(interface_ingress_egress_counters.at(interface_id)) += 1320 / elb_update_interval_s;
@@ -387,9 +395,6 @@ void ArbiterElbSat::IncrementRxCounter(uint32_t interface_id)
 	{
 		std::get<0>(interface_ingress_egress_counters.at(interface_id)) += 1320 / elb_update_interval_s;
 	}
-	/*NS_LOG_DEBUG(m_node_id << "interface: " << interface_id
-						   << " ingress/egress: " << std::get<0>(interface_ingress_egress_counters.at(interface_id))
-						   << ", " << std::get<1>(interface_ingress_egress_counters.at(interface_id)));*/
 	m_changed = true;
 }
 

@@ -52,4 +52,4 @@ fig.text(5, 0.04, "Shared X Label", ha="center")
 fig.text(0.04, 0.5, "Shared Y Label", va="center", rotation="vertical")
 
 # ax.set_xlim(4,4.1)
-plt.savefig("test.png")
+plt.savefig("queue_timelines.png")

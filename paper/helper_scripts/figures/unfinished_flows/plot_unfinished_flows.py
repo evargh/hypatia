@@ -78,4 +78,4 @@ ax.set_ylabel(
 # ax.set_yscale("log")
 # ax.set_ylim(0, 60)
 ax.legend()
-plt.savefig("test.png")
+plt.savefig("unfinished_flows.png")

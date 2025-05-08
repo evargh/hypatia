@@ -62,9 +62,15 @@ class ArbiterInnerHelper
 	std::vector<Ptr<ArbiterSingleForward>> m_gs_arbiters;
 	std::vector<std::tuple<double, double, double, double>> m_other_table;
 
-	// the vector should be properly sized when used, which smells but will work for now
+	// TODO: the vector should be properly sized when used, which smells but will work for now
+
+	// this data structure abstracts communication between satellites. Instead of satellites passing messages to
+	// communicate state, they have shared memory to communicate state. In general, a satellite has write access to
+	// state at the index corresponding to its own node id, and read access everywhere else
 	std::shared_ptr<std::vector<int64_t>> shared_data_for_satellites;
+	// this data structure contains mutexes for concurrent access to state
 	std::shared_ptr<std::vector<std::mutex>> shared_mutex_for_satellites;
+	// a pointer to this data structure is passed to satellites
 	std::unique_ptr<std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>>> table_of_node;
 
 	std::vector<std::tuple<double, double>> satellite_positions_short;

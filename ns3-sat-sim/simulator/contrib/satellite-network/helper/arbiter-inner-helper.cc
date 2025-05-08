@@ -75,6 +75,8 @@ ArbiterInnerHelper::ArbiterInnerHelper(Ptr<BasicSimulation> basicSimulation, Nod
 	shared_data_for_satellites = std::shared_ptr<std::vector<int64_t>>(new std::vector<int64_t>(s));
 	shared_mutex_for_satellites = std::shared_ptr<std::vector<std::mutex>>(new std::vector<std::mutex>(num_satellites));
 
+	// NOTE: this code allows satellites to know how satellites in adjacent orbits are phased. it is HEAVILY COUPLED to
+	// the way Hypatia does phasing. If phasing is changed in Hypatia, this needs to be changed.
 	double left_neighbor_gamma_difference = 360.0 / (2 * m_satellites_per_orbit);
 	double right_neighbor_gamma_difference = -360.0 / (2 * m_satellites_per_orbit);
 	std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>> ton;

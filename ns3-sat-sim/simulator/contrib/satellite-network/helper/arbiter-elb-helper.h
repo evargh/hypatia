@@ -39,6 +39,7 @@ class ArbiterElbHelper
 	// APPROXIMATE WGS72 VALUES
 	const double EARTH_ORBIT_TIME_NS = 86400000000000;
 	const int32_t APPROXIMATE_EARTH_RADIUS_M = 6371000;
+	// ELB samples its buffers at a time interval. This parameter defines that time interval
 	const int64_t ELB_UPDATE_INTERVAL_NS = 10000000;
 
 	ArbiterElbHelper(Ptr<BasicSimulation> basicSimulation, NodeContainer nodes);
@@ -48,6 +49,12 @@ class ArbiterElbHelper
 	std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>> InitialEmptyForwardingState();
 	double m_satelliteInclination;
 	void UpdateOrbitalParams(int64_t t);
+	/*
+	 * This function calls the relevant function in each satellite to monitor its buffer lengths and determine its
+	 * levels of congestion
+	 *
+	 * \param t timestamp for scheduling
+	 */
 	void UpdateBusyLevels(int16_t t);
 	void UpdateForwardingState(int64_t t);
 	void SetCoordinateSkew();

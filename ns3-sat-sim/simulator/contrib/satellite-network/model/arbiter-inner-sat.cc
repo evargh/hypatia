@@ -118,6 +118,7 @@ std::vector<ArbiterInnerSat::path_element> ArbiterInnerSat::CreateViablePaths(in
 	std::vector<path_element> viable_paths;
 	std::set<int32_t> visited_nodes;
 
+	// The algorithm is like DFS
 	std::queue<path_element> path_exploration_queue;
 	std::vector<NeighborCoordContainer::Direction> d;
 	std::vector<int32_t> node_ids = {start_node_id};
@@ -138,6 +139,8 @@ std::vector<ArbiterInnerSat::path_element> ArbiterInnerSat::CreateViablePaths(in
 		path_exploration_queue.pop();
 		int32_t last_node_in_path = node_subpath.at(node_subpath.size() - 1);
 
+		// TODO: the structure of this for loop means that paths using the leftmost interface are added first. This
+		// connects to how tie-breaking can deterministically result in using the worst paths
 		for (int i = 0; i < 4; i++)
 		{
 			int32_t neighbor_id = std::get<0>(table_of_node->at(last_node_in_path).at(i));
@@ -148,6 +151,7 @@ std::vector<ArbiterInnerSat::path_element> ArbiterInnerSat::CreateViablePaths(in
 			int viability = TestIfViableHop(neighbor_id, previous_hops, &extended_direction_sequence, depth + 1,
 											target_node_id, destination_alpha, destination_gamma);
 
+			// if the path is viable, calculate all the costs, and re-add it to the queue to further explore the paths
 			if (viability != 0)
 			{
 				std::vector<int32_t> extended_node_subpath(node_subpath);
@@ -171,7 +175,6 @@ std::vector<ArbiterInnerSat::path_element> ArbiterInnerSat::CreateViablePaths(in
 
 				if (viability == 1)
 				{
-
 					path_element path_to_add = std::make_tuple(
 						extended_direction_sequence, extended_node_subpath, depth + 1,
 						horizontal_hops_from_edge_to_destination + vertical_hops_from_edge_to_destination,
@@ -208,26 +211,14 @@ std::tuple<int32_t, int32_t, int32_t> ArbiterInnerSat::DetermineInterface(int16_
 																		  int16_t destination_gamma,
 																		  int32_t target_node_id)
 {
-	/*
-	  if (neighbors.VerifyInRange(NeighborCoordContainer::SELF, destination_alpha, destination_gamma))
-	  {
-		  return HandleClose(destination_alpha, destination_gamma, target_node_id);
-	  }*/
-	// int32_t current_hops = neighbors.GetHopcount(NeighborCoordContainer::SELF, destination_alpha, destination_gamma);
-	// NS_LOG_DEBUG(m_node_id << " starting at: (" << std::get<0>(neighbors.GetCoords(NeighborCoordContainer::SELF))
-	//					   << ", " << std::get<1>(neighbors.GetCoords(NeighborCoordContainer::SELF)) << ") ");
-	// NS_LOG_DEBUG("ending at: (" << destination_alpha << ", " << destination_gamma << ") " << " for " <<
-	// target_node_id); NS_LOG_DEBUG("hopcount: " << current_hops);
 
 	std::vector<path_element> paths =
 		CreateViablePaths(m_node_id, EXPLORATION_DEPTH, destination_alpha, destination_gamma, target_node_id);
 
-	// direction, direction, is in range, fastpath, propagation delay to this neighbor based on hops + standing
-	// queue delay, propagation delay to destination based on hops
-
 	NS_ASSERT_MSG(paths.size() != 0, "no one to forward to");
-	// NS_LOG_DEBUG(m_node_id << " num viable targets to " << target_node_id << ": " << paths.size());
 
+	// TODO: the sorting function doesn't consider future paths, relating to the issue mentioned on line 141. Can
+	// randomize the list contents and then sort as a quick fix
 	std::sort(paths.begin(), paths.end(), [](path_element a, path_element b) {
 		return std::get<4>(a) + std::get<5>(a) < std::get<4>(b) + std::get<5>(b);
 	});
@@ -350,6 +341,9 @@ void ArbiterInnerSat::SetSingleForwardState(int32_t target_node_id, int32_t next
 
 void ArbiterInnerSat::SetSharedState(int64_t val)
 {
+	// TODO: the cost of communicating this data can be modeled by scheduling the actual setting of this value to happen
+	// in the future. One can use the NS3::Schedule function (seen in the helper functions) and pass this function as a
+	// callback instead of calling it directly
 	NS_ASSERT_MSG(val >= 0 && val <= 15, "Invalid Shared State Value");
 	std::lock_guard<std::mutex> guard(shared_data_for_satellites_mutex->at(m_node_id));
 	shared_data_for_satellites->at(m_node_id) = val;

@@ -20,5 +20,5 @@ non_beta_overhead_bytes = 4 * (non_beta_mes * 0.25)
 
 total_overhead_kb = (beta_overhead_bytes + non_beta_overhead_bytes) / 1000
 ratio = total_overhead_kb / total_traffic_kb
-print(total_overhead_kb)
-print(total_overhead_kb / total_traffic_kb)
+print(f"{total_overhead_kb} kb")
+print(f"ratio: {total_overhead_kb / total_traffic_kb}")

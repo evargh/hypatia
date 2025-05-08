@@ -148,13 +148,10 @@ std::tuple<int32_t, int32_t, int32_t> ArbiterShortSat::DetermineInterface(int16_
 																		  int16_t destination_gamma,
 																		  int32_t target_node_id)
 {
-	// if i am within a certain distance, but cant reach the cell, see where the
-	// cell is relative to me. if its right and above, both right and up may be
-	// valid. if both are, do right if its left and above, both left and up may be
-	// valid. if both are, do up if its left and below, both left and down may be
-	// valid. if both are, do left if its right and below, both down and right may
-	// be valid. if both are, do right
-
+	// NOTE: while this function is called "SHORT," and while it has all the scaffolding necessary to run SHORT, the
+	// actual algorithm being tested is hop-based minimization. This was changed to be a fair comparison to INNER. The
+	// difference between SHORT and Hop-Based Minimization is the fact that Hop-Based Minimization routes to destination
+	// satellites, while SHORT can use its coordinate system to (more slowly) route to ground stations directly
 	int32_t right_hops = neighbors.GetHopcount(NeighborCoordContainer::RIGHT, destination_alpha, destination_gamma);
 	int32_t left_hops = neighbors.GetHopcount(NeighborCoordContainer::LEFT, destination_alpha, destination_gamma);
 	int32_t up_hops = neighbors.GetHopcount(NeighborCoordContainer::UP, destination_alpha, destination_gamma);

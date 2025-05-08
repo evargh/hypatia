@@ -44,11 +44,49 @@ class ArbiterShortHelper
   protected:
 	std::vector<std::vector<std::tuple<int32_t, int32_t, int32_t>>> InitialEmptyForwardingState();
 	double m_satelliteInclination;
+
+	/*
+	 * Loads all the SHORT floating-point coordinate data into memory
+	 *
+	 * \param t timestamp for calculating all information relative to the epoch
+	 */
 	void UpdateOrbitalParams(int64_t t);
+
+	/*
+	 * Updates satellite connections to ground stations, based on the (truncated) fstate file
+	 *
+	 * \param t timestamp for calculating all information relative to the epoch
+	 */
 	void UpdateForwardingState(int64_t t);
-	void UpdateCentralityState(int64_t t);
+
+	/*
+	 * Normalizes the coordinate system between latitude and longitude and SHORT. Useful when ground stations were
+	 * assigned floating-point SHORT coordinates.
+	 */
 	void SetCoordinateSkew();
+
+	/*
+	 * Generates the list of satellite neighbors for satellite i
+	 *
+	 * \param i satellite index
+	 * \return vector of <neighbor id, egress interface to neighbor, neighbor's ingress interface from me>, indexed such
+	 * that:
+	 *    \neighbor in adjacent orbit with smaller RAAN is at index 0
+	 *    \neighbor in same orbit with lesser anomaly is at index 1
+	 *    \neighbor in same orbit with larger anomaly is at index 2
+	 *    \neighbor in adjacent orbit with larger RAAN is at index 3
+	 */
 	std::vector<std::tuple<int32_t, int32_t, int32_t>> CreateOutboundInterfaceList(int32_t i);
+
+	/* *** LEGACY ***
+	 * Converts cartesian coordinates to floating-point SHORT coordinates, useful for ground stations.
+	 *
+	 * \param cartesian NS-3 cartesian coordinates in space, normalized to the Earth
+	 * \return Tuple of two sets of alpha/gamma coordinates. Indices 0,1 denote one pair, indices 2,3 denote the other
+	 * pair. This is useful because a ground station may be accessible by two satellites, one ascending and one
+	 * descending
+	 */
+
 	std::tuple<double, double, double, double> CartesianToShort(Vector3D cartesian);
 
 	// Parameters
@@ -61,9 +99,13 @@ class ArbiterShortHelper
 	int64_t m_satellites_per_orbit;
 	std::vector<Ptr<ArbiterShortSat>> m_sat_arbiters;
 	std::vector<Ptr<ArbiterSingleForward>> m_gs_arbiters;
+	// *** LEGACY ***: this data structure stores the SHORT floating point coordinates for all ground stations
 	std::vector<std::tuple<double, double, double, double>> m_other_table;
 
+	// this data structure stores the periodically-updated SHORT floating point coordinates for all satellites.
 	std::vector<std::tuple<double, double>> satellite_positions_short;
+	// this data structure stores a vector of satellites (and their positions) that are reachable from ground station i,
+	// where i is the index of the parent vector
 	std::vector<std::vector<std::tuple<int32_t, std::tuple<double, double>>>> adjacent_satellite_table;
 };
 
