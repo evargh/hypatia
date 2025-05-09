@@ -44,7 +44,7 @@ To create an experiment, do the following:
       3: INNER
       4: ELB over HBM
 
-  c. Run `export NS_LOG="PointToPointLaserNetDevice=level_debug|prefix_func|prefix_time:GSLChannel=level_debug|prefix_func|prefix_timeArbiterDhbpSat=level_debug|prefix_func|prefix_time:ArbiterElbSat=level_debug|prefix_func|prefix_time:ArbiterInnerSat=level_debug|prefix_func|prefix_time"` in your shell to have the console log everything necessary. *NOTE:* Logging increases the runtime significantly. I think its a disk access/batching issue, but I'm not 100% sure. Run these tests overnight for the five algorithms presented.
+  c. Run `export NS_LOG="PointToPointLaserNetDevice=level_debug|prefix_func|prefix_time:GSLChannel=level_debug|prefix_func|prefix_time:ArbiterDhbpSat=level_debug|prefix_func|prefix_time:ArbiterElbSat=level_debug|prefix_func|prefix_time:ArbiterInnerSat=level_debug|prefix_func|prefix_time:GSLNetDevice=level_debug|prefix_func|prefix_time"` in your shell to have the console log everything necessary. *NOTE:* Logging increases the runtime significantly. I think its a disk access/batching issue, but I'm not 100% sure. Run these tests overnight for the five algorithms presented.
 
   d. Run `step_2_run.py` in the paper directory. After each algorithm finishes, create a folder, and move `console.txt`, `tcp_flows.csv`, `tcp_flows.txt`, and `isl_utilization.csv` to that folder.
 
@@ -69,3 +69,5 @@ Repeat this process for each experiment you want to run. The steps for generatin
   Repeat this process for `main_satnet.cc` flag `1,2,3,4`
 
 In order to generate figures after running all experiments, refer to `paper/helper_scripts/figures/figure_table.md`.
+
+To run centrality-related scripts, go to `paper/helper_scripts/centrality`

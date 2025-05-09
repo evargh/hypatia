@@ -50,6 +50,13 @@ using namespace ns3;
 
 int main(int argc, char *argv[])
 {
+	/* This flag controls the routing algorithm
+	 *  0: Snapshot Routing
+		1: DHBP
+		2: HBM
+		3: INNER
+		4: ELB over HBM
+	 * */
 	int routing_algorithm = 4;
 
 	// No buffering of printf

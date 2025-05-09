@@ -24,5 +24,15 @@ with open(args.filename) as ifile:
                 if node_num not in time_index[time_step]:
                     time_index[time_step][node_num] = 0
                 time_index[time_step][node_num] += int(inp[-1])
+            # blockquote--un-comment for centrality measurements
+            """
+            if inp[1] == "GSLNetDevice:Receive():":
+                time_step = int(float(inp[0][1:-1]) * 10)
+                node_num = int(inp[3])
+                if node_num < num_satellites:
+                    if node_num not in time_index[time_step]:
+                        time_index[time_step][node_num] = 0
+                    time_index[time_step][node_num] += int(inp[-1])
+            """
 
 print(json.dumps(time_index))
