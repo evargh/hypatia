@@ -1,7 +1,7 @@
 Prep:
 To run Hypatia in an arbitrary system, I wrote a Dockerfile and a guide in `scratch` on how to do that. If you want to do that, you can—edit any files outside of the container and run all building/debugging commands in the container.
 
-First, build Hypatia according to the `README.md` file given by the authors. (may fix) You can run `hypatia_run_tests.sh`, and it will succeed—however, this test suite only tests the integration of the snapshot routing algorithm under the assumption of selective ACKs. I **STRONGLY RECOMMEND** updating the testing suite to pass tests without the SACK assumption, as well as expanding it for other algorithms. This may take some work, but I think is a good way to first figure out how NS3 as well as the existing algorithms work.
+First, build Hypatia according to the `README.md` file given by the authors. (may fix) You can run `hypatia_run_tests.sh`, and it will succeed—however, this test suite only tests the integration of the snapshot routing algorithm under the assumption of selective ACKs. I **STRONGLY RECOMMEND** updating the testing suite to pass tests without the SACK assumption, as well as expanding it for other algorithms. This may take some work, but I think is a good way to first figure out how NS3 as well as the existing algorithms work. Note that `integration_tests` will not work due to refactoring of the why experiments are now conducted.
 
 I also recommend referring to [NS3's test documentation](https://www.nsnam.org/docs/manual/html/test-framework.html) in order to create unit tests for the modular arithmetic functions and the arbiter functions. These functions have been inspected for correctness and stability through assertions, but exhaustive edge case exploration hasn't been done yet.
 
