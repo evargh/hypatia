@@ -20,7 +20,7 @@
 #include "arbiter-single-forward.h"
 
 namespace ns3 {
-
+NS_LOG_COMPONENT_DEFINE ("ArbiterSingleForward");
 NS_OBJECT_ENSURE_REGISTERED (ArbiterSingleForward);
 TypeId ArbiterSingleForward::GetTypeId (void)
 {

@@ -22,7 +22,7 @@
 
 # Usage help
 if [ "$1" == "--help" ] || [ "$#" != "2" ]; then
-  echo "Usage: bash generate_for_paper.sh [id: 0 - 14] [number of threads]"
+  echo "Usage: bash generate_for_paper.sh [id: 0 - 23] [number of threads]"
   exit 0
 fi
 
@@ -31,7 +31,7 @@ id="$1"
 num_threads=$2
 
 # Check validity of arguments
-if [ "${id}" -lt "0" ] || [ "${id}" -gt "14" ]; then
+if [ "${id}" -lt "0" ] || [ "${id}" -gt "23" ]; then
   echo "Invalid workload id: ${id}"
   exit 1
 fi

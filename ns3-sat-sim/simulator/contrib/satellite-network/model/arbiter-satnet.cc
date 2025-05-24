@@ -78,4 +78,8 @@ ArbiterResult ArbiterSatnet::Decide(
 
 }
 
+    uint32_t ArbiterSatnet::GetNumNodes() {
+        return m_nodes.GetN();
+    }
+
 }

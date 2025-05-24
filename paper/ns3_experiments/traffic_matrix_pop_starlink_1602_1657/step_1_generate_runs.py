@@ -22,7 +22,7 @@
 
 import exputil
 import networkload
-import random
+import argparse
 
 local_shell = exputil.LocalShell()
 
@@ -31,8 +31,40 @@ local_shell.remove_force_recursive("runs")
 local_shell.remove_force_recursive("pdf")
 local_shell.remove_force_recursive("data")
 
+parser = argparse.ArgumentParser()
+# figure this out
+parser.add_argument("queue_size_isl", type=int)
+parser.add_argument("queue_size_gsl", type=int)
+parser.add_argument("traffic_filename")
+parser.add_argument(
+    "transport",
+    choices=[
+        "tcp_pairwise_200s",
+        "udp_pairwise_200s",
+        "tcp_gravity_200s_high_bandwidth_links",
+        "tcp_gravity_200s",
+        "tcp_gravity_3s",
+        "tcp_gravity_80s",
+    ],
+)
+
+args = parser.parse_args()
+
 for traffic_mode in ["general"]:
     for movement in ["moving"]:
+        config_file = ""
+        if args.transport == "tcp_pairwise_200s":
+            config_file = "template_config_ns3.properties"
+        elif args.transport == "tcp_gravity_200s_high_bandwidth_links":
+            config_file = "template_config_ns3_highbw_log_gravity.properties"
+        elif args.transport == "tcp_gravity_200s":
+            config_file = "template_config_ns3_log_gravity.properties"
+        elif args.transport == "tcp_gravity_3s":
+            config_file = "template_config_ns3_log_gravity_3s.properties"
+        elif args.transport == "tcp_gravity_80s":
+            config_file = "template_config_ns3_log_gravity_80s.properties"
+        elif args.transport == "udp_pairwise_200s":
+            config_file = "template_config_ns3_udp.properties"
 
         # Prepare run directory
         run_dir = "runs/run_" + traffic_mode + "_tm_pairing_starlink_isls_" + movement
@@ -40,11 +72,25 @@ for traffic_mode in ["general"]:
         local_shell.make_full_dir(run_dir)
 
         # config_ns3.properties
-        local_shell.copy_file("templates/template_config_ns3.properties", run_dir + "/config_ns3.properties")
+        local_shell.copy_file(
+            f"templates/{config_file}", run_dir + "/config_ns3.properties"
+        )
         local_shell.sed_replace_in_file_plain(
             run_dir + "/config_ns3.properties",
             "[SATELLITE-NETWORK-FORCE-STATIC]",
-            "true" if movement == "static" else "false"
+            "true" if movement == "static" else "false",
+        )
+
+        local_shell.sed_replace_in_file_plain(
+            run_dir + "/config_ns3.properties",
+            "[MAX-QUEUE-SIZE-PKTS-ISL]",
+            f"{args.queue_size_isl}",
+        )
+
+        local_shell.sed_replace_in_file_plain(
+            run_dir + "/config_ns3.properties",
+            "[MAX-QUEUE-SIZE-PKTS-GSL]",
+            f"{args.queue_size_gsl}",
         )
 
         # Make logs_ns3 already for console.txt mapping
@@ -57,21 +103,51 @@ for traffic_mode in ["general"]:
         start = 1584
         flow = []
         time = []
-        with open('traffic_pop.csv', 'r') as f:
+        with open(args.traffic_filename, "r") as f:
             for id, line in enumerate(f.readlines()):
                 values = line.strip().split(",")
                 list_from_to.append((start + int(values[0]), start + int(values[1])))
                 flow.append(int(values[2]))
                 time.append(int(values[3]) * 1000000000)
-        list_from_to, flow, time = zip(*sorted(zip(list_from_to, flow, time), key=lambda x: x[2]))
-        # Write the schedule
-        networkload.write_schedule(
-            run_dir + "/schedule_starlink_550.csv",
-            len(list_from_to),
-            list_from_to,
-            flow,
-            time
+        list_from_to, flow, time = zip(
+            *sorted(zip(list_from_to, flow, time), key=lambda x: x[2])
         )
+        # Write the schedule
+        if (
+            args.transport == "tcp_pairwise_200s"
+            or args.transport == "tcp_gravity_200s_high_bandwidth_links"
+            or args.transport == "tcp_gravity_200s"
+            or args.transport == "tcp_gravity_3s"
+            or args.transport == "tcp_gravity_80s"
+        ):
+            networkload.write_schedule(
+                run_dir + "/schedule_starlink_550.csv",
+                len(list_from_to),
+                list_from_to,
+                flow,
+                time,
+            )
+        elif args.transport == "udp_pairwise_200s":
+            # udp sets up traffic flows in a different way.
+            # "send from A to B at a rate of X Mbit/s at time T for duration D"
+            with open(run_dir + "/schedule_starlink_550.csv", "w+") as f_out:
+                checked_flows = set()
+                index = 0
+                for i in range(len(list_from_to)):
+                    if list_from_to[i] not in checked_flows:
+                        f_out.write(
+                            "%d,%d,%d,%.10f,%d,%d,,\n"
+                            % (
+                                index,
+                                list_from_to[i][0],  # A
+                                list_from_to[i][1],  # B
+                                flow[i] / 1024.0 / 1024.0,  # Rate (mbit)
+                                0,  # Start Time
+                                200000000000,  # Duration (ns)
+                            )
+                        )
+                        index += 1
+                        checked_flows.add(list_from_to[i])
 
 # Finished successfully
 print("Success")
